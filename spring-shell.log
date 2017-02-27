@@ -1,0 +1,32 @@
+// dataflow 1.2.0.RELEASE log opened at 2017-02-27 18:21:58
+// [failed] stream create demo --definition "http --server.port=9000 | file --directory=./build/demo"
+// [failed] stream create demo --definition "http --server.port=9000 | file --directory=./build"
+// [failed] stream create demo --definition "http --server.port=9000 | file --directory=/tmp/demo"
+dataflow config server http://localhost
+dataflow config server http://localhost:9393
+// [failed] stream create demo --definition "http --server.port=9000 | file --directory=/tmp/demo"
+app register --name http --type source --uri maven://org.springframework.cloud.stream.app:http-source-rabbit:1.1.2.BUILD-SNAPSHOT
+app register --name log --type sink --uri maven://org.springframework.cloud.stream.app:log-sink-rabbit:1.1.2.BUILD-SNAPSHOT
+// [failed] stream create demo --definition "http --server.port=9000 | file --directory=/tmp/demo"
+app import --uri http://bit.ly/Avogadro-SR1-stream-applications-rabbit-maven
+// [failed] app register --name file --type source --uri maven://org.springframework.cloud.stream.app:file-source-rabbit:1.1.2.BUILD-SNAPSHOT
+// [failed] app register --name file --type sink --uri maven://org.springframework.cloud.stream.app:file-sink-rabbit:1.1.2.BUILD-SNAPSHOT
+// [failed] app register --name file --type sink --uri maven://org.springframework.cloud.stream.app:file-sink-rabbit:1.0.0.RELEASE
+// dataflow 1.2.0.RELEASE log opened at 2017-02-27 18:33:18
+help
+app list
+stream create demo --definition "http --port=9000 | file --directory=/tmp"
+// [failed] stream create demo --definition "http --port=9000 | file --directory=/tmp/demo"
+// [failed] stream create demo --definition "http --port=9000 | file --directory=./build"
+// [failed] stream create demo --definition "http --port=9000 | file --directory=build"
+// [failed] stream create demo --definition "http --port=9000 | file --directory=/tmp"
+stream list
+stream destroy demo
+stream create demo --definition "http --port=9000 | file --directory=build"
+stream deploy demo
+http post --target http://localhost:9000 --data "Hi!"
+http post --target http://user:b85d7c3f-c22c-4de0-a643-1b9a4e311f26@localhost:9000 --data "Hi!"
+http post --username user --password b85d7c3f-c22c-4de0-a643-1b9a4e311f26 --target http://localhost:9000 --data "hi!"
+stream destroy demo
+app list
+app list

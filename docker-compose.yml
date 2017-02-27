@@ -1,0 +1,60 @@
+rabbitmq-data:
+  image: rabbitmq:3.6.6
+  container_name: rabbitmq-data
+  tty: true
+  command: chown -v -R 999:999 /var/lib/rabbitmq
+  volumes:
+  - './build/docker/var/lib/rabbitmq:/var/lib/rabbitmq'
+  - './build/docker/etc/rabbitmq:/etc/rabbitmq'
+  stdin_open: true
+
+rabbitmq:
+  image: rabbitmq:3.6.6
+  container_name: rabbitmq
+  hostname: rabbitmq
+#    environment:
+#      RABBITMQ_DEFAULT_USER: guest
+#      RABBITMQ_DEFAULT_PASS: guest
+#      RABBITMQ_ERLANG_COOKIE: test
+  env_file:
+  - './.docker.secrets'
+  ports:
+  - '5672:5672'
+  volumes_from:
+  - rabbitmq-data
+
+mongodb:
+  container_name: mongodb
+  image: mongo:3.0.14
+  environment:
+    MONGO_PORT_27017_TCP_ADDR: mongodb
+    MONGO_PORT_27017_TCP_PORT: 27017
+  ports:
+  - '27017:27017'
+  volumes:
+  - './build/docker/data/db:/data/db'
+
+# rabbit admin: http://localhost:8001/
+# mongodb admin: http://localhost:8002/
+
+rabbitmq-admin:
+  image: rabbitmq:3.6.6-management
+  container_name: rabbitmq-admin
+  env_file:
+   - '.docker.secrets'
+  ports:
+  - '8001:15672'
+  - '25672:25672'
+  links:
+  - 'rabbitmq:rabbit'
+
+mongodb-admin:
+  container_name: mongodb-admin
+  image: mongo-express:0.32.0
+  command: bash -c 'sleep 15 && node app'
+  ports:
+  - '8002:8081'
+  links:
+  - mongodb
+  environment:
+    ME_CONFIG_MONGODB_SERVER: mongodb

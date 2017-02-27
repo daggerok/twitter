@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: netflix-config-server
+  cloud:
+    config:
+      server:
+        git:
+          basedir: build/netflix-config-server
+          uri: file://${user.home}/Documents/code/test/java/spring/cloud/netflix-config-server-repo
+        bootstrap: true
+server:
+  port: 8888
+management:
+  context-path: /admin

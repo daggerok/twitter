@@ -1,0 +1,17 @@
+plugins {
+    id 'org.springframework.boot' version '1.5.1.RELEASE'
+}
+
+jar {
+    baseName = 'eureka-discovery-server'
+}
+
+dependencies {
+    compile 'org.springframework.cloud:spring-cloud-starter-eureka-server',
+            'org.springframework.cloud:spring-cloud-starter-config',
+            'org.springframework.cloud:spring-cloud-starter-bus-amqp',
+            'org.springframework.cloud:spring-cloud-starter-eureka',
+            'org.springframework.cloud:spring-cloud-starter-hystrix',
+            'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.cloud:spring-cloud-starter-stream-rabbit'
+}

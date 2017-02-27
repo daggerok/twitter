@@ -1,0 +1,40 @@
+plugins {
+    id 'idea'
+    id 'eclipse'
+    // gradle dependencyUpdates -Drevision=release
+    id 'com.github.ben-manes.versions' version '0.14.0'
+    id 'io.spring.dependency-management' version '1.0.0.RC2'
+}
+
+subprojects {
+
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    group 'daggerok'
+    version '0.0.1'
+
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/snapshot' }
+        maven { url 'https://repo.spring.io/milestone' }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom 'org.springframework.cloud:spring-cloud-dependencies:Dalston.BUILD-SNAPSHOT'
+        }
+    }
+
+    dependencies {
+        runtime 'org.springframework.boot:spring-boot-devtools'
+        compile 'org.projectlombok:lombok'
+//        compileOnly 'org.projectlombok:lombok'
+        testCompile 'org.springframework.boot:spring-boot-starter-test'
+    }
+}
+
+task wrapper(type: Wrapper) { gradleVersion = '3.4' }

@@ -1,0 +1,5 @@
+rootProject.name = 'twitter'
+include 'netflix-config-server'
+include 'eureka-discovery-server'
+include 'tweet-command'
+include 'tweet-query'

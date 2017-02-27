@@ -1,0 +1,17 @@
+plugins {
+    id 'org.springframework.boot' version '1.5.1.RELEASE'
+}
+
+jar {
+    baseName = 'tweet-query'
+}
+
+dependencies {
+    compile 'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.cloud:spring-cloud-starter-bus-amqp',
+            'org.springframework.cloud:spring-cloud-starter-config',
+            'org.springframework.cloud:spring-cloud-starter-eureka',
+            'org.springframework.cloud:spring-cloud-starter-hystrix',
+            'org.springframework.cloud:spring-cloud-starter-stream-rabbit',
+            'org.springframework.boot:spring-boot-starter-mustache'
+}
