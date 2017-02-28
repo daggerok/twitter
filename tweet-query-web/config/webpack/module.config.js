@@ -1,6 +1,20 @@
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const { pathTo } = require('./utils');
 
+const loaders = [
+  'exports-loader?module.exports.toString()',
+  'css-loader?{"sourceMap":false,"importLoaders":1}',
+  'postcss-loader',
+];
+
+const use = [
+  'css-loader?{"sourceMap":false,"importLoaders":1}',
+  'postcss-loader',
+];
+
+const publicPath = '';
+const fallback = 'style-loader';
+
 module.exports = env => ({
   rules: [
     {
@@ -8,7 +22,7 @@ module.exports = env => ({
       test: /\.js$/i,
       loader: 'source-map-loader',
       exclude: [
-        /\/node_modules\//,
+        /\/node_modules\//i,
       ]
     },
     {
@@ -29,112 +43,98 @@ module.exports = env => ({
     },
     {
       exclude: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.css'),
       ],
       test: /\.css$/i,
-      loaders: [
-        'exports-loader?module.exports.toString()',
-        'css-loader?{"sourceMap":false,"importLoaders":1}',
-        'postcss-loader',
-      ]
+      loaders,
     },
     {
       exclude: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.scss'),
+        pathTo('./src/styles.sass'),
       ],
       test: /\.scss$|\.sass$/i,
       loaders: [
-        'exports-loader?module.exports.toString()',
-        'css-loader?{"sourceMap":false,"importLoaders":1}',
-        'postcss-loader',
+        ...loaders,
         'sass-loader',
       ],
     },
     {
       exclude: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.less'),
       ],
       test: /\.less$/i,
       loaders: [
-        'exports-loader?module.exports.toString()',
-        'css-loader?{"sourceMap":false,"importLoaders":1}',
-        'postcss-loader',
+        ...loaders,
         'less-loader',
       ],
     },
     {
       exclude: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.styl'),
       ],
       test: /\.styl$/i,
       loaders: [
-        'exports-loader?module.exports.toString()',
-        'css-loader?{"sourceMap":false,"importLoaders":1}',
-        'postcss-loader',
+        ...loaders,
         'stylus-loader?{"sourceMap":false,"paths":[]}',
       ],
     },
     {
       include: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.css'),
       ],
-      test: /\.css$/,
+      test: /\.css$/i,
       loaders: ExtractTextPlugin.extract({
-        use: [
-          'css-loader?{"sourceMap":false,"importLoaders":1}',
-          'postcss-loader',
-        ],
-        fallback: 'style-loader',
-        publicPath: '',
+        use,
+        fallback,
+        publicPath,
       }),
     },
     {
       include: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.scss'),
+        pathTo('./src/styles.sass'),
       ],
-      test: /\.scss$|\.sass$/,
+      test: /\.scss$|\.sass$/i,
       loaders: ExtractTextPlugin.extract({
         use: [
-          'css-loader?{"sourceMap":false,"importLoaders":1}',
-          'postcss-loader',
+          ...use,
           'sass-loader',
         ],
-        fallback: 'style-loader',
-        publicPath: '',
+        fallback,
+        publicPath,
       }),
     },
     {
       include: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.less'),
       ],
-      test: /\.less$/,
+      test: /\.less$/i,
       loaders: ExtractTextPlugin.extract({
         use: [
-          'css-loader?{"sourceMap":false,"importLoaders":1}',
-          'postcss-loader',
+          ...use,
           'less-loader',
         ],
-        fallback: 'style-loader',
-        publicPath: '',
+        fallback,
+        publicPath,
       }),
     },
     {
       include: [
-        pathTo('src/styles.styl'),
+        pathTo('./src/styles.styl'),
       ],
-      test: /\.styl$/,
+      test: /\.styl$/i,
       loaders: ExtractTextPlugin.extract({
         use: [
-          'css-loader?{"sourceMap":false,"importLoaders":1}',
-          'postcss-loader',
+          ...use,
           'stylus-loader?{"sourceMap":false,"paths":[]}',
         ],
-        fallback: 'style-loader',
-        publicPath: '',
+        fallback,
+        publicPath,
       }),
     },
     {
-      test: /\.ts$/,
+      test: /\.ts$/i,
       loader: '@ngtools/webpack',
     },
   ],

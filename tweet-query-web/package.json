@@ -3,28 +3,28 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "start": "webpack-dev-server",
+    "start": "webpack-dev-server --config ./config/webpack.config.js --env development",
 
     "prewebpack": "rimraf -rf ../tweet-query/src/main/resources/static",
-    "webpack": "webpack",
+    "webpack": "webpack --config ./config/webpack.config.js",
 
-    "test": "karma start ./karma.conf.js",
+    "lint": "tslint -c ./config/tslint.json 'src/**/*.ts' 'e2e/**/*.ts'",
 
-    "lint": "tslint -c ./tslint.json 'src/**/*.ts' 'e2e/**/*.ts'",
+    "test": "karma start ./config/karma.conf.js",
 
     "e2e": "concurrently 'npm run protractor' 'npm run server' --kill-others --success first -p '[{name}]' -n 'E2E,HTTP' -c 'green,cyan' # colors: black, red, green, yellow, blue, magenta, cyan, white, gray",
     "pree2e": "npm run webpack",
-    "protractor": "protractor ./protractor.conf.js",
+    "protractor": "protractor ./config/protractor.conf.js",
     "preprotractor": "npm-run-all sleep webdriver-manager-update",
     "sleep": "sleep 3",
     "webdriver-manager-update": "webdriver-manager update  --standalone false --gecko false --quiet",
 
-    "start-server": "browser-sync start -c ./lite-server.config.js",
+    "start-server": "browser-sync start -c ./config/lite-server.config.js",
     "server": "npm run start-server -- --no-notify --no-open --no-online --no-inject-changes --no-reload-on-restart",
 
     "preserve": "npm run build",
     "build": "npm run webpack -- -p --env production",
-    "serve": "lite-server -c ./lite-server.config.js"
+    "serve": "lite-server -c ./config/lite-server.config.js"
   },
   "private": true,
   "dependencies": {

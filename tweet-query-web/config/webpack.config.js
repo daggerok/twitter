@@ -1,5 +1,5 @@
 module.exports = env => ({
-  devtool: env === 'production' ? 'source-map' : 'eval',
+  devtool: 'source-map',
   resolve: require('./webpack/resolve.config'),
   resolveLoader: require('./webpack/resolveLoader.config'),
   entry: require('./webpack/entry.config'),
