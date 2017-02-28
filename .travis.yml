@@ -31,7 +31,7 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
   - docker-compose --project-name=twitter up -d
   # spring-cloud-config repo
-  - bash init-repo.bash
+  - bash init-or-update-repo.bash
 script:
   - gradle clean build
 after_script:

@@ -9,8 +9,6 @@
 
 # IDEs and editors
 /.idea
-!.idea/watcherTasks.xml
-!.idea/vcs.xml
 .project
 .classpath
 .c9/
@@ -41,6 +39,3 @@ testem.log
 #System Files
 .DS_Store
 Thumbs.db
-
-.gradle/
-build/

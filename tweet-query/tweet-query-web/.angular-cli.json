@@ -1,13 +1,12 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "project": {
-    "name": "tweet-query-web",
-    "ejected": true
+    "name": "tweet-query-web"
   },
   "apps": [
     {
       "root": "src",
-      "outDir": "dist",
+      "outDir": "../src/main/resources/static/",
       "assets": [
         "assets",
         "favicon.ico"
@@ -22,8 +21,7 @@
       "styles": [
         "styles.styl"
       ],
-      "scripts": [
-      ],
+      "scripts": [],
       "environmentSource": "environments/environment.ts",
       "environments": {
         "dev": "environments/environment.ts",
@@ -33,7 +31,7 @@
   ],
   "e2e": {
     "protractor": {
-      "config": "./config/protractor.conf.js"
+      "config": "./protractor.conf.js"
     }
   },
   "lint": [
@@ -49,12 +47,11 @@
   ],
   "test": {
     "karma": {
-      "config": "./config/karma.conf.js"
+      "config": "./karma.conf.js"
     }
   },
   "defaults": {
     "styleExt": "styl",
-    "component": {
-    }
+    "component": {}
   }
 }

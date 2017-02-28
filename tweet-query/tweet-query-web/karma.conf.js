@@ -3,7 +3,7 @@
 
 module.exports = function (config) {
   config.set({
-    basePath: '..',
+    basePath: '',
     frameworks: ['jasmine', '@angular/cli'],
     plugins: [
       require('karma-jasmine'),
@@ -39,6 +39,6 @@ module.exports = function (config) {
     logLevel: config.LOG_INFO,
     autoWatch: true,
     browsers: ['Chrome'],
-    singleRun: true,
+    singleRun: false
   });
 };

@@ -13,7 +13,13 @@
     "target": "es5",
     "module": "es2015",
     "baseUrl": "",
-    "types": []
+    "types": [
+      "node",
+      "jasmine"
+    ],
+    "rootTypes": [
+      "../node_modules/@types"
+    ]
   },
   "exclude": [
     "test.ts",
