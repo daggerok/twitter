@@ -11,16 +11,12 @@ import org.springframework.integration.annotation.ServiceActivator;
 @Configuration
 @RequiredArgsConstructor
 @EnableBinding(Sink.class)
-public class TweetCommandConfig {
+public class TweetConsumerConfig {
 
     final TweetMongoRepository tweetMongoRepository;
 
     @ServiceActivator(inputChannel = Sink.INPUT)
-    public void send(final String payload) {
-
+    public void tweetServiceActivator(final String payload) {
         tweetMongoRepository.save(Tweet.of(payload));
-//        return MessageBuilder
-//                .withPayload(format("hi!, %d", System.currentTimeMillis()))
-//                .build();
     }
 }
