@@ -1,6 +1,17 @@
 twitter [![build](https://travis-ci.org/daggerok/twitter.svg?branch=master)](https://travis-ci.org/daggerok/twitter)
 =======
 
+web @angular/cli
+
+```bash
+npm remove angular-cli -g
+npm i @angular/cli -g
+ng new --routing=true --prefix=twitter --style=styl tweet-query-web
+cd tweet-query-web/
+ng eject
+npm i
+```
+
 ```bash
 docker-compose down -v --remove-orphans --rmi local
 sudo rm -rf build/docker

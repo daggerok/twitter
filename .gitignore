@@ -7,3 +7,9 @@
 **/build/
 **/gradle/
 **/gradlew*
+**/classes/
+
+**/dist/
+*.log
+**/node_modules/
+**/src/main/resources/static
