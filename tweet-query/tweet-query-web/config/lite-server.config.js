@@ -1,13 +1,13 @@
 module.exports = {
   injectChanges: false,
   files: [
-    '../tweet-query/src/main/resources/static/**/*.*'
+    '../src/main/resources/static/**/*.*'
   ],
   watchOptions: {
     ignored: 'node_modules'
   },
   server: {
-    baseDir: '../tweet-query/src/main/resources/static/',
+    baseDir: '../src/main/resources/static/',
     middleware: {
       middleware: {
         0: null, // removes default `connect-logger` middleware

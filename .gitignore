@@ -1,4 +1,10 @@
 **/.idea/
+!.idea/runConfigurations
+!.idea/runConfigurations/*
+!.idea/compiler.xml
+!.idea/gradle.xml
+!.idea/misc.xml
+!.idea/vcs.xml
 **/*.iml
 **/*.ipr
 **/*.iws

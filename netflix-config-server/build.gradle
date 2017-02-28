@@ -13,4 +13,5 @@ dependencies {
             'org.springframework.cloud:spring-cloud-starter-hystrix',
             'org.springframework.boot:spring-boot-starter-actuator',
             'org.springframework.cloud:spring-cloud-starter-stream-rabbit'
+    runtime 'org.springframework.boot:spring-boot-devtools'
 }

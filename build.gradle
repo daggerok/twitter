@@ -12,7 +12,7 @@ subprojects {
     apply plugin: 'io.spring.dependency-management'
 
     group 'daggerok'
-    version '0.0.1'
+    version twitterVersion
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
@@ -27,13 +27,6 @@ subprojects {
         imports {
             mavenBom 'org.springframework.cloud:spring-cloud-dependencies:Dalston.BUILD-SNAPSHOT'
         }
-    }
-
-    dependencies {
-        runtime 'org.springframework.boot:spring-boot-devtools'
-        compile 'org.projectlombok:lombok'
-//        compileOnly 'org.projectlombok:lombok'
-        testCompile 'org.springframework.boot:spring-boot-starter-test'
     }
 }
 

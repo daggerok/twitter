@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "start": "webpack-dev-server --config ./config/webpack.config.js --env development",
-    "prewebpack": "rimraf -rf ../tweet-query/src/main/resources/static",
+    "prewebpack": "rimraf -rf ../src/main/resources/static",
     "webpack": "webpack --config ./config/webpack.config.js",
 
     "lint": "tslint -c ./config/tslint.json 'src/**/*.ts' 'e2e/**/*.ts'",

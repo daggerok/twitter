@@ -13,6 +13,9 @@ dependencies {
             'org.springframework.cloud:spring-cloud-starter-hystrix',
             'org.springframework.boot:spring-boot-starter-actuator',
             'org.springframework.cloud:spring-cloud-starter-stream-rabbit',
-//            'org.springframework.boot:spring-boot-starter-web',
-            'org.springframework.boot:spring-boot-starter-data-mongodb'
+            // 'org.springframework.boot:spring-boot-starter-web',
+            'org.springframework.boot:spring-boot-starter-data-mongodb',
+            'org.projectlombok:lombok'
+    runtime 'org.springframework.boot:spring-boot-devtools'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
 }
