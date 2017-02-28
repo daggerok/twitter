@@ -7,8 +7,8 @@ node {
   // LTS
   version = '6.9.2'
   npmVersion = '3.10.9'
-  // https://github.com/srs/gradle-node-plugin/issues/171
-  download = true
+  // // https://github.com/srs/gradle-node-plugin/issues/171
+  // download = true
 }
 
 assemble {
@@ -16,7 +16,7 @@ assemble {
 }
 
 test {
-  dependsOn npm_t
+  dependsOn npm_run_lint, npm_t, npm_run_e2e
 }
 
 clean.doFirst {
