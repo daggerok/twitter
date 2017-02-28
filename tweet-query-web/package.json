@@ -8,9 +8,11 @@
     "prewebpack": "rimraf -rf ../tweet-query/src/main/resources/static",
     "webpack": "webpack --config ./config/webpack.config.js",
 
+    "test": "npm-run-all lint unit e2e",
+
     "lint": "tslint -c ./config/tslint.json 'src/**/*.ts' 'e2e/**/*.ts'",
 
-    "test": "karma start ./config/karma.conf.js",
+    "unit": "karma start ./config/karma.conf.js",
 
     "e2e": "concurrently 'npm run protractor' 'npm run server' --kill-others --success first -p '[{name}]' -n 'E2E,HTTP' -c 'green,cyan' # colors: black, red, green, yellow, blue, magenta, cyan, white, gray",
     "pree2e": "npm run webpack",

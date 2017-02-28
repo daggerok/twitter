@@ -16,7 +16,7 @@ assemble {
 }
 
 test {
-  dependsOn npm_run_lint, npm_t, npm_run_e2e
+  dependsOn npm_t
 }
 
 clean.doFirst {
@@ -28,3 +28,5 @@ clean.doFirst {
       'node_modules',
   ].each { delete "${projectDir.getAbsolutePath()}/$it" }
 }
+
+assemble.shouldRunAfter test
