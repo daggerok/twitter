@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const autoprefixer = require('autoprefixer');
 const postcssUrl = require('postcss-url');
+const { version } = require('../../package.json');
 
 const {
   NoEmitOnErrorsPlugin,
@@ -77,14 +78,26 @@ module.exports = env => [
     ]
   }),
   new ExtractTextPlugin({
-    filename: '[name].bundle.css',
-    disable: true
+    filename: `[name].bundle.css?v=${version}`,
+    disable: false,
+    allChunks: true,
   }),
   new LoaderOptionsPlugin({
     sourceMap: false,
     options: {
       postcss: [
-        autoprefixer(),
+        autoprefixer([
+          'last 4 versions',
+          'Android 2.3',
+          'Android >= 4',
+          'Chrome >= 35',
+          'Firefox >= 28',
+          'Explorer >= 9',
+          'ie >= 9',
+          'iOS >= 7',
+          'Opera >= 12',
+          'Safari >= 7.1',
+        ]),
         postcssUrl({url: URL => {
           // Only convert absolute URLs, which CSS-Loader won't process into require().
           if (!URL.startsWith('/')) {

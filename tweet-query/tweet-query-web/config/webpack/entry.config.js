@@ -1,11 +1,8 @@
 module.exports = {
   main: [
-    './src/main.ts'
+    './src/main.ts',
   ],
   polyfills: [
-    './src/polyfills.ts'
+    './src/polyfills.ts',
   ],
-  styles: [
-    './src/styles.styl'
-  ]
 };

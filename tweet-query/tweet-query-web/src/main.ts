@@ -1,3 +1,6 @@
+import 'normalize.css/normalize.css';
+import './styles.styl';
+
 import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 

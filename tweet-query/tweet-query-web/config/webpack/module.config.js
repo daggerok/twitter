@@ -43,6 +43,7 @@ module.exports = env => ({
     },
     {
       exclude: [
+        pathTo('./node_modules/normalize.css/normalize.css'),
         pathTo('./src/styles.css'),
       ],
       test: /\.css$/i,
@@ -81,6 +82,7 @@ module.exports = env => ({
     },
     {
       include: [
+        pathTo('./node_modules/normalize.css/normalize.css'),
         pathTo('./src/styles.css'),
       ],
       test: /\.css$/i,
