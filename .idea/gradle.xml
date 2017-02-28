@@ -12,6 +12,7 @@
             <option value="$PROJECT_DIR$/eureka-discovery-server" />
             <option value="$PROJECT_DIR$/netflix-config-server" />
             <option value="$PROJECT_DIR$/tweet-command" />
+            <option value="$PROJECT_DIR$/tweet-data" />
             <option value="$PROJECT_DIR$/tweet-query" />
             <option value="$PROJECT_DIR$/tweet-query/tweet-query-web" />
           </set>

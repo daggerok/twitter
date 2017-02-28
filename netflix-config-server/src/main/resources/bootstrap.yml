@@ -8,6 +8,9 @@ spring:
           basedir: build/netflix-config-server
           uri: file://${user.home}/Documents/code/test/java/spring/cloud/netflix-config-server-repo
         bootstrap: true
+  rabbitmq:
+    username: twitter
+    password: twitter
 server:
   port: 8888
 management:
