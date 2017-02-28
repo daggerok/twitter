@@ -45,7 +45,7 @@ java -jar build/spring-cloud-dataflow-server-local-1.1.4.RELEASE.jar
 java -jar build/spring-cloud-dataflow-shell-1.1.4.RELEASE.jar
 ```
 
-# see https://github.com/spring-cloud/spring-cloud-stream-app-starters/tree/master/spring-cloud-stream-app-descriptor/src/main/resources/META-INF
+*see https://github.com/spring-cloud/spring-cloud-stream-app-starters/tree/master/spring-cloud-stream-app-descriptor/src/main/resources/META-INF*
 
 ```bash
 >dataflow config server http://localhost:9393
