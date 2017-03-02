@@ -1,6 +1,20 @@
 twitter [![build](https://travis-ci.org/daggerok/twitter.svg?branch=master)](https://travis-ci.org/daggerok/twitter)
 =======
 
+```bash
+bash init-or-update-repo.bash
+gradle netflix-config-server:bootRun
+gradle eureka-discovery-server:bootRun
+gradle tweet-query:bootRun
+gradle tweet-command:bootRun
+# send message: 
+# 1) open http://localhost:8761; 
+# 2) select tweet-query;
+# 3) go base uri;
+# 4) type message, submit it using enter
+# verify db: http://localhost:8002/db/test/tweet
+```
+
 web @angular/cli
 
 ```bash
@@ -14,10 +28,9 @@ npm i
 
 ```bash
 docker-compose down -v --remove-orphans --rmi local
-sudo rm -rf build/docker
-docker-compose --project-name=twitter up -d --build --force-recreate --remove-orphans 
-open http://localhost:8001/ # guest / guest
-open http://localhost:8002/ # guest / guest
+docker-compose up -d 
+open http://localhost:8001/ # auth: twitter / twitter
+open http://localhost:8002/ # auth: twitter / twitter
 ...
 docker-compose stop
 ```

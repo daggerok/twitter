@@ -1,33 +1,90 @@
-#rabbitmq-data:
-#  image: rabbitmq:3.6.6
-#  container_name: rabbitmq-data
-#  tty: true
-#  command: chown -v -R 999:999 /var/lib/rabbitmq
-#  volumes:
-#  - './build/docker/var/lib/rabbitmq:/var/lib/rabbitmq'
-#  - './build/docker/etc/rabbitmq:/etc/rabbitmq'
-#  stdin_open: true
-rabbitmq:
-  image: rabbitmq:3.6.6
-  container_name: rabbitmq
-  hostname: rabbitmq
-  environment:
-    RABBITMQ_DEFAULT_USER: twitter
-    RABBITMQ_DEFAULT_PASS: twitter
-  ports:
-  - '5672:5672'
-##  volumes_from:
-##  - rabbitmq-data
-#  volumes:
-#  - './build/docker/var/lib/rabbitmq:/var/lib/rabbitmq'
-#  - './build/docker/etc/rabbitmq:/etc/rabbitmq'
-mongodb:
-  container_name: mongodb
-  image: mongo:3.0.14
-  environment:
-    MONGO_PORT_27017_TCP_ADDR: mongodb
-    MONGO_PORT_27017_TCP_PORT: 27017
-  ports:
-  - '27017:27017'
-#  volumes:
-#  - './build/docker/data/db:/data/db'
+# docker-compose down -v --remove-orphans --rmi all
+
+# https://hub.docker.com/_/rabbitmq/
+# https://github.com/docker-library/rabbitmq/
+# https://hub.docker.com/_/mongo/
+# https://hub.docker.com/_/mongo-express/
+
+version: '3'
+services:
+  # rabbit
+  rabbitmq:
+    image: rabbitmq:3.6.6-alpine
+    container_name: rabbitmq
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: twitter
+      RABBITMQ_DEFAULT_PASS: twitter
+    ports:
+    - '5672:5672'
+    volumes:
+    - 'rabbitmq-volume:/var/lib/rabbitmq'
+    networks:
+    - backend
+
+  # rabbitmq web admin
+  rabbitmq-admin:
+    container_name: rabbitmq-admin
+    image: rabbitmq:3.6.6-management-alpine
+    ports:
+    - '8001:15672'
+    volumes:
+    - 'rabbitmq-volume:/var/lib/rabbitmq'
+    links:
+    - rabbitmq
+    depends_on:
+    - rabbitmq
+    environment:
+      RABBITMQ_NODENAME: rabbitmq
+      RABBITMQ_DEFAULT_USER: twitter
+      RABBITMQ_DEFAULT_PASS: twitter
+    networks:
+    - backend
+    - external
+
+  # mongo
+  mongodb:
+    container_name: mongodb
+    image: mongo:3.0.14
+    environment:
+      MONGO_PORT_27017_TCP_ADDR: mongodb
+      MONGO_PORT_27017_TCP_PORT: 27017
+    ports:
+    - '27017:27017'
+    volumes:
+    - 'mongodb-volume:/data/db'
+    networks:
+    - backend
+
+  # mongo web admin
+  mongodb-admin:
+    container_name: mongodb-admin
+    image: mongo-express:0.32.0
+    command: bash -c 'sleep 20 && node app'
+    ports:
+    - '8002:8081'
+    links:
+    - mongodb
+    depends_on:
+    - mongodb
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: twitter
+      ME_CONFIG_BASICAUTH_PASSWORD: twitter
+    networks:
+    - backend
+    - external
+
+volumes:
+  rabbitmq-volume:
+    driver: local
+  rabbitmq-admin-volume:
+    driver: local
+  mongodb-volume:
+    driver: local
+
+networks:
+  external:
+    driver: bridge
+  backend:
+    driver: bridge
