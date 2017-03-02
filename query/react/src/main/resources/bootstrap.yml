@@ -3,7 +3,7 @@ spring:
     config:
       uri: ${CONFIG_SERVER_URI:http://localhost:8888}
   application:
-    name: tweet-query
+    name: query-react
   profiles:
     include:
       - admin

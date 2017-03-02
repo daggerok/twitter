@@ -1,8 +1,15 @@
 rootProject.name = 'twitter'
+
 include 'netflix-config-server'
 include 'eureka-discovery-server'
+
 include 'common:message-api'
 include 'common:tweet-data'
-include 'tweet-command'
-include 'tweet-query:tweet-query-web'
-include 'tweet-query'
+
+include 'command-tweet'
+
+include 'query:angular2:web'
+include 'query:angular2'
+
+include 'query:react:web'
+include 'query:react'

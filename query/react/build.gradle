@@ -1,0 +1,19 @@
+plugins {
+    id 'org.springframework.boot' version '1.5.1.RELEASE'
+}
+
+jar {
+    baseName = 'react'
+}
+
+dependencies {
+    compile project(':common:tweet-data'),
+            'org.springframework.boot:spring-boot-starter-mustache',
+            'org.projectlombok:lombok'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+}
+
+def webAssemble = tasks.getByPath ':query:react:web:assemble'
+
+jar.dependsOn       webAssemble
+jar.shouldRunAfter  webAssemble

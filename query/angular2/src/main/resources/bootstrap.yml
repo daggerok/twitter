@@ -3,12 +3,10 @@ spring:
     config:
       uri: ${CONFIG_SERVER_URI:http://localhost:8888}
   application:
-    name: ${random.uuid}
+    name: query-tweet
   profiles:
     include:
       - admin
       - eureka
       - rabbitmq
-      #- spring-cloud-stream
-server:
-  port: 0
+      - spring-cloud-stream

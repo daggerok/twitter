@@ -3,7 +3,7 @@ plugins {
 }
 
 jar {
-  baseName = 'tweet-query'
+  baseName = 'angular2'
 }
 
 dependencies {
@@ -13,5 +13,7 @@ dependencies {
   testCompile 'org.springframework.boot:spring-boot-starter-test'
 }
 
-jar.dependsOn ':tweet-query:tweet-query-web:assemble'
-jar.shouldRunAfter ':tweet-query:tweet-query-web:assemble'
+def webAssemble = tasks.getByPath ':query:angular2:web:assemble'
+
+jar.dependsOn       webAssemble
+jar.shouldRunAfter  webAssemble
