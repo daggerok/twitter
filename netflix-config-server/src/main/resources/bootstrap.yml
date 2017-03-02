@@ -7,11 +7,18 @@ spring:
         git:
           basedir: build/netflix-config-server
           uri: file://${user.home}/Documents/code/test/java/spring/cloud/netflix-config-server-repo
+          timeout: 15
         bootstrap: true
+#      discovery:
+#        enabled: false
   rabbitmq:
     username: twitter
     password: twitter
-server:
-  port: 8888
+  profiles:
+    include:
+      - admin
+      - eureka
+      - rabbitmq
+      - config-server
 management:
   context-path: /admin

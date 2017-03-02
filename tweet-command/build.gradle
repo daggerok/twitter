@@ -7,8 +7,8 @@ jar {
 }
 
 dependencies {
-    compile project(':tweet-data'),
-//            project(':tweet-data').sourceSets.main.output,
+    compile project(':common:tweet-data'),
+            project(':common:message-api'),
             'org.projectlombok:lombok'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
 }

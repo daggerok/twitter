@@ -6,6 +6,6 @@ import org.springframework.context.annotation.Configuration;
 public class TweetDataConfig {
 
     public static void main(String[] args) {
-        // empty
+        // stub
     }
 }

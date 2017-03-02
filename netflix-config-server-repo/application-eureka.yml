@@ -1,0 +1,8 @@
+eureka:
+  instance:
+    instanceId: ${spring.application.name}:${spring.cloud.client.ipAddress}:${server.port}:${random.value}
+    statusPageUrlPath: ${management.context-path}/info
+    healthCheckUrlPath: ${management.context-path}/health
+  client:
+    serviceUrl:
+      defaultZone: ${DISCOVERY_SERVER_URI:http://localhost:8761/eureka/}

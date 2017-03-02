@@ -9,10 +9,12 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/common" />
+            <option value="$PROJECT_DIR$/common/message-api" />
+            <option value="$PROJECT_DIR$/common/tweet-data" />
             <option value="$PROJECT_DIR$/eureka-discovery-server" />
             <option value="$PROJECT_DIR$/netflix-config-server" />
             <option value="$PROJECT_DIR$/tweet-command" />
-            <option value="$PROJECT_DIR$/tweet-data" />
             <option value="$PROJECT_DIR$/tweet-query" />
             <option value="$PROJECT_DIR$/tweet-query/tweet-query-web" />
           </set>

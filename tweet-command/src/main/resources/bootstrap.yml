@@ -4,3 +4,9 @@ spring:
       uri: ${CONFIG_SERVER_URI:http://localhost:8888}
   application:
     name: tweet-command
+  profiles:
+    include:
+      - admin
+      - eureka
+      - rabbitmq
+      - spring-cloud-stream

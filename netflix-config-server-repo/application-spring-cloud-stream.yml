@@ -1,0 +1,13 @@
+spring:
+  cloud:
+    stream:
+      bindings:
+        input:
+          content-type: application/json
+          durableSubscription: true
+          destination: twitter
+          group: tweeter
+        output:
+          content-type: application/json
+          destination: twitter
+          group: tweeter

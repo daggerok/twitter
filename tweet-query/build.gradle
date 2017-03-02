@@ -7,7 +7,7 @@ jar {
 }
 
 dependencies {
-  compile project(':tweet-data'),
+  compile project(':common:tweet-data'),
           'org.springframework.boot:spring-boot-starter-mustache',
           'org.projectlombok:lombok'
   testCompile 'org.springframework.boot:spring-boot-starter-test'

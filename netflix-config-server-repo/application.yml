@@ -1,36 +1,6 @@
-server:
-  port: 0
-management:
-  context-path: /admin
-  security.enabled: false
-endpoints:
-  actuator:
-    enabled: true
 spring:
-  rabbitmq:
-    password: twitter
-    username: twitter
-  cloud:
-    stream:
-      bindings:
-        input:
-          ## consumer groups, just like in kafka:
-          #group: messages-group-${random.value}
-          destination: twitter
-          durableSubscription: true
-        output:
-          destination: twitter
-eureka:
-  instance:
-    instanceId: ${spring.application.name}:${spring.cloud.client.ipAddress}:${server.port}:${random.value}
-    statusPageUrlPath: ${management.context-path}/info
-    healthCheckUrlPath: ${management.context-path}/health
-  client:
-    serviceUrl:
-      defaultZone: ${DISCOVERY_SERVER_URI:http://localhost:8761/eureka/}
-#  server:
-#    registry-sync-retry-wait-ms: 1000
-#    a-sgcache-expiry-timeout-ms: 20000
-#    eviction-interval-timer-in-ms: 10000
-#    peer-eureka-nodes-update-interval-ms: 3000
-#    renewal-threshold-update-interval-ms: 60000
+  profiles:
+    include: >
+      admin
+      eureka
+      rabbitmq

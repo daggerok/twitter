@@ -1,0 +1,8 @@
+server:
+  port: 0
+management:
+  context-path: /admin
+  security.enabled: false
+endpoints:
+  actuator:
+    enabled: true

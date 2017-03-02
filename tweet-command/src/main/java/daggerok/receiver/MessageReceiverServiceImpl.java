@@ -1,28 +1,25 @@
-package daggerok.config;
+package daggerok.receiver;
 
-import daggerok.TweetDataConfig;
 import daggerok.data.Tweet;
 import daggerok.data.TweetMongoRepository;
+import daggerok.message.MessageReceiverService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.cloud.stream.messaging.Sink;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.messaging.Message;
+import org.springframework.stereotype.Service;
 
 @Slf4j
-@Configuration
+@Service
 @RequiredArgsConstructor
-@EnableBinding(Sink.class)
-@Import(TweetDataConfig.class)
-public class TweetConsumerConfig {
+public class MessageReceiverServiceImpl implements MessageReceiverService {
 
     final TweetMongoRepository tweetMongoRepository;
 
+    @Override
     @StreamListener(Sink.INPUT)
-    public void tweetReceiver(final Message<String> message) {
+    public void recive(Message<String> message) {
 
         log.info("received: {}", message);
         tweetMongoRepository.save(Tweet.of(message.getPayload()));

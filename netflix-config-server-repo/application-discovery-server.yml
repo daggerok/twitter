@@ -1,0 +1,16 @@
+server:
+  port: 8761
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+    server:
+      waitTimeInMsWhenSyncEmpty: 0
+  server:
+    registry-sync-retry-wait-ms: 1000
+    a-sgcache-expiry-timeout-ms: 20000
+    eviction-interval-timer-in-ms: 10000
+    peer-eureka-nodes-update-interval-ms: 3000
+    renewal-threshold-update-interval-ms: 60000

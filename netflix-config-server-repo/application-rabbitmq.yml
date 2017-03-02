@@ -1,0 +1,4 @@
+spring:
+  rabbitmq:
+    password: twitter
+    username: twitter
