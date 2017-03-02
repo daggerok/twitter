@@ -22,12 +22,9 @@ before_install:
   - sudo apt install -y python-pip
   - sudo pip install docker-compose
   - sudo usermod -aG docker $(whoami)
-  # version '2' -> version: '3':
-  - sed -i -- "s/'3'/'2'/g" docker-compose.yml
-  - docker-compose down -v --remove-orphans --rmi local
-  - docker-compose --project-name=twitter up -d
+  - bash docker.bash
   # spring-cloud-config repo
-  - bash init-or-update-repo.bash
+  - bash repo.bash
 script:
   - gradle clean build
 after_script:
@@ -38,6 +35,6 @@ before_cache:
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 cache:
   directories:
+    - $HOME/.m2/
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
-    - $HOME/.m2/

@@ -1,0 +1,21 @@
+plugins {
+  id 'org.springframework.boot' version '1.5.1.RELEASE'
+}
+
+jar {
+  baseName = 'angular2'
+}
+
+dependencies {
+  compile project(':common:tweet-data'),
+          'org.springframework.boot:spring-boot-starter-web',
+          'org.projectlombok:lombok'
+  testCompile 'org.springframework.boot:spring-boot-starter-test'
+}
+
+//def angularjs = tasks.getByPath ':query:tweet:angularjs:assemble'
+def angular2 = tasks.getByPath ':query:tweet:angular2:assemble'
+def react = tasks.getByPath ':query:tweet:react:assemble'
+
+jar.dependsOn       angular2, react
+jar.shouldRunAfter  angular2, react

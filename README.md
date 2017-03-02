@@ -7,8 +7,8 @@ gradle netflix-config-server:bootRun
 gradle eureka-discovery-server:bootRun
 gradle tweet-query:bootRun
 gradle tweet-command:bootRun
-# send message: 
-# 1) open http://localhost:8761; 
+# send message:
+# 1) open http://localhost:8761;
 # 2) select tweet-query;
 # 3) go base uri;
 # 4) type message, submit it using enter
@@ -26,9 +26,18 @@ ng eject
 npm i
 ```
 
+update npm versions
+
+```bash
+npm i -g npm-check-updates
+ncu -u
+```
+
+docker services infrastructure
+
 ```bash
 docker-compose down -v --remove-orphans --rmi local
-docker-compose up -d 
+docker-compose up -d
 open http://localhost:8001/ # auth: twitter / twitter
 open http://localhost:8002/ # auth: twitter / twitter
 ...

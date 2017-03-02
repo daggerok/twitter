@@ -8,8 +8,7 @@ include 'common:tweet-data'
 
 include 'command-tweet'
 
-include 'query:angular2:web'
-include 'query:angular2'
-
-include 'query:react:web'
-include 'query:react'
+//include 'query:tweet:angularjs'
+include 'query:tweet:angular2'
+include 'query:tweet:react'
+include 'query:tweet'
