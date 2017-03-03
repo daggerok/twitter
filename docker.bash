@@ -2,8 +2,8 @@
 
 echo "stopping docker and clean resources if exists..."
 echo ""
+docker-compose -f cloud-infrastructure/docker-compose.yml --project-name=twitter down -v --remove-orphans --rmi local
 
-docker-compose -f cloud-infrastructure/docker-compose.yml down -v --remove-orphans --rmi local
 if ! [ "$1" = "stop" ]; then
     echo ""
     echo "creating infrastructure..."
@@ -13,3 +13,4 @@ if ! [ "$1" = "stop" ]; then
     echo ""
     echo "services is up and running."
 fi
+

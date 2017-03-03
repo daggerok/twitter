@@ -13,7 +13,7 @@ public class AngularJsPage {
         return "redirect:/angularjs/";
     }
 
-    @GetMapping({ "/", "/rx", "/some" })
+    @GetMapping({ "/" })
     public String home() {
         return "/angularjs/index.html";
     }

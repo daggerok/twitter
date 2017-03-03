@@ -5,6 +5,7 @@
 !*.idea/externalDependencies.xml
 !*.idea/misc.xml
 !*.idea/jsLibraryMappings.xml
+!*.idea/watcherTasks.xml
 #**/*.iml
 **/*.ipr
 **/*.iws
