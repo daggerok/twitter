@@ -2,7 +2,7 @@ twitter [![build](https://travis-ci.org/daggerok/twitter.svg?branch=master)](htt
 =======
 
 ```bash
-bash docker.bash
+bash docker.bash # or in fish: sh -c 'bash docker.bash stop'
 bash repo.bash
 gradle netflix-config-server:bootRun
 gradle eureka-discovery-server:bootRun
@@ -19,7 +19,7 @@ bash docker.bash stop
 ```
 
 web @angular/cli
-
+2
 ```bash
 npm remove angular-cli -g
 npm i @angular/cli -g

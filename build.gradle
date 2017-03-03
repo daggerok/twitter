@@ -1,64 +1,72 @@
 plugins {
-    id 'idea'
-    id 'eclipse'
-    // gradle dependencyUpdates -Drevision=release
-    id 'com.github.ben-manes.versions' version '0.14.0'
-    id 'io.spring.dependency-management' version '1.0.0.RC2'
+  id 'idea'
+  id 'eclipse'
+  // gradle dependencyUpdates -Drevision=release
+  id 'com.github.ben-manes.versions' version '0.14.0'
+  id 'io.spring.dependency-management' version '1.0.0.RC2'
 }
 
 allprojects {
 
-    apply plugin: 'java'
+  apply plugin: 'java'
 
-    group twitterGroup
-    version twitterVersion
+  group twitterGroup
+  version twitterVersion
 
-    jar {
-        group = twitterGroup
-        version = twitterVersion
-    }
+  jar {
+    group = twitterGroup
+    version = twitterVersion
+  }
 
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+  sourceCompatibility = JavaVersion.VERSION_1_8
+  targetCompatibility = JavaVersion.VERSION_1_8
 
-    repositories {
-        jcenter()
-        mavenCentral()
-        maven { url 'https://repo.spring.io/snapshot' }
-        maven { url 'https://repo.spring.io/milestone' }
-    }
+  repositories {
+    jcenter()
+    maven { url 'https://repo.spring.io/snapshot' }
+    maven { url 'https://repo.spring.io/milestone' }
+  }
 }
 
 subprojects {
 
-    apply plugin: 'io.spring.dependency-management'
-
+  buildscript {
+    repositories {
+      jcenter()
+    }
     dependencies {
-
-        // applying concrete versions is required for children projects
-
-        compileOnly "org.projectlombok:lombok:$lombokVersion"
-        compile "org.springframework.cloud:spring-cloud-starter-stream-rabbit:$streamRabbitVersion",
-                "org.springframework.cloud:spring-cloud-starter-bus-amqp:$netwflixVersion",
-                "org.springframework.cloud:spring-cloud-starter-config:$netwflixVersion",
-                "org.springframework.cloud:spring-cloud-starter-eureka:$netwflixVersion",
-                "org.springframework.cloud:spring-cloud-starter-hystrix:$netwflixVersion",
-                "org.springframework.boot:spring-boot-starter-actuator:$bootVersion"
-
-        testCompileOnly "org.projectlombok:lombok:$lombokVersion"
-        testCompile "org.springframework.boot:spring-boot-starter-test:$bootVersion"
-
-        runtime "org.springframework.boot:spring-boot-devtools:$bootVersion"
+      classpath 'io.spring.gradle:dependency-management-plugin:1.0.0.RC2'
     }
+  }
 
-    dependencyManagement {
-        imports {
-            mavenBom 'org.springframework.cloud:spring-cloud-dependencies:Dalston.BUILD-SNAPSHOT'
-            mavenBom 'io.spring.platform:platform-bom:Athens-SR3'
-        }
+  apply plugin: 'io.spring.dependency-management'
+
+  dependencies {
+
+    // applying concrete versions is required for children projects
+
+    compileOnly 'org.projectlombok:lombok'
+    compile 'org.springframework.cloud:spring-cloud-starter-stream-rabbit',
+        'org.springframework.cloud:spring-cloud-starter-bus-amqp',
+        'org.springframework.cloud:spring-cloud-starter-config',
+        'org.springframework.cloud:spring-cloud-starter-eureka',
+        'org.springframework.cloud:spring-cloud-starter-hystrix',
+        'org.springframework.boot:spring-boot-starter-actuator'//,
+        //'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+    runtime 'org.springframework.boot:spring-boot-devtools'
+  }
+
+  dependencyManagement {
+    imports {
+      mavenBom 'org.springframework.boot:spring-boot-dependencies:1.5.2.RELEASE'
+      mavenBom 'org.springframework.cloud:spring-cloud-dependencies:Dalston.BUILD-SNAPSHOT'
+      mavenBom 'org.springframework.cloud:spring-cloud-stream-dependencies:Chelsea.BUILD-SNAPSHOT'
     }
+  }
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '3.4'
+  gradleVersion = '3.4'
 }

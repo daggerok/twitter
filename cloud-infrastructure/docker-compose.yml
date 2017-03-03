@@ -1,10 +1,9 @@
 # docker-compose down -v --remove-orphans --rmi all
-
+#
 # https://hub.docker.com/_/rabbitmq/
 # https://github.com/docker-library/rabbitmq/
 # https://hub.docker.com/_/mongo/
 # https://hub.docker.com/_/mongo-express/
-
 version: '2'
 services:
   # rabbit + with web admin
@@ -12,38 +11,38 @@ services:
     container_name: rabbitmq
     image: rabbitmq:3.6.6-management-alpine
     ports:
-    - '5672:5672'
-    - '8001:15672'
+    - 5672:5672
+    - 8001:15672
     volumes:
-    - 'rabbitmq-volume:/var/lib/rabbitmq'
+    - rabbitmq-volume:/var/lib/rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: twitter
       RABBITMQ_DEFAULT_PASS: twitter
     networks:
     - backend
     - external
-
   # mongo
   mongodb:
     container_name: mongodb
-    image: mongo:3.0.14
+    #image: mongo:3.4.1
+    image: mvertes/alpine-mongo:3.2.10-3
     environment:
-      MONGO_PORT_27017_TCP_ADDR: mongodb
+      #MONGO_PORT_27017_TCP_ADDR: mongodb
       MONGO_PORT_27017_TCP_PORT: 27017
     ports:
-    - '27017:27017'
+    - 27017:27017
     volumes:
-    - 'mongodb-volume:/data/db'
+    - mongodb-volume:/data/db
     networks:
     - backend
-
   # mongo web admin
   mongodb-admin:
     container_name: mongodb-admin
-    image: mongo-express:0.32.0
-    command: bash -c 'sleep 20 && node app'
+    #image: mongo-express:0.32.0
+    image: ind3x/rpi-mongo-express:0.32.0-alpine
+    command: sh -c 'sleep 20 && node app'
     ports:
-    - '8002:8081'
+    - 8002:8081
     links:
     - mongodb
     depends_on:
@@ -55,13 +54,11 @@ services:
     networks:
     - backend
     - external
-
 volumes:
   rabbitmq-volume:
     driver: local
   mongodb-volume:
     driver: local
-
 networks:
   external:
     driver: bridge

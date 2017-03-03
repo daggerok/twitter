@@ -1,11 +1,7 @@
-plugins {
-    id 'org.springframework.boot' version '1.5.1.RELEASE'
-}
-
 jar {
-    baseName = 'tweet-data'
+  baseName = 'tweet-data'
 }
 
 dependencies {
-    compile 'org.springframework.boot:spring-boot-starter-data-mongodb'
+  compile "org.springframework.boot:spring-boot-starter-data-mongodb"
 }
