@@ -6,8 +6,8 @@ node {
   // LTS
   version = '6.9.2'
   npmVersion = '3.10.9'
-  // https://github.com/srs/gradle-node-plugin/issues/171
-  download = true
+//  // https://github.com/srs/gradle-node-plugin/issues/171
+//  download = true
 }
 
 jar {
@@ -20,6 +20,8 @@ assemble {
 
 test {
   dependsOn npm_run_lint, npm_run_e2e
+// TODO
+//  dependsOn npm_run_lint
 }
 
 clean.doFirst {

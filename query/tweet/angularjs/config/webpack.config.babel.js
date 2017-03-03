@@ -14,7 +14,7 @@ export default env => ({
   resolve,
   plugins: plugins(env),
   devtool: env === 'development' ? 'eval' : 'source-map',
-  devServer: devServer(env),
+  devServer,
   watchOptions,
   profile: 'web',
   bail: true,

@@ -11,7 +11,7 @@ node {
 }
 
 jar {
-  baseName = 'react'
+  baseName = 'angular2-webpack2-aot'
 }
 
 assemble {
@@ -19,7 +19,7 @@ assemble {
 }
 
 test {
-  dependsOn npm_t
+  dependsOn npm_run_lint, npm_t
 }
 
 clean.doFirst {

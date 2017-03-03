@@ -8,6 +8,7 @@ include 'common:tweet-data'
 
 include 'command:tweet'
 
+include 'query:tweet:angular2-webpack2-aot'
 include 'query:tweet:angularjs'
 include 'query:tweet:angular2'
 include 'query:tweet:react'

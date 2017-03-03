@@ -1,5 +1,10 @@
 import { pathTo } from './utils.babel';
-import { publicPath } from './output.config.babel';
+import { publicPath } from './output.babel';
+
+const proxy = () => ({
+  target: "http://localhost:8080",
+  secure: false,
+});
 
 export default {
   port: 8000,
@@ -8,9 +13,6 @@ export default {
   contentBase: pathTo('./src'),
   historyApiFallback: { index: `${publicPath}index.html`, },
   proxy: {
-    '/api': {
-      target: 'http://localhost:8080',
-      secure: true,
-    },
+    "/api": proxy(),
   },
 };

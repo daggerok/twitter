@@ -11,7 +11,7 @@
     "lint": "ng lint",
     "e2e": "concurrently 'npm run protractor' 'npm run server' --kill-others --success first -p '[{name}]' -n 'E2E,HTTP' -c 'green,cyan' # colors: black, red, green, yellow, blue, magenta, cyan, white, gray",
     "pree2e": "ng build",
-    "protractor": "protractor ./protractor.conf.js",
+    "protractor": "protractor --stackTrace  ./protractor.conf.js",
     "preprotractor": "npm run webdriver-manager-update",
     "prewebdriver-manager-update": "sleep 3",
     "webdriver-manager-update": "webdriver-manager update  --standalone false --gecko false --quiet",
