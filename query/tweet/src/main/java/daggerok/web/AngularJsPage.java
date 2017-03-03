@@ -5,16 +5,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
-@RequestMapping("/react")
-public class ReactPage {
+@RequestMapping("/angularjs")
+public class AngularJsPage {
 
     @GetMapping
     public String redirect(Object obj) {
-        return "redirect:/react/";
+        return "redirect:/angularjs/";
     }
 
     @GetMapping({ "/", "/rx", "/some" })
     public String home() {
-        return "/react/index.html";
+        return "/angularjs/index.html";
     }
 }
