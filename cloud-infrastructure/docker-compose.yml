@@ -7,35 +7,16 @@
 
 version: '2'
 services:
-  # rabbit
+  # rabbit + with web admin
   rabbitmq:
-    image: rabbitmq:3.6.6-alpine
     container_name: rabbitmq
-    hostname: rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: twitter
-      RABBITMQ_DEFAULT_PASS: twitter
-    ports:
-    - '5672:5672'
-    volumes:
-    - 'rabbitmq-volume:/var/lib/rabbitmq'
-    networks:
-    - backend
-
-  # rabbitmq web admin
-  rabbitmq-admin:
-    container_name: rabbitmq-admin
     image: rabbitmq:3.6.6-management-alpine
     ports:
+    - '5672:5672'
     - '8001:15672'
     volumes:
     - 'rabbitmq-volume:/var/lib/rabbitmq'
-    links:
-    - rabbitmq
-    depends_on:
-    - rabbitmq
     environment:
-      RABBITMQ_NODENAME: rabbitmq
       RABBITMQ_DEFAULT_USER: twitter
       RABBITMQ_DEFAULT_PASS: twitter
     networks:
@@ -77,8 +58,6 @@ services:
 
 volumes:
   rabbitmq-volume:
-    driver: local
-  rabbitmq-admin-volume:
     driver: local
   mongodb-volume:
     driver: local
