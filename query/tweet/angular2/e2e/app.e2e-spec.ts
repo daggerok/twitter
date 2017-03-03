@@ -9,6 +9,6 @@ describe('tweet-query-web App', () => {
 
   it('should display message saying app works', () => {
     page.navigateTo();
-    expect(page.getParagraphText()).toEqual('twitter works!');
+    expect(page.getParagraphText()).toEqual('twitter :)');
   });
 });

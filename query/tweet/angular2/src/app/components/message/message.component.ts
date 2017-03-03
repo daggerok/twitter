@@ -9,16 +9,18 @@ import { MessageService } from './message.service';
 export class MessageComponent implements OnInit {
 
   constructor(private messageService: MessageService) {}
-  ngOnInit() {}
+  public ngOnInit() {}
 
   public sendMessage($event: any): void {
 
     const element: HTMLInputElement = $event.target;
-
+    /*
     this.messageService.sendMessage(element.value).subscribe(
-      ok => console.log('handle', ok),
-      err => console.log('f*ck', err)
+      ok => ok,
+      err => console.log(`oops: ${err}`)
     );
+    */
+    this.messageService.sendMessage(element.value).subscribe();
     element.value = '';
   }
 }

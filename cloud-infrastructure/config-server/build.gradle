@@ -9,3 +9,7 @@ jar {
 dependencies {
     compile 'org.springframework.cloud:spring-cloud-config-server'
 }
+
+springBoot {
+    executable = true
+}

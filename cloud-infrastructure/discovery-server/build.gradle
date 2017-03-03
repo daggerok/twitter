@@ -9,3 +9,7 @@ jar {
 dependencies {
     compile 'org.springframework.cloud:spring-cloud-starter-eureka-server'
 }
+
+springBoot {
+    executable = true
+}

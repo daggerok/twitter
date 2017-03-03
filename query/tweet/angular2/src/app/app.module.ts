@@ -22,4 +22,4 @@ import { MessageService } from './components/message/message.service';
   providers: [MessageService],
   bootstrap: [AppComponent]
 })
-export class AppModule { }
+export class AppModule {}
