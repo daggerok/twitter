@@ -5,7 +5,3 @@ plugins {
 jar {
     baseName = 'message-api'
 }
-
-dependencies {
-    compile 'org.projectlombok:lombok'
-}

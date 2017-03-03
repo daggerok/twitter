@@ -6,36 +6,55 @@ plugins {
     id 'io.spring.dependency-management' version '1.0.0.RC2'
 }
 
-subprojects {
+allprojects {
 
     apply plugin: 'java'
-    apply plugin: 'io.spring.dependency-management'
 
-    group 'daggerok'
+    group twitterGroup
     version twitterVersion
+
+    jar {
+        group = twitterGroup
+        version = twitterVersion
+    }
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
 
     repositories {
+        jcenter()
         mavenCentral()
         maven { url 'https://repo.spring.io/snapshot' }
         maven { url 'https://repo.spring.io/milestone' }
     }
+}
+
+subprojects {
+
+    apply plugin: 'io.spring.dependency-management'
 
     dependencies {
+
+        // applying concrete versions is required for children projects
+
+        compileOnly "org.projectlombok:lombok:$lombokVersion"
         compile "org.springframework.cloud:spring-cloud-starter-stream-rabbit:$streamRabbitVersion",
                 "org.springframework.cloud:spring-cloud-starter-bus-amqp:$netwflixVersion",
                 "org.springframework.cloud:spring-cloud-starter-config:$netwflixVersion",
                 "org.springframework.cloud:spring-cloud-starter-eureka:$netwflixVersion",
                 "org.springframework.cloud:spring-cloud-starter-hystrix:$netwflixVersion",
                 "org.springframework.boot:spring-boot-starter-actuator:$bootVersion"
+
+        testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+        testCompile "org.springframework.boot:spring-boot-starter-test:$bootVersion"
+
         runtime "org.springframework.boot:spring-boot-devtools:$bootVersion"
     }
 
     dependencyManagement {
         imports {
             mavenBom 'org.springframework.cloud:spring-cloud-dependencies:Dalston.BUILD-SNAPSHOT'
+            mavenBom 'io.spring.platform:platform-bom:Athens-SR3'
         }
     }
 }

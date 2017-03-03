@@ -8,7 +8,6 @@ jar {
 
 dependencies {
     compile project(':common:tweet-data'),
-            project(':common:message-api'),
-            'org.projectlombok:lombok'
+            project(':common:message-api')
     testCompile 'org.springframework.boot:spring-boot-starter-test'
 }
