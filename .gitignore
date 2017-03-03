@@ -5,7 +5,7 @@
 !*.idea/externalDependencies.xml
 !*.idea/misc.xml
 !*.idea/jsLibraryMappings.xml
-**/*.iml
+#**/*.iml
 **/*.ipr
 **/*.iws
 
