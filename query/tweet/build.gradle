@@ -3,7 +3,7 @@ plugins {
 }
 
 jar {
-  baseName = 'angular2'
+  baseName = 'tweet-sender'
 }
 
 dependencies {

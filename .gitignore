@@ -1,10 +1,9 @@
 **/.idea/
-!.idea/runConfigurations
-!.idea/runConfigurations/*
+!.idea/runConfigurations/
+!.idea/runConfigurations/*.xml
 !*.idea/compiler.xml
-!*.idea/gradle.xml
+!*.idea/externalDependencies.xml
 !*.idea/misc.xml
-!*.idea/vcs.xml
 !*.idea/jsLibraryMappings.xml
 **/*.iml
 **/*.ipr

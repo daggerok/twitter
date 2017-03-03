@@ -13,7 +13,7 @@ module.exports = {
   server: {
     always: '/react/index.html',
 
-    baseDir: '../src/main/resources/static',
+    baseDir: '../src/main/resources/public',
 
     middleware: [
       // proxy
@@ -26,14 +26,14 @@ module.exports = {
   },
 
   files: [
-    '../src/main/resources/static/react/index.html',
-    '../src/main/resources/static/react/**/*.*'
+    '../src/main/resources/public/react/index.html',
+    '../src/main/resources/public/react/**/*.*'
   ],
 
   startPath: '/react/',
 
   serveStatic: [
-    '../src/main/resources/static'
+    '../src/main/resources/public'
   ],
 
   /**

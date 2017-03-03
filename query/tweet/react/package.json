@@ -11,7 +11,7 @@
 
     "test": "eslint ./src ./config -c ./config/.eslintrc.js --ext js './src/**/*.js' './config/**/*.js'",
 
-    "precompile": "rimraf -rf ../src/main/resources/static/react",
+    "precompile": "rimraf -rf ../src/main/resources/public/react",
     "compile": "webpack --config=./config/webpack.config.babel.js",
 
     "build": "npm run compile -- --env production",

@@ -2,17 +2,20 @@ twitter [![build](https://travis-ci.org/daggerok/twitter.svg?branch=master)](htt
 =======
 
 ```bash
-bash init-or-update-repo.bash
+bash docker.bash
+bash repo.bash
 gradle netflix-config-server:bootRun
 gradle eureka-discovery-server:bootRun
 gradle tweet-query:bootRun
 gradle tweet-command:bootRun
 # send message:
 # 1) open http://localhost:8761;
-# 2) select tweet-query;
+# 2) select query-tweet;
 # 3) go base uri;
 # 4) type message, submit it using enter
 # verify db: http://localhost:8002/db/test/tweet
+gradle --stop
+bash docker.bash stop
 ```
 
 web @angular/cli
@@ -35,28 +38,14 @@ ncu -u
 
 docker services infrastructure
 
+cloud infrastructure dev admin
+
 ```bash
-docker-compose down -v --remove-orphans --rmi local
-docker-compose up -d
 open http://localhost:8001/ # auth: twitter / twitter
 open http://localhost:8002/ # auth: twitter / twitter
-...
-docker-compose stop
 ```
 
-test config git repo
-
-```bash
-bash push-repo.bash
-cd ../netflix-config-server-repo
-git init
-git add .
-git commit -am init
-cd ../twitter
-gradle netflix-config-server:bootRun
-```
-
-*outdated:*
+*TODO: outdated*
 
 spring cloud data flow server (using ports 9393, 8081)
 

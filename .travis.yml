@@ -30,6 +30,7 @@ script:
 after_script:
   - gradle wrapper
   - bash gradlew --stop
+  - bash docker.bash stop
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/

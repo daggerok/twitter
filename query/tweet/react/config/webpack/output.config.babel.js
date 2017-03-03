@@ -1,7 +1,7 @@
 import { pathTo, publicPath } from './utils.babel';
 import { version } from '../../package.json';
 
-const staticDir = '../src/main/resources/static/react';
+const staticDir = '../src/main/resources/public/react';
 
 export const suffix = `v=${version}`;
 

@@ -1,0 +1,14 @@
+plugins {
+    id 'org.springframework.boot' version '1.5.1.RELEASE'
+}
+
+jar {
+    baseName = 'tweet-receiver'
+}
+
+dependencies {
+    compile project(':common:tweet-data'),
+            project(':common:message-api'),
+            'org.projectlombok:lombok'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+}

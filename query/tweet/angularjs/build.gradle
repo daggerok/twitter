@@ -1,0 +1,36 @@
+plugins {
+  id 'com.moowork.node' version '1.1.0'
+}
+
+node {
+  // LTS
+  version = '6.9.2'
+  npmVersion = '3.10.9'
+  // https://github.com/srs/gradle-node-plugin/issues/171
+  download = true
+}
+
+jar {
+  baseName = 'angularjs'
+}
+
+assemble {
+  dependsOn npm_run_build
+}
+
+test {
+  dependsOn npm_t, npm_run_lint
+}
+
+clean.doFirst {
+  [
+      'etc',
+      'dist',
+      'build',
+      'node_modules',
+  ].each { delete "${projectDir.getAbsolutePath()}/$it" }
+}
+
+test.dependsOn npm_i
+assemble.dependsOn npm_i
+assemble.shouldRunAfter test

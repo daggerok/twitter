@@ -5,20 +5,10 @@
       <profile default="true" name="Default" enabled="true" />
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="eureka-discovery-server_main" target="1.8" />
-      <module name="eureka-discovery-server_test" target="1.8" />
+      <module name="discovery-server" target="1.8" />
       <module name="message-api_main" target="1.8" />
       <module name="message-api_test" target="1.8" />
-      <module name="netflix-config-server_main" target="1.8" />
-      <module name="netflix-config-server_test" target="1.8" />
-      <module name="tweet-command_main" target="1.8" />
-      <module name="tweet-command_test" target="1.8" />
-      <module name="tweet-data_main" target="1.8" />
-      <module name="tweet-data_test" target="1.8" />
-      <module name="tweet-query-web_main" target="1.8" />
-      <module name="tweet-query-web_test" target="1.8" />
-      <module name="tweet-query_main" target="1.8" />
-      <module name="tweet-query_test" target="1.8" />
+      <module name="config-server" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

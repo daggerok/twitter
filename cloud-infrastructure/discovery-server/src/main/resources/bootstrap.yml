@@ -1,0 +1,13 @@
+spring:
+  cloud:
+    config:
+      uri: ${CONFIG_SERVER_URI:http://localhost:8888}
+  application:
+    name: discovery-server
+  profiles:
+    include:
+      - admin
+      - rabbitmq
+      - discovery-server
+server:
+  port: 8761

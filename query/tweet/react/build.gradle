@@ -6,8 +6,8 @@ node {
   // LTS
   version = '6.9.2'
   npmVersion = '3.10.9'
-  // // https://github.com/srs/gradle-node-plugin/issues/171
-  // download = true
+  // https://github.com/srs/gradle-node-plugin/issues/171
+  download = true
 }
 
 jar {
@@ -27,7 +27,6 @@ clean.doFirst {
       'etc',
       'dist',
       'build',
-      '.gradle',
       'node_modules',
   ].each { delete "${projectDir.getAbsolutePath()}/$it" }
 }

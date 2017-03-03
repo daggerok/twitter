@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          basedir: build/config-server-repo
+          uri: file://${user.home}/Documents/code/test/java/spring/cloud/config-server-repo
+          timeout: 15
+        bootstrap: true
+#      discovery:
+#        enabled: false
+  rabbitmq:
+    username: twitter
+    password: twitter
+  profiles:
+    include:
+      - admin
+      - eureka
+      - rabbitmq
+      - config-server
+management:
+  context-path: /admin
