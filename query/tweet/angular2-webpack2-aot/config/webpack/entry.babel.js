@@ -1,7 +1,5 @@
 export default {
-  vendors: [
-    './src/polyfills.ts',
-    './src/vendors.ts',
-  ],
+  polyfills: './src/polyfills.ts',
+  vendors:  './src/vendors.ts',
   app: './src/main.ts',
 };

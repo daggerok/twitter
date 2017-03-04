@@ -27,7 +27,7 @@
 
     "lint": "tslint --ignoreBoundClassMethods --noUnusedParameters --noUnusedLocals -t verbose -c ./config/tslint.json 'src/**/*.ts'",
 
-    "pretest": "npm run webpack",
+    "pretest": "npm run build",
     "test": "concurrently 'npm run protractor' 'npm run server' --kill-others --success first -p '[{name}]' -n 'E2E,HTTP' -c 'green,cyan' # colors: black, red, green, yellow, blue, magenta, cyan, white, gray",
     "protractor": "protractor ./config/protractor.js",
     "preprotractor": "npm-run-all sleep webdriver-manager-update",

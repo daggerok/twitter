@@ -1,6 +1,12 @@
 import { suffix } from '../output.babel';
 
+const names = [
+  'polyfills',
+  'vendors',
+];
+
 export default {
-  name: 'vendors',
+  names,
+  minChunks: names.length,
   filename: `[name].js?${suffix}`,
 };
