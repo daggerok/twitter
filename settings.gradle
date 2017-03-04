@@ -3,13 +3,13 @@ rootProject.name = 'twitter'
 include 'cloud-infrastructure:config-server'
 include 'cloud-infrastructure:discovery-server'
 
+include 'command:tweet'
+
 include 'common:message-api'
 include 'common:tweet-data'
 
-include 'command:tweet'
-
+include 'query:tweet'
+include 'query:tweet:angular2'
 include 'query:tweet:angular2-webpack2-aot'
 include 'query:tweet:angularjs'
-include 'query:tweet:angular2'
 include 'query:tweet:react'
-include 'query:tweet'
