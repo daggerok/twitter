@@ -45,15 +45,15 @@ subprojects {
 
     // applying concrete versions is required for children projects
 
-    compileOnly 'org.projectlombok:lombok'
+    //compileOnly 'org.projectlombok:lombok'
     compile 'org.springframework.cloud:spring-cloud-starter-stream-rabbit',
         'org.springframework.cloud:spring-cloud-starter-bus-amqp',
         'org.springframework.cloud:spring-cloud-starter-config',
         'org.springframework.cloud:spring-cloud-starter-eureka',
         'org.springframework.cloud:spring-cloud-starter-hystrix',
-        'org.springframework.boot:spring-boot-starter-actuator'//,
-        //'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
+        'org.springframework.boot:spring-boot-starter-actuator',
+        'org.projectlombok:lombok'
+    //testCompileOnly 'org.projectlombok:lombok'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
     runtime 'org.springframework.boot:spring-boot-devtools'
   }
