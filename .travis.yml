@@ -1,9 +1,7 @@
 sudo: required
 dist: trusty
 language: java
-jdk:
-  - openjdk8
-  - oraclejdk8
+jdk: oraclejdk8
 install: true
 env:
   SPRING_PROFILES_ACTIVE: default
