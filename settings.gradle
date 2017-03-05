@@ -1,5 +1,6 @@
 rootProject.name = 'twitter'
 
+include 'cloud-infrastructure:compose'
 include 'cloud-infrastructure:config-server'
 include 'cloud-infrastructure:discovery-server'
 

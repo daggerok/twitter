@@ -1,15 +1,15 @@
 plugins {
-    id 'org.springframework.boot' version '1.5.2.RELEASE'
+  id 'org.springframework.boot' version '1.5.2.RELEASE'
 }
 
 jar {
-    baseName = 'eureka-config-server'
+  baseName = 'eureka-config-server'
 }
 
 dependencies {
-    compile 'org.springframework.cloud:spring-cloud-config-server'
+  compile 'org.springframework.cloud:spring-cloud-config-server'
 }
 
 springBoot {
-    executable = true
+  executable = true
 }

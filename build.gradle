@@ -1,8 +1,9 @@
 plugins {
   id 'idea'
   id 'eclipse'
-  // gradle dependencyUpdates -Drevision=release
+  //// gradle dependencyUpdates -Drevision=release
   id 'com.github.ben-manes.versions' version '0.14.0'
+  //id 'com.avast.gradle.docker-compose' version '0.3.21'
   id 'io.spring.dependency-management' version '1.0.0.RC2'
 }
 
