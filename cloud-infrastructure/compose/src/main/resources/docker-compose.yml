@@ -40,7 +40,7 @@ services:
     container_name: mongodb-admin
     #image: mongo-express:0.32.0
     image: ind3x/rpi-mongo-express:0.32.0-alpine
-    command: sh -c 'sleep 20 && node app'
+    command: sh -c 'sleep 15 && node app'
     ports:
     - 8002:8081
     links:
