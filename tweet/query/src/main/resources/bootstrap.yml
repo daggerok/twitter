@@ -3,36 +3,13 @@ spring:
     config:
       uri: ${CONFIG_SERVER_URI:http://localhost:8888}
   application:
-    name: query-tweet
+    name: tweet-query
   profiles:
     include:
+      - web
       - admin
       - eureka
       - rabbitmq
       - spring-cloud-stream
-  mvc.favicon.enabled: false
-  resources.cachePeriod: 3600
 server:
   port: 8080
-  compression:
-    enabled: true
-    mime-types:
-      - application/javascript
-      - application/json
-      - text/javascript
-      - text/plain
-      - text/html
-      - text/xml
-      - text/css
-http:
-  gzip:
-    deflate-compression-level: 5
-    methods: GET,POST,PUT,DELETE
-    mime-types: ${app.gzip.types}
-    min-gzip-size: ${app.gzip.size}
-endpoints:
-  sensitive: false
-  enabled: true
-  shutdown:
-    sensitive: false
-    enabled: true

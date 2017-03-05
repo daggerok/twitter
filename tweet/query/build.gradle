@@ -20,5 +20,5 @@ def angular2Webpack2Aot = tasks.getByPath ':tweet:query:web:angular2-webpack2-ao
 def angularjs           = tasks.getByPath ':tweet:query:web:angularjs:assemble'
 def react               = tasks.getByPath ':tweet:query:web:react:assemble'
 
-jar.dependsOn      angular2, angular2Webpack2Aot, angularjs, react
-jar.shouldRunAfter angular2, angular2Webpack2Aot, angularjs, react
+assemble.dependsOn      angular2, angular2Webpack2Aot, angularjs, react
+assemble.shouldRunAfter angular2, angular2Webpack2Aot, angularjs, react

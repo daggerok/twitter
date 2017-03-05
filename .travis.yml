@@ -3,9 +3,6 @@ dist: trusty
 language: java
 jdk: oraclejdk8
 install: true
-#services:
-#  - mongodb
-#  - rabbitmq
 env:
   SPRING_PROFILES_ACTIVE: default
 before_install:
@@ -31,9 +28,7 @@ before_install:
 script:
   - sleep 30
   - gradle clean build
-#  - gradle -Ddebug=true -Dspring.profiles.active=rabbitmq-travis clean build
 after_script:
-  - cat /home/travis/build/daggerok/twitter/command/tweet/build/reports/tests/classes/daggerok.data.TweetMongoRepositoryTest.html
   - gradle wrapper
   - bash gradlew dependencyUpdates -Drevision=release
   - bash gradlew composeDown

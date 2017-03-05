@@ -23,6 +23,6 @@ public class MessageResource {
     public void sendMessage(@RequestBody final String payload) {
 
         twitterSender.send(MessageBuilder.withPayload(format("%d: %s", System.currentTimeMillis(), payload))
-                                   .build());
+                                         .build());
     }
 }

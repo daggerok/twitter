@@ -4,5 +4,10 @@ management:
   context-path: /admin
   security.enabled: false
 endpoints:
+  enabled: true
+  sensitive: false
   actuator:
+    enabled: true
+  shutdown:
+    sensitive: false
     enabled: true
