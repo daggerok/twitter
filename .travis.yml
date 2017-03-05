@@ -3,9 +3,13 @@ dist: trusty
 language: java
 jdk: oraclejdk8
 install: true
+#services:
+#  - mongodb
+#  - rabbitmq
 env:
   SPRING_PROFILES_ACTIVE: default
 before_install:
+  #- mongo mydb_test --eval 'db.addUser("twitter", "twitter");'
   - sudo apt update
   # node
   - nvm install 7
@@ -20,17 +24,20 @@ before_install:
   - sudo apt install -y python-pip
   - sudo pip install docker-compose
   - sudo usermod -aG docker $(whoami)
-  #- bash docker.bash
   - gradle composeUp
+#  - bash docker.bash
   # spring-cloud-config repo
   - bash repo.bash
 script:
+  - sleep 30
   - gradle clean build
+#  - gradle -Ddebug=true -Dspring.profiles.active=rabbitmq-travis clean build
 after_script:
+  - cat /home/travis/build/daggerok/twitter/command/tweet/build/reports/tests/classes/daggerok.data.TweetMongoRepositoryTest.html
   - gradle wrapper
   - bash gradlew dependencyUpdates -Drevision=release
-  #- bash docker.bash stop
   - bash gradlew composeDown
+#  - bash docker.bash stop
   - bash gradlew --stop
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
