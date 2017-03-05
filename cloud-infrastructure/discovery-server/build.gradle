@@ -1,15 +1,15 @@
 plugins {
-    id 'org.springframework.boot' version '1.5.2.RELEASE'
+  id 'org.springframework.boot' version '1.5.2.RELEASE'
 }
 
 jar {
-    baseName = 'eureka-discovery-server'
+  baseName = 'eureka-discovery-server'
 }
 
 dependencies {
-    compile 'org.springframework.cloud:spring-cloud-starter-eureka-server'
+  compile 'org.springframework.cloud:spring-cloud-starter-eureka-server'
 }
 
 springBoot {
-    executable = true
+  executable = true
 }
