@@ -1,0 +1,11 @@
+## http://cloud.spring.io/spring-cloud-netflix/spring-cloud-netflix.html
+
+#ribbon.eureka.enabled: false
+zuul:
+  ignoredServices: '*'
+  routes:
+    tweet-query:
+      path: /tweet-query/**
+      serviceId: tweet-query
+      stripPrefix: false
+#      url: http://host:port/path

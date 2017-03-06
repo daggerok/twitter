@@ -1,14 +1,14 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="TweetWriterApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+  <configuration default="false" name="TweetQueryApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
     <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea">
       <pattern>
         <option name="PATTERN" value="daggerok.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>
-    <option name="SPRING_BOOT_MAIN_CLASS" value="daggerok.TweetWriterApplication" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="daggerok.TweetQueryApplication" />
     <option name="ALTERNATIVE_JRE_PATH" />
-    <module name="command" />
+    <module name="query" />
     <envs />
     <RunnerSettings RunnerId="JProfiler">
       <option name="WINDOW" value="false" />

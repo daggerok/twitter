@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.stream.annotation.Output;
 import org.springframework.cloud.stream.messaging.Source;
 import org.springframework.integration.support.MessageBuilder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,5 +25,10 @@ public class MessageResource {
 
         twitterSender.send(MessageBuilder.withPayload(format("%d: %s", System.currentTimeMillis(), payload))
                                          .build());
+    }
+
+    @GetMapping("/test")
+    public String test() {
+        return "done";
     }
 }

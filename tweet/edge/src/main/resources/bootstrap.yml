@@ -3,10 +3,11 @@ spring:
     config:
       uri: ${CONFIG_SERVER_URI:http://localhost:8888}
   application:
-    name: tweet-query
+    name: tweet-edge
   profiles:
     include:
       - admin
       - eureka
       - rabbitmq
-      - spring-cloud-stream
+      - zuul
+      - web

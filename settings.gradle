@@ -4,13 +4,15 @@ include 'cloud-infrastructure:compose'
 include 'cloud-infrastructure:config-server'
 include 'cloud-infrastructure:discovery-server'
 
+include 'tweet:edge:web:angular2'
+include 'tweet:edge:web:angular2-webpack2-aot'
+include 'tweet:edge:web:angularjs'
+include 'tweet:edge:web:react'
+include 'tweet:edge'
+
 include 'tweet:common:message-api'
+
+include 'tweet:query'
 
 include 'tweet:command:data'
 include 'tweet:command'
-
-include 'tweet:query:web:angular2'
-include 'tweet:query:web:angular2-webpack2-aot'
-include 'tweet:query:web:angularjs'
-include 'tweet:query:web:react'
-include 'tweet:query'
