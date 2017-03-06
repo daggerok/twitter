@@ -8,6 +8,6 @@ zuul:
       path: /tweet-query/**
       serviceId: tweet-query
       stripPrefix: false
-    tweet-test:
-      path: /tweet-webflux/**
-      url: http://localhost:8000/
+    webflux:
+      path: /webflux/**
+      url: http://localhost:8000
