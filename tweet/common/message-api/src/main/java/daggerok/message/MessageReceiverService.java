@@ -4,5 +4,5 @@ import org.springframework.messaging.Message;
 
 public interface MessageReceiverService {
 
-    void recive(final Message<String> message);
+    void receive(final Message<String> message);
 }

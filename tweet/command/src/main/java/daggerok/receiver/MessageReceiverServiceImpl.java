@@ -19,7 +19,7 @@ public class MessageReceiverServiceImpl implements MessageReceiverService {
 
     @Override
     @StreamListener(Sink.INPUT)
-    public void recive(Message<String> message) {
+    public void receive(Message<String> message) {
 
         log.info("received: {}", message);
         tweetMongoRepository.save(Tweet.of(message.getPayload()));

@@ -18,6 +18,12 @@ gralde composeDown # bash docker.bash stop
 gradle --stop
 ```
 
+reactpr
+
+```bash
+gradle build -b tweet/webflux/build.gradle
+```
+
 web @angular/cli
 
 ```bash
