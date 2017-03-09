@@ -1,9 +1,9 @@
 export default env => ({
-  // chunksSortMode: 'none',
-  chunks: [
-    'vendors',
-    'app',
-  ],
+  // // chunksSortMode: 'none',
+  // chunks: [
+  //   'vendors',
+  //   'app',
+  // ],
   filename: 'index.html',
   favicon: './src/assets/favicon.ico',
   template: './src/assets/index.html',

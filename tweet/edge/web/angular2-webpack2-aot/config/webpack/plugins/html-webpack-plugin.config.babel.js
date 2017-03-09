@@ -1,9 +1,9 @@
 export default env => ({
-  chunks: [
-    'polyfills',
-    'vendors',
-    'app',
-  ],
+  // chunks: [
+  //   'polyfills',
+  //   'vendors',
+  //   'app',
+  // ],
   filename: 'index.html',
   favicon: './src/assets/favicon.ico',
   template: './src/assets/index.html',

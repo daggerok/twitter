@@ -21,7 +21,6 @@ import { BaseHrefWebpackPlugin } from 'base-href-webpack-plugin';
 import CopyWebpackPlugin from './plugins/copy-webpack-plugin.babel';
 import uglifyJsPluginConfig from './plugins/uglify-js-plugin.config';
 import compressionWebpackPluginConfig from './plugins/compression-webpack-plugin.config.babel';
-import commonsChunkPluginConfig from './plugins/commons-chunk-plugin.config.babel';
 import scriptExtHtmlWebpackPluginConfig from './plugins/script-ext-html-webpack-plugin.config.babel';
 import extractTextWebpackPluginConfig from './plugins/extract-text-webpack-plugin.config.babel';
 import providePluginConfig from './plugins/provide-plugin.config.babel';
@@ -35,7 +34,9 @@ export default env => [
   new ProgressBarWebpackPlugin(),
   new ProvidePlugin(providePluginConfig),
   new DefinePlugin(definePluginConfig(env)),
-  new CommonsChunkPlugin(commonsChunkPluginConfig),
+  new CommonsChunkPlugin({
+    names: ['vendors', 'manifest'],
+  }),
   new HtmlWebpackPlugin(htmlWebpackPluginConfig(env)),
   new BaseHrefWebpackPlugin(baseHrefWebpackPluginConfig),
   new LoaderOptionsPlugin(loaderOptionsPluginConfig(env)),
