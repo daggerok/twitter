@@ -1,0 +1,23 @@
+plugins {
+  id 'org.springframework.boot' version '1.5.2.RELEASE'
+}
+
+jar {
+  baseName = 'sse-mvc-backpreasure'
+}
+
+dependencies {
+  compile 'org.springframework.boot:spring-boot-starter-web',
+      'org.springframework.cloud:spring-cloud-starter-zuul'
+}
+
+springBoot {
+  executable = true
+}
+
+dependencies {
+  compile 'org.springframework.boot:spring-boot-starter-integration',
+      'org.springframework.integration:spring-integration-file',
+      'org.springframework.boot:spring-boot-starter-mustache'
+  testCompile 'org.springframework.boot:spring-boot-starter-test'
+}

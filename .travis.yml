@@ -29,6 +29,7 @@ script:
   - sleep 30
   - gradle clean build
   - gradle -b tweet/webflux/build.gradle clean build
+  - gradle -b tweet/sse-webflux-backpreasure/build.gradle clean build
 after_script:
   - gradle wrapper
   - bash gradlew dependencyUpdates -Drevision=release
