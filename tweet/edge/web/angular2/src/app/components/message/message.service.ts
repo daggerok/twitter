@@ -1,6 +1,6 @@
-import {Injectable} from '@angular/core';
-import {Headers, Http, RequestOptions, Response} from '@angular/http';
-import {Observable} from 'rxjs/Observable';
+import { Injectable } from '@angular/core';
+import { Headers, Http, RequestOptions, Response } from '@angular/http';
+import { Observable } from 'rxjs/Observable';
 import 'rxjs/Rx';
 
 @Injectable()
@@ -12,10 +12,10 @@ export class MessageService {
   public sendMessage(payload: string): Observable<Response> {
 
     const options: RequestOptions = new RequestOptions({
-      headers: new Headers({'Content-Type': 'application/json',}),
+      headers: new Headers({ 'Content-Type': 'application/json' }),
     });
 
-    return this.http.post('/tweet-query/api/messages', {payload}, options)
+    return this.http.post('/tweet-query/api/messages', { payload }, options)
       .map(response => response || {})
       .catch(error => Observable.throw(error));
   }

@@ -43,6 +43,7 @@
     "@angular/compiler-cli": "2.4.9",
     "@types/jasmine": "2.5.43",
     "@types/node": "7.0.7",
+    "browser-sync": "2.18.12",
     "codelyzer": "3.0.0-beta.3",
     "concurrently": "3.4.0",
     "jasmine-core": "2.5.2",

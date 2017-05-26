@@ -1,4 +1,4 @@
-import {Angular2Page} from './app.po';
+import { Angular2Page } from './app.po';
 
 describe('app wp2-home h3', () => {
   let page: Angular2Page;

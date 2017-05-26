@@ -1,4 +1,4 @@
-import {TweetQueryWebPage} from './app.po';
+import { TweetQueryWebPage } from './app.po';
 
 describe('tweet-query-web App', () => {
   let page: TweetQueryWebPage;

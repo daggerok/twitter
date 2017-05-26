@@ -11,9 +11,10 @@ export default class CategoryModel {
   }
 
   getCategories() {
-    return this.$http.get(CategoryModel.uri()).then(
-      ok => this.HateoasService.categories(ok),
-      this.$log.error
-    );
+    return this.$http.get(CategoryModel.uri())
+               .then(
+                 ok => this.HateoasService.categories(ok),
+                 this.$log.error
+               );
   }
 }

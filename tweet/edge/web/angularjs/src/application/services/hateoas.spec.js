@@ -17,19 +17,24 @@ describe('test HateoasService', () => {
   });
 
   it('$window.location.href', () => {
-    expect($window.location.href).toEqual('http://localhost:9876/');
+    expect($window.location.href)
+      .toEqual('http://localhost:9876/');
   });
 
   it('.bookmarks()', () => {
     const expected = ['1', '2', '3'];
     const req = { data: { _embedded: { bookmarks: expected } } };
-    expect(HateoasService.bookmarks(req)).toEqual(expected);
-    expect(HateoasService.bookmarks({ invalid_data: 'ololo' })).toEqual([]);
+    expect(HateoasService.bookmarks(req))
+      .toEqual(expected);
+    expect(HateoasService.bookmarks({ invalid_data: 'ololo' }))
+      .toEqual([]);
   });
 
   it('.bookmarks() mock', () => {
     const expected = [1, 2, 3, 'mock'];
-    sandbox.stub(HateoasService, 'bookmarks').returns(expected);
-    expect(HateoasService.bookmarks()).toEqual(expected);
+    sandbox.stub(HateoasService, 'bookmarks')
+           .returns(expected);
+    expect(HateoasService.bookmarks())
+      .toEqual(expected);
   });
 });

@@ -11,9 +11,10 @@ export default class BookmarkModel {
   }
 
   getBookmarks() {
-    return this.$http.get(BookmarkModel.uri()).then(
-      ok => this.HateoasService.bookmarks(ok),
-      this.$log.error
-    );
+    return this.$http.get(BookmarkModel.uri())
+               .then(
+                 ok => this.HateoasService.bookmarks(ok),
+                 this.$log.error
+               );
   }
 }

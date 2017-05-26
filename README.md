@@ -19,7 +19,7 @@ gralde composeDown # bash docker.bash stop
 gradle --stop
 ```
 
-reactpr
+reactor
 
 ```bash
 gradle build -b tweet/webflux/build.gradle
