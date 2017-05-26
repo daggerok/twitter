@@ -8,5 +8,5 @@ import java.util.stream.Stream;
 @Repository
 public interface TweetMongoRepository extends MongoRepository<Tweet, String> {
 
-    Stream<Tweet> findAllByOrderByTimeDesc();
+  Stream<Tweet> findAllByOrderByTimeDesc();
 }

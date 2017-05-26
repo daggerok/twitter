@@ -25,7 +25,6 @@ before_install:
   # spring-cloud-config repo
   - bash repo.bash
 script:
-  - sleep 30
   - gradle clean build
 after_script:
   - gradle wrapper

@@ -4,7 +4,6 @@ import module from './webpack/module.config.babel';
 import resolve from './webpack/resolve.config.babel';
 import plugins from './webpack/plugins.config.babel';
 import devServer from './webpack/webpack-dev-server.config.babel';
-import watchOptions from './webpack/watch-options.config.babel';
 import node from './webpack/node.config.babel';
 
 export default env => ({

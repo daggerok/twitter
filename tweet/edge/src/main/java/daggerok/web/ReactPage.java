@@ -8,13 +8,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/react")
 public class ReactPage {
 
-    @GetMapping
-    public String redirect(Object obj) {
-        return "redirect:/react/";
-    }
+  @GetMapping
+  public String redirect(Object obj) {
+    return "redirect:/react/";
+  }
 
-    @GetMapping({ "/", "/rx", "/some" })
-    public String home() {
-        return "/react/index.html";
-    }
+  @GetMapping({ "/", "/rx", "/some" })
+  public String home() {
+    return "/react/index.html";
+  }
 }

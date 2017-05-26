@@ -6,7 +6,6 @@ import org.springframework.cloud.stream.messaging.Sink;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-
 @Configuration
 @EnableBinding(Sink.class)
 @Import(TweetDataConfig.class)

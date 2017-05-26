@@ -1,4 +1,4 @@
-import { projects, _links, page } from './mocks';
+import { _links, page, projects } from './mocks';
 
 export default () => ({
   "projects": {

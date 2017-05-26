@@ -11,10 +11,10 @@ import org.springframework.messaging.Message;
 @EnableBinding(Source.class)
 public class ProducerConfig {
 
-    @MessagingGateway
-    public interface TwitterSender {
+  @MessagingGateway
+  public interface TwitterSender {
 
-        @Gateway(requestChannel = Source.OUTPUT)
-        void send(Message<String> message);
-    }
+    @Gateway(requestChannel = Source.OUTPUT)
+    void send(Message<String> message);
+  }
 }

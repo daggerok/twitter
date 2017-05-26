@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { MessageService } from './message.service';
+import {Component, OnInit} from '@angular/core';
+import {MessageService} from './message.service';
 
 @Component({
   selector: 'twitter-message',
@@ -8,9 +8,11 @@ import { MessageService } from './message.service';
 })
 export class MessageComponent implements OnInit {
 
-  constructor(private messageService: MessageService) {}
+  constructor(private messageService: MessageService) {
+  }
 
-  public ngOnInit() {}
+  public ngOnInit() {
+  }
 
   public sendMessage($event: any): void {
 

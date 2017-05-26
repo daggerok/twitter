@@ -11,7 +11,7 @@ export default {
   inline: true,
   stats: 'minimal',
   contentBase: pathTo('./src'),
-  historyApiFallback: { 
+  historyApiFallback: {
     index: `${publicPath}index.html`,
   },
   proxy: {

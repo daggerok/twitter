@@ -24,10 +24,10 @@ test {
 
 clean.doFirst {
   [
-      'etc',
-      'dist',
-      'build',
-      'node_modules',
+    'etc',
+    'dist',
+    'build',
+    'node_modules',
   ].each { delete "${projectDir.getAbsolutePath()}/$it" }
 }
 

@@ -8,14 +8,10 @@
     "open-url": "npm-run-all sleep url",
     "sleep": "sleep 3",
     "url": "open-url localhost:8000/react/",
-
     "test": "eslint ./src ./config -c ./config/.eslintrc.js --ext js './src/**/*.js' './config/**/*.js'",
-
     "precompile": "rimraf -rf ../../src/main/resources/public/react",
     "compile": "webpack --config=./config/webpack.config.babel.js",
-
     "build": "npm run compile -- --env production",
-
     "serve": "npm-run-all build start-server",
     "start-server": "browser-sync start -c ./config/bs-config.js"
   },

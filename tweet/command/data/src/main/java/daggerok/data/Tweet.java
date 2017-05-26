@@ -17,8 +17,9 @@ import static java.time.LocalDateTime.now;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Tweet {
 
-    @Id
-    String id;
-    LocalDateTime time = now();
-    @NotNull final String message;
+  @NotNull
+  final String message;
+  @Id
+  String id;
+  LocalDateTime time = now();
 }

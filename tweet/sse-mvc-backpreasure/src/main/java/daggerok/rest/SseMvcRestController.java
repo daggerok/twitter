@@ -15,13 +15,13 @@ import java.util.Map;
 @RequestMapping("/api/sse/mvc")
 public class SseMvcRestController {
 
-    final Map<String, SseEmitter> sseEmitters;
+  final Map<String, SseEmitter> sseEmitters;
 
-    @GetMapping("/files/{name}")
-    public SseEmitter subscribe(@PathVariable("name") final String name) {
+  @GetMapping("/files/{name}")
+  public SseEmitter subscribe(@PathVariable("name") final String name) {
 
-        val sseEmitter = new SseEmitter(60 * 1000L);
+    val sseEmitter = new SseEmitter(60 * 1000L);
 
-        return sseEmitters.put(name, sseEmitter);
-    }
+    return sseEmitters.put(name, sseEmitter);
+  }
 }

@@ -5,19 +5,15 @@
   "scripts": {
     "precompile": "rimraf -rf ../../src/main/resources/public/angularjs",
     "compile": "webpack --config=./config/webpack.config.babel.js",
-
     "serve": "npm-run-all build browser-sync",
     "build": "npm run compile -- --env production",
     "browser-sync": "browser-sync -c ./config/bs-config.js start",
-
     "start": "concurrently --kill-others 'npm-run-all -p webpack-dev-server open-url'",
     "webpack-dev-server": "webpack-dev-server -w -d --config=./config/webpack.config.babel.js --env development",
     "open-url": "npm-run-all sleep open",
     "sleep": "sleep 3",
     "open": "open-url localhost:8000/angularjs/",
-
     "lint": "eslint -c ./config/.eslintrc.js --ignore-pattern '**/*.spec.js' 'config/**/*.js' 'src/**/*.js'",
-
     "pretest": "npm run compile -- --env development",
     "test": "karma start ./config/karma.conf.js #--log-level=debug"
   },

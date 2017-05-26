@@ -3,20 +3,7 @@ import ExtractTextWebpackPlugin from 'extract-text-webpack-plugin';
 import ProgressBarWebpackPlugin from 'progress-bar-webpack-plugin';
 import CompressionWebpackPlugin from 'compression-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
-import {
-  NoEmitOnErrorsPlugin,
-  LoaderOptionsPlugin,
-  ProvidePlugin,
-  DefinePlugin,
-  optimize,
-} from 'webpack';
-
-const {
-  AggressiveMergingPlugin,
-  CommonsChunkPlugin,
-  UglifyJsPlugin,
-} = optimize;
-
+import { DefinePlugin, LoaderOptionsPlugin, NoEmitOnErrorsPlugin, optimize, ProvidePlugin } from 'webpack';
 import { BaseHrefWebpackPlugin } from 'base-href-webpack-plugin';
 import uglifyJsPluginConfig from './plugins/uglify-js-plugin.config';
 // import CopyWebpackPlugin from './plugins/copy-webpack-plugin.babel';
@@ -28,6 +15,12 @@ import definePluginConfig from './plugins/define-plugin.config.babel';
 import htmlWebpackPluginConfig from './plugins/html-webpack-plugin.config.babel';
 import baseHrefWebpackPluginConfig from './plugins/base-href-webpack-plugin.config.babel';
 import loaderOptionsPluginConfig from './plugins/loader-options-plugin.config.babel';
+
+const {
+  AggressiveMergingPlugin,
+  CommonsChunkPlugin,
+  UglifyJsPlugin,
+} = optimize;
 
 export default env => [
   // CopyWebpackPlugin,

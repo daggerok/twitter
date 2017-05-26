@@ -13,5 +13,5 @@ springBoot {
 
 def data = tasks.getByPath ":tweet:command:data:assemble"
 
-jar.dependsOn      data
+jar.dependsOn data
 jar.shouldRunAfter data

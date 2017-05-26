@@ -17,18 +17,18 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @RequiredArgsConstructor
 public class MessageResource {
 
-    final ProducerConfig.TwitterSender twitterSender;
+  final ProducerConfig.TwitterSender twitterSender;
 
-    @Output(Source.OUTPUT)
-    @PostMapping(path = "/api/messages", consumes = APPLICATION_JSON_VALUE)
-    public void sendMessage(@RequestBody final String payload) {
+  @Output(Source.OUTPUT)
+  @PostMapping(path = "/api/messages", consumes = APPLICATION_JSON_VALUE)
+  public void sendMessage(@RequestBody final String payload) {
 
-        twitterSender.send(MessageBuilder.withPayload(format("%d: %s", System.currentTimeMillis(), payload))
-                                         .build());
-    }
+    twitterSender.send(MessageBuilder.withPayload(format("%d: %s", System.currentTimeMillis(), payload))
+                                     .build());
+  }
 
-    @GetMapping("/test")
-    public String test() {
-        return "done";
-    }
+  @GetMapping("/test")
+  public String test() {
+    return "done";
+  }
 }

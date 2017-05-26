@@ -1,8 +1,5 @@
 import ExtractTextWebpackPlugin from 'extract-text-webpack-plugin';
-import {
-  pathTo,
-  minimize,
-} from './utils.babel';
+import { minimize, pathTo } from './utils.babel';
 import { publicPath } from './output.babel';
 
 const include = pathTo('./src');
@@ -53,7 +50,7 @@ export default env => ({
       loader: 'babel-loader',
       options: {
         presets: [
-          [ 'es2015', { modules: false, }, ], // can be false or amd, umd, systemjs, commonjs
+          ['es2015', { modules: false, },], // can be false or amd, umd, systemjs, commonjs
           'stage-0',
         ],
         plugins: [

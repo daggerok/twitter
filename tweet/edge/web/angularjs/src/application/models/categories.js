@@ -6,14 +6,14 @@ export default class CategoryModel {
     this.HateoasService = HateoasService;
   }
 
+  static uri() {
+    return '/api/categories';
+  }
+
   getCategories() {
     return this.$http.get(CategoryModel.uri()).then(
       ok => this.HateoasService.categories(ok),
       this.$log.error
     );
-  }
-
-  static uri() {
-    return '/api/categories';
   }
 }

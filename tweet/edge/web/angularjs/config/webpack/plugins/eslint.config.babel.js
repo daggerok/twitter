@@ -8,7 +8,7 @@ export default env => ({
   configFile: './config/.eslintrc.js',
   // several examples !
 
-    // community formatter
+  // community formatter
   formatter: require('eslint-friendly-formatter'),
 
   // // default value

@@ -5,11 +5,11 @@ import HtmlWebpackPlugin from 'html-webpack-plugin';
 import ProgressBarWebpackPlugin from 'progress-bar-webpack-plugin';
 import {
   ContextReplacementPlugin,
-  NoEmitOnErrorsPlugin,
-  LoaderOptionsPlugin,
-  ProvidePlugin,
   DefinePlugin,
+  LoaderOptionsPlugin,
+  NoEmitOnErrorsPlugin,
   optimize,
+  ProvidePlugin
 } from 'webpack';
 import { AotPlugin } from '@ngtools/webpack';
 import aotPluginConfig from './plugins/aot-plugin.config.babel';

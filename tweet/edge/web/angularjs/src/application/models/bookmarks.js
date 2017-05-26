@@ -6,14 +6,14 @@ export default class BookmarkModel {
     this.HateoasService = HateoasService;
   }
 
+  static uri() {
+    return '/api/bookmarks';
+  }
+
   getBookmarks() {
     return this.$http.get(BookmarkModel.uri()).then(
       ok => this.HateoasService.bookmarks(ok),
       this.$log.error
     );
-  }
-
-  static uri() {
-    return '/api/bookmarks';
   }
 }

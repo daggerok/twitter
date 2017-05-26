@@ -1,12 +1,12 @@
-import { BrowserModule } from '@angular/platform-browser';
-import { NgModule } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { HttpModule } from '@angular/http';
+import {BrowserModule} from '@angular/platform-browser';
+import {NgModule} from '@angular/core';
+import {FormsModule} from '@angular/forms';
+import {HttpModule} from '@angular/http';
 
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
-import { MessageComponent } from './components/message/message.component';
-import { MessageService } from './components/message/message.service';
+import {AppRoutingModule} from './app-routing.module';
+import {AppComponent} from './app.component';
+import {MessageComponent} from './components/message/message.component';
+import {MessageService} from './components/message/message.service';
 
 @NgModule({
   declarations: [
@@ -22,4 +22,5 @@ import { MessageService } from './components/message/message.service';
   providers: [MessageService],
   bootstrap: [AppComponent]
 })
-export class AppModule {}
+export class AppModule {
+}

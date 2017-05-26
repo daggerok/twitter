@@ -7,6 +7,6 @@ export default () => (
             data-toggle='collapse'
             data-target='#navbar'
             aria-expanded='false'
-            aria-controls='navbar' />
+            aria-controls='navbar'/>
   </div>
 );

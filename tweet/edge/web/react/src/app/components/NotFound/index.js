@@ -1,4 +1,4 @@
-import React    from 'react';
+import React from 'react';
 import { Link } from 'react-router';
 import './NotFound.styl';
 import { baseHref } from '../../services/BaseHref';
@@ -28,8 +28,8 @@ export default () => (
       <div class='small muted'>
         using ancii text
         &nbsp;<a target='_blank' href='http://patorjk.com/software/taag/#p=display&f=Train&t=%20_404'>
-          from here
-        </a>
+        from here
+      </a>
       </div>
     </div>
 

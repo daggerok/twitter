@@ -8,13 +8,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/angularjs")
 public class AngularJsPage {
 
-    @GetMapping
-    public String redirect(Object obj) {
-        return "redirect:/angularjs/";
-    }
+  @GetMapping
+  public String redirect(Object obj) {
+    return "redirect:/angularjs/";
+  }
 
-    @GetMapping({ "/" })
-    public String home() {
-        return "/angularjs/index.html";
-    }
+  @GetMapping({ "/" })
+  public String home() {
+    return "/angularjs/index.html";
+  }
 }

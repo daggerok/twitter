@@ -1,9 +1,5 @@
 import ExtractTextWebpackPlugin from 'extract-text-webpack-plugin';
-import {
-  pathTo,
-  minimize,
-  publicPath,
-} from './utils.babel';
+import { minimize, pathTo, publicPath } from './utils.babel';
 
 const include = pathTo('./src');
 const resources = pathTo('./src/resources');
@@ -26,7 +22,7 @@ const stylusLoader = env => ExtractTextWebpackPlugin.extract({
 const options = {
   presets: [
     // [ 'es2015', { modules: 'commonjs' } ], // can be false or amd, umd, systemjs, commonjs
-    [ 'es2015', { modules: false } ],
+    ['es2015', { modules: false }],
     'stage-0',
     'react',
   ],

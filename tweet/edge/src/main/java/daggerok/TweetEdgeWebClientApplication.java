@@ -8,7 +8,7 @@ import org.springframework.cloud.netflix.zuul.EnableZuulProxy;
 @SpringCloudApplication
 public class TweetEdgeWebClientApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(TweetEdgeWebClientApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(TweetEdgeWebClientApplication.class, args);
+  }
 }

@@ -15,13 +15,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MessageReceiverServiceImpl implements MessageReceiverService {
 
-    final TweetMongoRepository tweetMongoRepository;
+  final TweetMongoRepository tweetMongoRepository;
 
-    @Override
-    @StreamListener(Sink.INPUT)
-    public void receive(Message<String> message) {
+  @Override
+  @StreamListener(Sink.INPUT)
+  public void receive(Message<String> message) {
 
-        log.info("received: {}", message);
-        tweetMongoRepository.save(Tweet.of(message.getPayload()));
-    }
+    log.info("received: {}", message);
+    tweetMongoRepository.save(Tweet.of(message.getPayload()));
+  }
 }

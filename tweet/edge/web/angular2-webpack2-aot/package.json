@@ -9,36 +9,27 @@
     "precompile": "npm run clean",
     "compile": "webpack --config=./config/webpack.config.babel.js",
     "ghpages": "npm run compile -- --env ghpages",
-
     "json-server": "babel-node ./node_modules/.bin/json-server --watch -r ./config/json-server/routes.json -c ./config/json-server/config.json ./config/json-server/testdata.js",
-
     "serve": "npm-run-all build start-server",
     "build": "npm run compile -- --env production",
     "start-server": "browser-sync start -c ./config/bs-config.js",
     "server": "npm run start-server -- --no-notify --no-open --no-online --no-inject-changes --no-reload-on-restart",
-
     "open": "open-url localhost:8000",
     "open-url": "npm-run-all sleep open",
     "start": "npm-run-all -p webpack-dev-server open-url",
     "webpack": "npm run compile -- --env development",
     "webpack-dev-server": "webpack-dev-server -w -d --config=./config/webpack.config.babel.js --env development",
-
     "stop": "kill -9 $(ps waux | grep browser-sync | grep -v grep | awk '{print $2}') | true",
-
     "lint": "tslint --ignoreBoundClassMethods --noUnusedParameters --noUnusedLocals -t verbose -c ./config/tslint.json 'src/**/*.ts'",
-
     "pretest": "npm run build",
     "test": "concurrently 'npm run protractor' 'npm run server' --kill-others --success first -p '[{name}]' -n 'E2E,HTTP' -c 'green,cyan' # colors: black, red, green, yellow, blue, magenta, cyan, white, gray",
     "protractor": "protractor ./config/protractor.js",
     "preprotractor": "npm-run-all sleep webdriver-manager-update",
     "webdriver-manager-update": "webdriver-manager update",
-
     "up": "npm-run-all docker-compose:up api-server-up",
     "down": "true | echo &(npm-run-all api-server:stop docker-compose:down)",
-
     "docker-compose:up": "docker-compose up -d",
     "docker-compose:down": "docker-compose down",
-
     "api-server": "bash ./server/gradlew -b ./server/build.gradle ",
     "api-server:status": "npm run api-server -- --status",
     "api-server:up": "npm run api-server -- build bootRun",

@@ -1,7 +1,4 @@
-import {
-  pathTo,
-  publicPath,
-} from './utils.babel';
+import { pathTo, publicPath } from './utils.babel';
 
 const proxy = () => ({
   target: 'http://localhost:8080',
