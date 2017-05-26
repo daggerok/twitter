@@ -21,19 +21,18 @@ before_install:
   - sudo apt install -y python-pip
   - sudo pip install docker-compose
   - sudo usermod -aG docker $(whoami)
-  - gradle composeUp
   # spring-cloud-config repo
   - bash repo.bash
 script:
   - gradle clean build
-after_script:
+after_success:
   - gradle wrapper
   - bash gradlew dependencyUpdates -Drevision=release
-  - bash gradlew composeDown
+after_script:
   - bash gradlew --stop
 before_cache:
-  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
-  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+  - rm -rf $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -rf $HOME/.gradle/caches/*/plugin-resolution/
 cache:
   directories:
     - $HOME/.m2/

@@ -6,17 +6,16 @@ node {
   // LTS
   version = '6.9.2'
   npmVersion = '3.10.9'
-  yarnVersion = '0.24.4'
 //  // https://github.com/srs/gradle-node-plugin/issues/171
 //  download = true
 }
 
 assemble {
-  dependsOn yarn_build
+  dependsOn npm_run_build
 }
 
 test {
-  dependsOn yarn_lint, yarn_test
+  dependsOn npm_run_lint, npm_t
 }
 
 clean.doFirst {
@@ -28,6 +27,6 @@ clean.doFirst {
   ].each { delete "${projectDir.getAbsolutePath()}/$it" }
 }
 
-test.dependsOn yarn_install
-assemble.dependsOn yarn_install
+test.dependsOn npm_i
+assemble.dependsOn npm_i
 assemble.shouldRunAfter test
