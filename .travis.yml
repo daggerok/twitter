@@ -22,19 +22,15 @@ before_install:
   - sudo pip install docker-compose
   - sudo usermod -aG docker $(whoami)
   - gradle composeUp
-#  - bash docker.bash
   # spring-cloud-config repo
   - bash repo.bash
 script:
   - sleep 30
   - gradle clean build
-  - gradle -b tweet/webflux/build.gradle clean build
-  - gradle -b tweet/sse-webflux-backpreasure/build.gradle clean build
 after_script:
   - gradle wrapper
   - bash gradlew dependencyUpdates -Drevision=release
   - bash gradlew composeDown
-#  - bash docker.bash stop
   - bash gradlew --stop
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock

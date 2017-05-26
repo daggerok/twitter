@@ -1,14 +1,10 @@
 plugins {
-  id 'org.springframework.boot' version '1.5.2.RELEASE'
-}
-
-jar {
-  baseName = 'sse-mvc-backpreasure'
+  id "org.springframework.boot" version "1.5.3.RELEASE"
 }
 
 dependencies {
-  compile 'org.springframework.boot:spring-boot-starter-web',
-      'org.springframework.cloud:spring-cloud-starter-zuul'
+  compile "org.springframework.boot:spring-boot-starter-web",
+      "org.springframework.cloud:spring-cloud-starter-zuul"
 }
 
 springBoot {
@@ -16,8 +12,8 @@ springBoot {
 }
 
 dependencies {
-  compile 'org.springframework.boot:spring-boot-starter-integration',
-      'org.springframework.integration:spring-integration-file',
-      'org.springframework.boot:spring-boot-starter-mustache'
-  testCompile 'org.springframework.boot:spring-boot-starter-test'
+  compile "org.springframework.boot:spring-boot-starter-integration",
+      "org.springframework.integration:spring-integration-file",
+      "org.springframework.boot:spring-boot-starter-mustache"
+  testCompile "org.springframework.boot:spring-boot-starter-test"
 }

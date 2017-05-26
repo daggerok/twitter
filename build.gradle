@@ -1,15 +1,16 @@
 plugins {
-  id 'idea'
-  id 'eclipse'
+  id "idea"
+  id "eclipse"
   //// gradle dependencyUpdates -Drevision=release
-  id 'com.github.ben-manes.versions' version '0.14.0'
-  //id 'com.avast.gradle.docker-compose' version '0.3.21'
-  id 'io.spring.dependency-management' version '1.0.0.RC2'
+  id "com.github.ben-manes.versions" version "0.14.0"
+  //id "com.avast.gradle.docker-compose" version "0.3.21"
+  id "io.spring.dependency-management" version "1.0.2.RELEASE" apply false
 }
 
 allprojects {
 
-  apply plugin: 'java'
+  apply plugin: "java"
+  apply plugin: "maven"
 
   group twitterGroup
   version twitterVersion
@@ -24,46 +25,37 @@ allprojects {
 
   repositories {
     jcenter()
-    maven { url 'https://repo.spring.io/snapshot' }
-    maven { url 'https://repo.spring.io/milestone' }
+    maven { url "https://repo.spring.io/snapshot" }
+    maven { url "https://repo.spring.io/milestone" }
   }
 }
 
 subprojects {
 
-  buildscript {
-    repositories {
-      jcenter()
-    }
-    dependencies {
-      classpath 'io.spring.gradle:dependency-management-plugin:1.0.0.RC2'
-    }
-  }
-
-  apply plugin: 'io.spring.dependency-management'
+  apply plugin: "io.spring.dependency-management"
 
   dependencies {
+    compile "org.springframework.cloud:spring-cloud-starter-stream-rabbit",
+        "org.springframework.cloud:spring-cloud-starter-bus-amqp",
+        "org.springframework.cloud:spring-cloud-starter-config",
+        "org.springframework.cloud:spring-cloud-starter-eureka",
+        "org.springframework.cloud:spring-cloud-starter-hystrix",
+        "org.springframework.boot:spring-boot-starter-actuator",
+        "org.projectlombok:lombok"
+    testCompile "org.springframework.boot:spring-boot-starter-test"
+    runtime "org.springframework.boot:spring-boot-devtools"
+  }
 
-    // applying concrete versions is required for children projects
-
-    //compileOnly 'org.projectlombok:lombok'
-    compile 'org.springframework.cloud:spring-cloud-starter-stream-rabbit',
-        'org.springframework.cloud:spring-cloud-starter-bus-amqp',
-        'org.springframework.cloud:spring-cloud-starter-config',
-        'org.springframework.cloud:spring-cloud-starter-eureka',
-        'org.springframework.cloud:spring-cloud-starter-hystrix',
-        'org.springframework.boot:spring-boot-starter-actuator',
-        'org.projectlombok:lombok'
-    //testCompileOnly 'org.projectlombok:lombok'
-    testCompile 'org.springframework.boot:spring-boot-starter-test'
-    runtime 'org.springframework.boot:spring-boot-devtools'
+  test {
+    dependsOn ":cloud-infrastructure:compose:composeUp"
+    finalizedBy ":cloud-infrastructure:compose:composeDown"
   }
 
   dependencyManagement {
     imports {
-      mavenBom 'org.springframework.boot:spring-boot-dependencies:1.5.2.RELEASE'
-      mavenBom 'org.springframework.cloud:spring-cloud-dependencies:Dalston.BUILD-SNAPSHOT'
-      mavenBom 'org.springframework.cloud:spring-cloud-stream-dependencies:Chelsea.BUILD-SNAPSHOT'
+      mavenBom "org.springframework.boot:spring-boot-dependencies:1.5.3.RELEASE"
+      mavenBom "org.springframework.cloud:spring-cloud-dependencies:Dalston.BUILD-SNAPSHOT"
+      mavenBom "org.springframework.cloud:spring-cloud-stream-dependencies:Chelsea.BUILD-SNAPSHOT"
     }
   }
 }
@@ -71,16 +63,12 @@ subprojects {
 dependencyUpdates.resolutionStrategy = {
   componentSelection { rules ->
     rules.all { ComponentSelection selection ->
-      boolean rejected = ['alpha', 'beta', 'rc', 'cr', 'm'].any { qualifier ->
+      boolean rejected = ["alpha", "beta", "rc", "cr", "m"].any { qualifier ->
         selection.candidate.version ==~ /(?i).*[.-]${qualifier}[.\d-]*/
       }
       if (rejected) {
-        selection.reject('Release candidate')
+        selection.reject("Release candidate")
       }
     }
   }
-}
-
-task wrapper(type: Wrapper) {
-  gradleVersion = '3.4'
 }

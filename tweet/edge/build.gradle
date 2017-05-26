@@ -1,24 +1,20 @@
 plugins {
-  id 'org.springframework.boot' version '1.5.2.RELEASE'
-}
-
-jar {
-  baseName = 'edge'
+  id "org.springframework.boot" version "1.5.3.RELEASE"
 }
 
 dependencies {
-  compile 'org.springframework.boot:spring-boot-starter-web',
-      'org.springframework.cloud:spring-cloud-starter-zuul'
+  compile "org.springframework.boot:spring-boot-starter-web",
+      "org.springframework.cloud:spring-cloud-starter-zuul"
 }
 
 springBoot {
   executable = true
 }
 
-def angular2            = tasks.getByPath ':tweet:edge:web:angular2:assemble'
-def angular2Webpack2Aot = tasks.getByPath ':tweet:edge:web:angular2-webpack2-aot:assemble'
-def angularjs           = tasks.getByPath ':tweet:edge:web:angularjs:assemble'
-def react               = tasks.getByPath ':tweet:edge:web:react:assemble'
+def angular2            = tasks.getByPath ":tweet:edge:web:angular2:assemble"
+def angular2Webpack2Aot = tasks.getByPath ":tweet:edge:web:angular2-webpack2-aot:assemble"
+def angularjs           = tasks.getByPath ":tweet:edge:web:angularjs:assemble"
+def react               = tasks.getByPath ":tweet:edge:web:react:assemble"
 
 assemble.dependsOn      angular2, angular2Webpack2Aot, angularjs, react
 assemble.shouldRunAfter angular2, angular2Webpack2Aot, angularjs, react

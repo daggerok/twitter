@@ -4,14 +4,15 @@ twitter [![build](https://travis-ci.org/daggerok/twitter.svg?branch=master)](htt
 ```bash
 gradle composeUp # bash docker.bash # or in fish: sh -c 'bash docker.bash stop'
 bash repo.bash
-gradle netflix-config-server:bootRun
-gradle eureka-discovery-server:bootRun
-gradle tweet-query:bootRun
-gradle tweet-command:bootRun
+gradle cloud-infrastructure:config-server:bootRun
+gradle cloud-infrastructure:discovery-server:bootRun
+gradle tweet:edge:bootRun
+gradle tweet:query:bootRun
+gradle tweet:command:bootRun
 # send message:
-# 1) open http://localhost:8761;
-# 2) select query-tweet;
-# 3) go base uri;
+# 1) open http://localhost:8761
+# 2) select query-edge
+# 3) go base uri
 # 4) type message, submit it using enter
 # verify db: http://localhost:8002/db/test/tweet
 gralde composeDown # bash docker.bash stop

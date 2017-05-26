@@ -1,14 +1,10 @@
 plugins {
-  id 'org.springframework.boot' version '1.5.2.RELEASE'
-}
-
-jar {
-  baseName = 'query'
+  id "org.springframework.boot" version "1.5.3.RELEASE"
 }
 
 dependencies {
-  compile project(':tweet:common:message-api'),
-      'org.springframework.boot:spring-boot-starter-web'
+  compile project(":tweet:common:message-api"),
+      "org.springframework.boot:spring-boot-starter-web"
 }
 
 springBoot {

@@ -1,17 +1,9 @@
 **/.idea/
-!*.idea/runConfigurations
-!*.idea/runConfigurations/ConfigServerApplication.xml
-!*.idea/runConfigurations/DiscoveryServerApplication.xml
-!*.idea/runConfigurations/TweetEdgeWebClientApplication.xml
-!*.idea/runConfigurations/TweetQueryApplication.xml
-!*.idea/runConfigurations/TweetWriterApplication.xml
+!*.idea/runConfigurations/
 !*.idea/codeStyleSettings.xml
-!*.idea/compiler.xml
-!*.idea/externalDependencies.xml
-!*.idea/misc.xml
 !*.idea/jsLibraryMappings.xml
 !*.idea/watcherTasks.xml
-#**/*.iml
+**/*.iml
 **/*.ipr
 **/*.iws
 

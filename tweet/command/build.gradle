@@ -1,21 +1,17 @@
 plugins {
-  id 'org.springframework.boot' version '1.5.2.RELEASE'
-}
-
-jar {
-  baseName = 'receiver'
+  id "org.springframework.boot" version "1.5.3.RELEASE"
 }
 
 dependencies {
-  compile project(':tweet:command:data'),
-      project(':tweet:common:message-api')
+  compile project(":tweet:command:data"),
+      project(":tweet:common:message-api")
 }
 
 springBoot {
   executable = true
 }
 
-def data = tasks.getByPath ':tweet:command:data:assemble'
+def data = tasks.getByPath ":tweet:command:data:assemble"
 
 jar.dependsOn      data
 jar.shouldRunAfter data

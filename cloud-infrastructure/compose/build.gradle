@@ -1,20 +1,20 @@
 plugins {
-  id 'com.avast.gradle.docker-compose' version '0.3.21'
+  id "com.avast.gradle.docker-compose" version "0.3.21"
 }
 
 //// takes too long time for multiproject configuration.
 //// lets start/dtop compose manually using `gradle composeUp` and `gradle composeDown`
-//dockerCompose.isRequiredBy(test) // hooks 'dependsOn composeUp' and 'finalizedBy composeDown'
+//dockerCompose.isRequiredBy(test) // hooks "dependsOn composeUp" and "finalizedBy composeDown"
 
 dockerCompose {
 
-  // useComposeFiles = ['docker-compose.yml', 'docker-compose.prod.yml'] // like 'docker-compose -f <file>'
-  useComposeFiles = ["$rootDir/cloud-infrastructure/compose/src/main/resources/docker-compose.yml"]
+  // useComposeFiles = ["docker-compose.yml", "docker-compose.prod.yml"] // like "docker-compose -f <file>"
+  useComposeFiles = ["$projectDir/src/main/resources/docker-compose.yml"]
 
   // captureContainersOutput = true // prints output of all containers to Gradle output - very useful for debugging
   captureContainersOutput = true
 
-  // stopContainers = false // doesn't call `docker-compose down` - useful for debugging
+  // stopContainers = false // doesn"t call `docker-compose down` - useful for debugging
   stopContainers = true
 
   // removeContainers = false
@@ -26,14 +26,14 @@ dockerCompose {
   // removeVolumes = false
   removeVolumes = true
 
-  // projectName = 'my-project' // allow to set custom docker-compose project name (defaults to directory name)
+  // projectName = "my-project" // allow to set custom docker-compose project name (defaults to directory name)
   projectName = "$rootProject.name"
 
-  // executable = '/path/to/docker-compose' // allow to set the path of the docker-compose executable (usefull if not present in PATH)
-  //executable = '/usr/local/bin/docker-compose' // echo $(which docker-compose)
+  // executable = "/path/to/docker-compose" // allow to set the path of the docker-compose executable (usefull if not present in PATH)
+  //executable = "/usr/local/bin/docker-compose" // echo $(which docker-compose)
 
-  // dockerExecutable = '/path/to/docker' // allow to set the path of the docker executable (usefull if not present in PATH)
-  //dockerExecutable = '/usr/local/bin/docker' // echo $(which docker)
+  // dockerExecutable = "/path/to/docker" // allow to set the path of the docker executable (usefull if not present in PATH)
+  //dockerExecutable = "/usr/local/bin/docker" // echo $(which docker)
 
-  // environment.put 'BACKEND_ADDRESS', '192.168.1.100' // Pass environment variable to 'docker-compose' for substitution in compose file
+  // environment.put "BACKEND_ADDRESS", "192.168.1.100" // Pass environment variable to "docker-compose" for substitution in compose file
 }
