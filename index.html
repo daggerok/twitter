@@ -35,14 +35,30 @@
   .debug-panel{font-size:12px;border-radius:8px}
   .debug-row{transition:background .1s}
   .debug-row:hover{background:rgba(148,163,184,.08)}
+  input[type=range].scale-slider{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
+  input[type=range].scale-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;cursor:pointer}
+  input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;cursor:pointer;border:none}
+  .dark input[type=range].scale-slider{background:#334155}
+  .dark input[type=range].scale-slider::-webkit-slider-thumb{background:#10b981}
+  .dark input[type=range].scale-slider::-moz-range-thumb{background:#10b981}
+  html:not(.dark) input[type=range].scale-slider{background:#cbd5e1}
+  html:not(.dark) input[type=range].scale-slider::-webkit-slider-thumb{background:#059669}
+  html:not(.dark) input[type=range].scale-slider::-moz-range-thumb{background:#059669}
   html.dark,html.dark body{background:#020617!important;color:#f1f5f9!important;color-scheme:dark}
-  #timelineHost,.twitter-timeline,.twitter-timeline-rendered,#timelineHost iframe{width:100%!important;max-width:none!important}
+  html.dark table{color:#e2e8f0}
+  html.dark table td{color:inherit}
+  html.dark table th{color:#94a3b8}
+  .has-tip{position:relative}
+  .has-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(4px);background:#0f172a;color:#f8fafc;font-size:10px;line-height:1.2;font-weight:600;white-space:nowrap;padding:4px 7px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .12s ease,transform .12s ease;z-index:40;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+  .has-tip:hover::after,.has-tip:focus-visible::after{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal-backdrop{background:rgba(2,6,23,.6)}
+  .thread-bar{border-left:3px solid}
 </style>
 </head>
 <body class="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
 <div id="app" class="min-h-screen pb-24">
 
-  <!-- Navbar: mirrors daggerok/youtube -->
+  <!-- Navbar: intentionally mirrors daggerok/youtube -->
   <div class="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
     <div class="px-4 xl:px-8">
       <div class="flex flex-col md:flex-row md:items-center gap-2 py-3">
@@ -52,14 +68,18 @@
             class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 font-mono font-medium text-sm focus:outline-none focus:border-emerald-500 transition-colors">
         </div>
         <div class="grid grid-flow-col auto-cols-fr justify-items-center gap-1.5 w-full md:flex md:w-auto">
-          <button id="btnSettings" title="Settings and free-mode limitations" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center text-base text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">⚙️</button>
-          <button id="btnDebug" title="Toggle debug console" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800">🐛</button>
-          <button id="btnRefresh" title="Reload official X timeline" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center text-base text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20">🔄</button>
-          <a id="btnOpenX" href="https://x.com/I_Am_The_ICT/with_replies" target="_blank" rel="noreferrer" title="Open profile and replies on X" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center text-base text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20">↗</a>
-          <button id="btnDark" title="Toggle theme" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center text-base text-yellow-400 hover:bg-slate-100 dark:hover:bg-slate-800">☀</button>
+          <button id="btnSettings" title="Settings" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">⚙️</button>
+          <button id="btnDebug" title="Toggle debug console" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base hover:bg-slate-100 dark:hover:bg-slate-800">🐛</button>
+          <a id="btnOpenCollector" href="https://x.com/I_Am_The_ICT/with_replies" target="_blank" rel="noreferrer" title="Open profile for collection" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center text-base font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20">𝕏</a>
+          <button id="btnPaste" title="Paste JSON copied by the collector" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center text-base text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20">📋</button>
+          <button id="btnGoogle" title="Google Sheets settings" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-blue-500 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20">☁️</button>
+          <button id="btnImport" title="Open collector JSON import" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base hover:bg-slate-100 dark:hover:bg-slate-800">📄</button>
+          <button id="btnExport" title="Export CSV" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800">📥</button>
+          <button id="btnDark" title="Toggle theme" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-yellow-400 hover:bg-slate-100 dark:hover:bg-slate-800">☀</button>
         </div>
       </div>
 
+      <!-- Debug Console: same card/table treatment as daggerok/youtube -->
       <div id="debugWrap" class="console-wrap">
         <div class="console-inner">
           <div class="pb-2 -mt-1">
@@ -76,79 +96,202 @@
     </div>
   </div>
 
+  <!-- Main workspace: same full-width spacing as daggerok/youtube -->
   <div class="px-4 xl:px-8 py-1">
     <div id="settingsWrap" class="settings-wrap">
       <div class="settings-inner">
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg text-sm mb-2">
           <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700/50 bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-900/30 dark:to-slate-900/10 flex items-center justify-between">
-            <h3 class="font-bold text-emerald-500 text-[15px]">📋 Free Official X Timeline</h3>
+            <h3 class="font-bold text-emerald-500 text-[15px]">📋 Core Architecture &amp; Setup</h3>
             <button id="btnCloseSettings" class="text-xs px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">Close</button>
           </div>
+
           <div class="p-5 space-y-4">
             <div class="space-y-2 text-xs text-slate-500 dark:text-slate-400">
-              <div><strong class="text-emerald-500">No API key:</strong> This version uses X’s official public embedded-profile widget.</div>
-              <div><strong class="text-blue-500 dark:text-blue-400">No proxy:</strong> The widget is designed by X to run directly on public websites such as GitHub Pages.</div>
-              <div><strong class="text-purple-500 dark:text-purple-400">No charge:</strong> There is no twitterapi.io account, official developer account, purchased API credit, server, or Worker to configure.</div>
+              <div><strong class="text-emerald-500">Auto-Load + Cross-device Sync:</strong> localStorage + Google Sheets. Connect Google to keep post statuses and notes on your devices.</div>
+              <div><strong class="text-blue-500 dark:text-blue-400">Per-handle tabs:</strong> Each X account gets its own tab (for example <code>TW-@I_Am_The_ICT</code>) inside one spreadsheet.</div>
             </div>
 
-            <details open class="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-              <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-900 dark:text-blue-200">📋 Official Embedded Timeline Setup</summary>
-              <div class="px-4 pb-4 space-y-3 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-                <div>
-                  <div class="font-semibold">1. Nothing to register</div>
-                  <p class="mt-1">Enter a public X handle or profile URL above and press Enter. The default is <code>@I_Am_The_ICT</code>. X loads the public profile timeline inside its own secure iframe.</p>
+            <!-- Logged-in browser collector -->
+            <div class="pt-1 border-t border-slate-200 dark:border-slate-700/30">
+              <div class="font-semibold text-sm mb-2">Logged-in X Browser Collector (free companion)</div>
+              <details open class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-amber-900 dark:text-amber-200">📋 Tampermonkey Collector Setup (assisted scrolling)</summary>
+                <div class="px-4 pb-4 space-y-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                  <div>
+                    <div class="font-semibold">1. Install Tampermonkey once</div>
+                    <p class="mt-1">Install the <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer" class="underline">Tampermonkey browser extension</a>, then open <a href="./collector.user.js" target="_blank" class="underline font-semibold">collector.user.js</a> and approve the userscript installation.</p>
+                  </div>
+                  <div>
+                    <div class="font-semibold">2. Use your normal X login</div>
+                    <p class="mt-1">Click the <b>𝕏</b> toolbar button to open <code>@I_Am_The_ICT</code> Posts &amp; replies. Log in to X normally if needed. The collector never reads, copies, or exports your password, session cookies, or authorization tokens.</p>
+                  </div>
+                  <div>
+                    <div class="font-semibold">3. Collect rendered posts</div>
+                    <p class="mt-1">Use the floating <b>ICT Collector</b> panel on X. Press <b>Start + Auto</b> for slow assisted scrolling, or <b>Start Manual</b> and scroll yourself. Keep the tab visible. Pause or stop at any time. The collector stops after repeated no-new-post scans, its configured scroll cap, or when it reaches previously collected posts.</p>
+                  </div>
+                  <div>
+                    <div class="font-semibold">4. Transfer to this dashboard</div>
+                    <p class="mt-1">Press <b>Copy New JSON</b> in the X panel. Return here and press the purple <b>📋</b> toolbar button. You can also download JSON on X and paste/upload its contents through the <b>📄</b> import dialog.</p>
+                  </div>
+                  <div class="rounded-lg border border-amber-300/60 dark:border-amber-700 bg-white/50 dark:bg-slate-950/20 p-2">
+                    <b>What is collected:</b> only tweet cards rendered in the visible X page—post ID/URL/time/text, author, visible reply/repost context, visible metrics, and media URLs. Classification is heuristic because the web page exposes less metadata than an API.
+                  </div>
+                  <div class="text-rose-700 dark:text-rose-300"><b>Important:</b> X’s Terms prohibit scraping without express permission. Assisted scrolling can also trigger anti-automation limits. Use conservative settings, stop if X warns or rate-limits you, and proceed only if you accept the account/Terms risk.</div>
                 </div>
-                <div>
-                  <div class="font-semibold">2. Posts and replies</div>
-                  <p class="mt-1">The widget requests profile replies where X supports them. Use the <b>↗</b> toolbar button to open the account’s full “Posts &amp; replies” page on X.</p>
+              </details>
+            </div>
+
+            <div class="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 text-xs text-emerald-800 dark:text-emerald-300">
+              <div class="font-semibold mb-1">✓ No paid X data API and no proxy</div>
+              <p>Collection happens locally in the already logged-in X tab. The dashboard receives only the JSON you explicitly copy or import. Google Sheets authentication remains separate and uses Google’s OAuth popup.</p>
+            </div>
+
+            <!-- Google Sheets menu and guide, matching daggerok/youtube -->
+            <div id="googleSheetsSettings" class="pt-1 border-t border-slate-200 dark:border-slate-700/30">
+              <div class="font-semibold text-sm mb-2">Google Sheets Sync (Cross-device)</div>
+              <div class="space-y-4 animate-fade-in">
+                <details class="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+                  <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-900 dark:text-blue-200">📋 Google Sheets Setup (per-channel tabs)</summary>
+                  <div class="px-4 pb-4 space-y-3 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+                    <div>
+                      <div class="font-semibold">1. Create or select a Google Cloud project</div>
+                      <p class="mt-1">Open <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" class="underline">console.cloud.google.com</a>. Create a project (or select one), then open <b>APIs &amp; Services → Library</b>, find <b>Google Sheets API</b>, and click <b>Enable</b>.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">2. Configure the OAuth consent screen</div>
+                      <p class="mt-1">Open <b>Google Auth Platform → Branding / Audience</b>. Choose <b>External</b> for a personal Gmail account, complete the required app fields, keep the app in Testing, and add your Google email under <b>Test users</b>. Add the scopes for Google Sheets, <code>openid</code>, email, and profile if Google asks.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">3. Create the Web OAuth Client ID</div>
+                      <p class="mt-1">Open <b>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</b>. Select <b>Web application</b> and add these Authorized JavaScript origins:</p>
+                      <ul class="list-disc pl-4 mt-1 text-[10px] space-y-1">
+                        <li><code class="bg-blue-100 dark:bg-blue-800 px-1">https://daggerok.github.io</code></li>
+                        <li><code class="bg-blue-100 dark:bg-blue-800 px-1">http://localhost</code> (only for local testing)</li>
+                      </ul>
+                      <p class="mt-1">Copy the Client ID ending in <code>.apps.googleusercontent.com</code>. No client secret is used by this browser-only app.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">4. Connect a spreadsheet</div>
+                      <p class="mt-1">Paste the Client ID below. Either paste an existing Google Spreadsheet URL/ID and choose <b>Attach / Ensure Tabs</b>, or choose <b>Create new Spreadsheet</b>. Allow the requested permissions in Google’s popup.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">5. Use per-handle tabs</div>
+                      <p class="mt-1">One spreadsheet stores every tracked X account in a separate tab named <code>TW-@handle</code>. Statuses and notes sync after you connect. Keep the sheet private unless you intentionally want to share it.</p>
+                    </div>
+                    <div class="text-amber-700 dark:text-amber-300"><b>Security:</b> Only the public OAuth Client ID and Spreadsheet ID are kept in localStorage. Google’s access token is held in memory and disappears when the page closes.</div>
+                  </div>
+                </details>
+
+                <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+                    <div>
+                      <div id="gsStatus" class="font-medium text-slate-700 dark:text-slate-300">Not connected to Google Sheets.</div>
+                      <a id="gsSheetLink" href="#" target="_blank" rel="noreferrer" class="hidden text-xs underline text-emerald-600 dark:text-emerald-400 break-all mt-1"></a>
+                    </div>
+                    <div class="flex gap-2">
+                      <button id="btnGsConnect" class="px-3 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium disabled:opacity-50">Connect Google</button>
+                      <button id="btnGsDisconnect" class="text-xs px-3 py-1 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hidden">Disconnect</button>
+                    </div>
+                  </div>
                 </div>
+
                 <div>
-                  <div class="font-semibold">3. Saved preferences</div>
-                  <p class="mt-1">The selected handle and light/dark theme are cached in this browser’s localStorage. No credentials are stored because this mode uses none.</p>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Google OAuth Client ID</label>
+                    <div class="flex items-center gap-1">
+                      <button id="toggleClientId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Show or hide Client ID">👁️‍🗨️</button>
+                      <button id="copyClientId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Copy Client ID">📋</button>
+                    </div>
+                  </div>
+                  <input id="gsClientId" type="password" autocomplete="off" placeholder="1234567890-abc123.apps.googleusercontent.com"
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500">
                 </div>
+
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Spreadsheet ID or full URL</label>
+                    <div class="flex items-center gap-1">
+                      <button id="toggleSheetId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Show or hide Spreadsheet ID">👁️‍🗨️</button>
+                      <button id="copySheetId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Copy Spreadsheet ID">📋</button>
+                    </div>
+                  </div>
+                  <input id="gsSheetId" type="password" autocomplete="off" placeholder="https://docs.google.com/spreadsheets/d/1abc.../edit"
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500">
+                  <div class="text-[10px] mt-0.5 text-slate-500">One spreadsheet holds tabs for all tracked X accounts.</div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <button id="btnGsAttach" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">Attach / Ensure Tabs</button>
+                  <button id="btnGsCreate" class="text-xs px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">Create new Spreadsheet</button>
+                </div>
+                <div class="text-[10px] text-slate-400">Current handle tab (auto): <span id="currentSheetTab" class="font-mono">TW-@I_Am_The_ICT</span></div>
               </div>
-            </details>
-
-            <div class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-              <div class="font-semibold mb-1">⚠️ Limitations of the 100% free mode</div>
-              <p>X renders the timeline in a cross-origin iframe and intentionally does not expose its post data to this page. Therefore this version cannot reliably classify a post as new/thread/reply, cache individual posts, filter or export them, attach notes/statuses, or store tweet rows in Google Sheets. X also controls the ordering, availability, and number of posts shown.</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed space-y-2">
-              <p>Those structured tracking features require a data API and a server-side proxy. The current official X API is pay-per-use, and third-party APIs are also metered after their trial credit. They have intentionally been removed from this free-only build instead of presenting a broken or misleading setup.</p>
-              <p><b>Embed availability:</b> X’s public timeline service sometimes returns HTTP 429 even for the first standard embed request. This is an upstream X limitation reported by other publishers. The app detects a stalled embed and offers Retry/Open-on-X instead of loading forever.</p>
-              <p><b>Console notice:</b> The “recent updates to Embedded X Timelines” message links to a September 2022 parameter announcement. It is informational and is not an application error.</p>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-              <a href="https://help.twitter.com/en/using-twitter/embed-twitter-feed" target="_blank" rel="noreferrer" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">Official embed documentation ↗</a>
-              <a href="https://docs.x.com/x-api/getting-started/pricing" target="_blank" rel="noreferrer" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Official API pricing ↗</a>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div id="errorBanner" class="hidden flex bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-xl mb-3 text-sm items-start justify-between gap-2 animate-fade-in max-w-3xl mx-auto"></div>
+    <div id="errorBanner" class="hidden flex bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-xl mb-6 text-sm items-start justify-between gap-2 animate-fade-in max-w-3xl mx-auto"></div>
 
-    <div class="space-y-6 animate-fade-in">
+    <div id="statsBar" class="hidden mb-2 grid grid-cols-2 md:grid-cols-5 gap-2 text-center"></div>
+    <div id="filterBar" class="hidden flex mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-3 flex-wrap gap-2 items-center"></div>
+
+    <div id="tableWrap" class="hidden space-y-6 animate-fade-in">
       <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg">
         <div class="px-4 py-3 bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-900/30 dark:to-slate-900/10 flex items-center justify-between gap-4">
           <div>
-            <h3 id="timelineTitle" class="font-bold text-emerald-500 text-base">𝕏 @I_Am_The_ICT Timeline</h3>
-            <div class="text-[10px] mt-0.5 text-emerald-500">✓ Official X embed • free • no API key • replies requested</div>
-          </div>
-          <div id="widgetStatus" class="text-[10px] text-slate-400">Loading…</div>
-        </div>
-
-        <div id="loadingState" class="text-center py-20 text-slate-500 dark:text-slate-400">
-          <div class="flex items-center justify-center gap-3">
-            <div class="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full"></div>
-            <span>Loading the official X timeline…</span>
+            <h3 id="inventoryTitle" class="font-bold text-emerald-500 text-base">📋 Timeline Inventory</h3>
+            <div id="sheetSyncBadge" class="hidden text-[10px] mt-0.5 text-emerald-400">☁️ Synced to Google Sheets</div>
           </div>
         </div>
+        <div class="hidden md:block overflow-x-auto dark-scroll light-scroll">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="text-left text-[11px] uppercase tracking-wider text-slate-500">
+                <th class="px-4 py-3 w-40">Datetime</th>
+                <th class="px-4 py-3 w-36">Type</th>
+                <th class="px-4 py-3">Post</th>
+                <th class="px-4 py-3 w-28">Stats</th>
+                <th class="px-4 py-3 w-24">Status</th>
+                <th class="px-4 py-3 w-40">Note</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-700/30"></tbody>
+          </table>
+        </div>
+        <div id="cardsList" class="block md:hidden p-3 space-y-2"></div>
+      </div>
+    </div>
 
-        <div id="timelineHost" class="hidden min-h-[640px] w-full"></div>
+    <div id="emptyState" class="text-center py-20 text-slate-500 dark:text-slate-400">
+      <p class="text-lg">Install the collector, capture posts on X, then paste its JSON here.</p>
+      <p class="text-xs mt-2">The default profile is <b>@I_Am_The_ICT</b>. Imported posts cache locally and can sync to a per-handle Google Sheets tab.</p>
+    </div>
+
+    <div id="loadingState" class="hidden text-center py-20 text-slate-500 dark:text-slate-400 animate-fade-in">
+      <div class="flex items-center justify-center gap-3">
+        <div class="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full"></div>
+        <span id="loadingText">Importing collected posts…</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manual Import Modal -->
+<div id="importModal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-xl w-full overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/40 font-bold">📄 Collector JSON Import</div>
+    <div class="p-4 space-y-3">
+      <div class="text-xs text-slate-500">Paste JSON copied or downloaded by <code>collector.user.js</code>. Expected schema: <code>daggerok-x-collector/v1</code>.</div>
+      <textarea id="importText" rows="8" class="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus:border-emerald-500" placeholder="Paste collector JSON here…"></textarea>
+      <label class="block text-xs text-slate-500">Or select a downloaded collector JSON file:
+        <input id="importFile" type="file" accept="application/json,.json" class="block mt-1 text-xs">
+      </label>
+      <div class="flex justify-end gap-2">
+        <button id="btnImportCancel" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700">Cancel</button>
+        <button id="btnImportConfirm" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Import</button>
       </div>
     </div>
   </div>
@@ -158,204 +301,614 @@
 (function(){
 'use strict';
 
-const LS_PREFS = 'tw-free-embed-prefs';
+// ---------- Constants ----------
+const LS_PREFS = 'tw-dashboard-prefs';
+const LS_GS = 'tw-gs-config';
+const LS_META = 'tw-meta-map';
 const DEFAULT_HANDLE = 'I_Am_The_ICT';
-const WIDGETS_SRC = 'https://platform.twitter.com/widgets.js';
-const TIMELINE_TIMEOUT_MS = 12000;
+const SHEET_PREFIX = 'TW-';
+const TWEET_HEADERS = ['id','datetime','type','text','url','author','inReplyTo','like','retweet','reply','view','status','note','created','updated','media','capturedAt','collectorContext'];
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets','openid','email','profile'].join(' ');
+const GIS_SRC = 'https://accounts.google.com/gsi/client';
+const SHEETS_API = 'https://sheets.googleapis.com/v4';
+const USERINFO = 'https://www.googleapis.com/oauth2/v3/userinfo';
 
-const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_PREFS)) || {}; } catch { return {}; } })();
+// ---------- Small storage helpers ----------
+const lp = () => { try { return JSON.parse(localStorage.getItem(LS_PREFS)) || {}; } catch { return {}; } };
+const sp = (p) => { try { localStorage.setItem(LS_PREFS, JSON.stringify(p)); } catch {} };
+const getGsConfig = () => { try { return JSON.parse(localStorage.getItem(LS_GS)) || { clientId:'', spreadsheetId:'', lastAccountEmail:'' }; } catch { return { clientId:'', spreadsheetId:'', lastAccountEmail:'' }; } };
+const saveGsConfig = (c) => { try { localStorage.setItem(LS_GS, JSON.stringify(c)); } catch {} };
+const getMetaMap = () => { try { return JSON.parse(localStorage.getItem(LS_META)) || {}; } catch { return {}; } };
+const saveMetaMap = (handle, meta) => { try { const m = getMetaMap(); m[handle.toLowerCase()] = meta; localStorage.setItem(LS_META, JSON.stringify(m)); } catch {} };
+const getCache = (key) => { try { return JSON.parse(localStorage.getItem(`tw-data-${key}`)) || null; } catch { return null; } };
+const setCache = (key, data) => { try { localStorage.setItem(`tw-data-${key}`, JSON.stringify(data)); } catch {} };
+const em = (e) => e instanceof Error ? e.message : (typeof e === 'string' ? e : 'Unknown error');
+const nid = (v) => { const t = (v||'').trim(); if(!t) return ''; const m = t.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/); return m ? m[1] : t.replace(/\/edit.*$/, ''); };
+const surl = (id) => `https://docs.google.com/spreadsheets/d/${id}/edit`;
+const qt = (n) => /^[A-Za-z0-9_]+$/.test((n||'').trim()) ? n.trim() : `'${(n||'').replace(/'/g,"''")}'`;
+const sr = (t,c) => `${qt(t)}!${c}`;
+const extractHandle = (v) => { const s=(v||'').trim(); const m = s.match(/@?([A-Za-z0-9_]{1,15})\/?$/); return m ? m[1] : s; };
+
+// ---------- App state ----------
+const prefs = lp();
+const gsCfgInit = getGsConfig();
 const state = {
-  handle: normalizeHandle(saved.handle) || DEFAULT_HANDLE,
-  dark: saved.dark !== false,
+  dark: prefs.dark !== false,
+  scale: prefs.scale ?? 1,
+  handle: prefs.handle || DEFAULT_HANDLE,
+  sort: prefs.sort || { key:'datetime', dir:'desc' },
+  filters: prefs.filters || { type:'', status:'', text:'' },
+  tweets: null,
+  currentKey: null,
+  currentMeta: null,
   logs: [],
-  renderId: 0,
+  loading: false,
+  threadFilter: null,
+  gs: gsCfgInit,
+  gToken: null,
+  gTokenExpires: 0,
+  gEmail: gsCfgInit.lastAccountEmail || '',
+  gAuthed: false,
 };
-let widgetsPromise = null;
-
-function normalizeHandle(value){
-  let text = String(value || '').trim();
-  if (!text) return '';
-  try {
-    if (/^https?:\/\//i.test(text)) {
-      const url = new URL(text);
-      text = url.pathname.split('/').filter(Boolean)[0] || '';
-    }
-  } catch {}
-  text = text.replace(/^@/, '').split(/[/?#]/)[0];
-  return /^[A-Za-z0-9_]{1,15}$/.test(text) ? text : '';
-}
 
 function savePrefs(){
-  try { localStorage.setItem(LS_PREFS, JSON.stringify({ handle: state.handle, dark: state.dark })); } catch {}
+  sp({ dark: state.dark, scale: state.scale, handle: state.handle, sort: state.sort, filters: state.filters });
 }
 
-function escapeHtml(value){
-  return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function log(message){
-  state.logs.push({ message, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) });
-  if (state.logs.length > 100) state.logs.shift();
+// ---------- Logging ----------
+function log(msg){
+  const ts = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  state.logs.push({msg, ts});
+  if (state.logs.length > 200) state.logs.shift();
   renderLogs();
 }
-
 function renderLogs(){
   document.getElementById('logCount').textContent = state.logs.length;
-  document.getElementById('logList').innerHTML = state.logs.length
-    ? state.logs.slice().reverse().map((entry, index) => `<div class="debug-row grid grid-cols-[2rem_1fr_6rem] gap-2 border-b border-slate-200/50 dark:border-slate-800/50 py-1"><span class="text-slate-500">${state.logs.length-index}</span><span class="break-words">${escapeHtml(entry.message)}</span><span class="text-right text-slate-500">${entry.time}</span></div>`).join('')
-    : '<div class="py-2 text-center text-slate-500">No events yet.</div>';
+  const list = document.getElementById('logList');
+  list.innerHTML = state.logs.slice().reverse().map(l => `<div class="flex justify-between gap-2 border-b border-slate-200/50 dark:border-slate-800/50 py-0.5"><span class="truncate">${escapeHtml(l.msg)}</span><span class="text-slate-400 flex-shrink-0">${l.ts}</span></div>`).join('') || '<div class="text-slate-400">No events yet.</div>';
+}
+function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showError(msg){
+  const b = document.getElementById('errorBanner');
+  if (!msg) { b.classList.add('hidden'); b.innerHTML=''; return; }
+  b.classList.remove('hidden');
+  b.innerHTML = `<span>❌ ${escapeHtml(msg)}</span><button class="font-bold" onclick="document.getElementById('errorBanner').classList.add('hidden')">✕</button>`;
+  log('❌ ' + msg);
 }
 
-function showError(message){
-  const banner = document.getElementById('errorBanner');
-  banner.classList.toggle('hidden', !message);
-  if (!message) { banner.innerHTML = ''; return; }
-  banner.innerHTML = `<span>✕ ${escapeHtml(message)}</span><button id="dismissError" class="font-bold" title="Dismiss">×</button>`;
-  document.getElementById('dismissError').addEventListener('click', () => showError(''));
-  log('❌ ' + message);
+// ---------- Classification ----------
+function classifyTweet(t, trackedId, trackedHandle){
+  if (t.retweeted_tweet) return { code:'retweet', label:'🔁 Retweet' };
+  if (!t.isReply) {
+    if (t.quoted_tweet) return { code:'quote', label:'💬 Quote Post' };
+    return { code:'new', label:'🆕 New Post' };
+  }
+  const sameUser = (t.inReplyToUserId && trackedId && String(t.inReplyToUserId) === String(trackedId)) ||
+                    (t.inReplyToUsername && trackedHandle && t.inReplyToUsername.toLowerCase() === trackedHandle.toLowerCase());
+  if (sameUser) return { code:'thread', label:'🧵 Thread follow-up' };
+  return { code:'reply', label:'↩️ Reply to @' + (t.inReplyToUsername || '?') };
 }
 
-function setLoading(loading){
-  document.getElementById('loadingState').classList.toggle('hidden', !loading);
-  document.getElementById('timelineHost').classList.toggle('hidden', loading);
-  document.getElementById('widgetStatus').textContent = loading ? 'Loading…' : 'Loaded';
+function normalizeTweet(t, trackedId, trackedHandle, existing){
+  const cls = classifyTweet(t, trackedId, trackedHandle);
+  const nowIso = new Date().toISOString();
+  const prev = existing && existing[t.id];
+  return {
+    id: t.id,
+    datetime: t.createdAt ? new Date(t.createdAt).toISOString() : nowIso,
+    type: cls.code,
+    typeLabel: cls.label,
+    text: t.text || '',
+    url: t.url || (t.author && t.author.userName ? `https://x.com/${t.author.userName}/status/${t.id}` : ''),
+    author: (t.author && t.author.userName) || trackedHandle,
+    inReplyTo: t.inReplyToUsername || '',
+    conversationId: t.conversationId || t.id,
+    like: t.likeCount || 0,
+    retweet: t.retweetCount || 0,
+    reply: t.replyCount || 0,
+    view: t.viewCount || 0,
+    status: prev ? prev.status : 'unread',
+    note: prev ? (prev.note||'') : '',
+    created: prev ? prev.created : nowIso,
+    updated: nowIso,
+    media: Array.isArray(t.media) ? t.media : (prev?.media || []),
+    capturedAt: t.capturedAt || prev?.capturedAt || nowIso,
+    collectorContext: t.collectorContext || prev?.collectorContext || ''
+  };
 }
+
+// ---------- Status cycle ----------
+function cycleStatus(id){
+  if (!state.tweets) return;
+  const order = ['unread','read','starred'];
+  state.tweets = state.tweets.map(t => {
+    if (t.id !== id) return t;
+    const idx = order.indexOf(t.status||'unread');
+    const next = order[(idx+1) % order.length];
+    return { ...t, status: next, updated: new Date().toISOString() };
+  });
+  setCache(state.currentKey, state.tweets);
+  if (isGoogleReady()) syncToGoogle(state.tweets, state.handle);
+  render();
+}
+function saveNote(id, text){
+  if (!state.tweets) return;
+  state.tweets = state.tweets.map(t => t.id === id ? { ...t, note: text, updated: new Date().toISOString() } : t);
+  setCache(state.currentKey, state.tweets);
+  if (isGoogleReady()) syncToGoogle(state.tweets, state.handle);
+}
+
+// ---------- Google Sheets (ported pattern) ----------
+let gisPromise = null;
+const waitGis = (to=12000) => new Promise((ok,f) => { const t0=Date.now(); const tk=() => { if (window.google?.accounts?.oauth2) return ok(); if (Date.now()-t0>to) return f(new Error('GIS timeout')); setTimeout(tk,50); }; tk(); });
+const loadGis = async () => {
+  if (window.google?.accounts?.oauth2) return;
+  if (!gisPromise) {
+    gisPromise = new Promise((ok,f) => {
+      if (document.querySelector('script[data-gis]')) { waitGis().then(ok).catch(e=>{gisPromise=null;f(e);}); return; }
+      const s = document.createElement('script'); s.src = GIS_SRC; s.async = true; s.defer = true; s.dataset.gis = '1';
+      s.onload = () => waitGis().then(ok).catch(e=>{gisPromise=null;f(e);});
+      s.onerror = () => { gisPromise = null; f(new Error('GIS load failed')); };
+      document.head.appendChild(s);
+    });
+  }
+  await gisPromise;
+};
+const requestToken = async (clientId, interactive) => {
+  await loadGis();
+  return new Promise((ok,f) => {
+    const tc = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: r => { if (r.error) return f(new Error(r.error)); if (!r.access_token) return f(new Error('No token')); ok(r); },
+      error_callback: e => f(new Error(e?.type || e?.message || 'GIS error'))
+    });
+    tc.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+  });
+};
+const gFetch = async (url, tok, init={}) => {
+  const h = new Headers(init.headers); h.set('Authorization', `Bearer ${tok}`);
+  if (init.body && !h.has('Content-Type')) h.set('Content-Type','application/json');
+  const res = await fetch(url, {...init, headers:h});
+  const txt = await res.text(); let json=null; try { json = txt?JSON.parse(txt):null; } catch{}
+  if (!res.ok) { let msg = txt || `HTTP ${res.status}`; if (json?.error?.message) msg = json.error.message; const err = new Error(`Google API ${res.status}: ${msg}`); err.status = res.status; throw err; }
+  return json;
+};
+const sheetsApi = (p, tok, i) => gFetch(`${SHEETS_API}${p}`, tok, i);
+const fetchProfile = (tok) => gFetch(USERINFO, tok);
+const isGoogleAuthError = e => e?.status === 401;
+
+function getHandleTab(handle){ const safe = (handle||'default').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80); return `${SHEET_PREFIX}@${safe}`; }
+
+async function ensureTweetTab(tok, sid, tab){
+  const id = nid(sid); if (!id) throw new Error('No spreadsheet ID');
+  const meta = await sheetsApi(`/spreadsheets/${id}`, tok);
+  const exists = (meta.sheets||[]).some(s => s.properties?.title === tab);
+  if (!exists) {
+    try { await sheetsApi(`/spreadsheets/${id}:batchUpdate`, tok, { method:'POST', body: JSON.stringify({ requests:[{ addSheet:{ properties:{ title: tab } } }] }) }); }
+    catch(e){ if (e?.status !== 400) throw e; }
+  }
+  const hr = sr(tab, 'A1:R1');
+  await sheetsApi(`/spreadsheets/${id}/values/${encodeURIComponent(hr)}?valueInputOption=RAW`, tok, { method:'PUT', body: JSON.stringify({ range: hr, majorDimension:'ROWS', values:[TWEET_HEADERS] }) });
+}
+async function readTweetsFromSheet(tok, sid, tab){
+  const id = nid(sid); if (!id) return [];
+  const r = await sheetsApi(`/spreadsheets/${id}/values/${encodeURIComponent(sr(tab,'A2:R'))}`, tok);
+  const rows = r.values || []; const nowIso = new Date().toISOString();
+  return rows.map(row => ({
+    id:row[0]||'', datetime:row[1]||'', type:row[2]||'new', typeLabel:'', text:row[3]||'', url:row[4]||'', author:row[5]||'',
+    inReplyTo:row[6]||'', like:+row[7]||0, retweet:+row[8]||0, reply:+row[9]||0, view:+row[10]||0,
+    status:row[11]||'unread', note:row[12]||'', created:row[13]||nowIso, updated:row[14]||nowIso,
+    media:(() => { try { return JSON.parse(row[15]||'[]'); } catch { return []; } })(), capturedAt:row[16]||'', collectorContext:row[17]||''
+  })).filter(t => t.id);
+}
+async function writeTweetsToSheet(tok, sid, tab, tweets){
+  const id = nid(sid); if (!id) throw new Error('No spreadsheet ID');
+  const nowIso = new Date().toISOString();
+  const clean = (tweets||[]).map(t => ([t.id, t.datetime, t.type, t.text, t.url, t.author, t.inReplyTo||'', t.like||0, t.retweet||0, t.reply||0, t.view||0, t.status||'unread', t.note||'', t.created||nowIso, t.updated||t.created||nowIso, JSON.stringify(t.media||[]), t.capturedAt||'', t.collectorContext||'']));
+  await sheetsApi(`/spreadsheets/${id}/values/${encodeURIComponent(sr(tab,'A2:R'))}:clear`, tok, { method:'POST', body:'{}' });
+  if (!clean.length) return;
+  const pr = sr(tab,'A2:R');
+  await sheetsApi(`/spreadsheets/${id}/values/${encodeURIComponent(pr)}?valueInputOption=RAW`, tok, { method:'PUT', body: JSON.stringify({ range: pr, majorDimension:'ROWS', values: clean }) });
+}
+async function createNewSpreadsheet(tok, title, tab){
+  const res = await sheetsApi('/spreadsheets', tok, { method:'POST', body: JSON.stringify({ properties:{ title }, sheets:[{ properties:{ title: tab } }] }) });
+  const newId = res.spreadsheetId; if (!newId) throw new Error('Failed to create spreadsheet');
+  await ensureTweetTab(tok, newId, tab);
+  return { spreadsheetId: newId, spreadsheetUrl: res.spreadsheetUrl || surl(newId) };
+}
+
+async function doGoogleAuth(interactive, force){
+  const cid = (state.gs.clientId||'').trim();
+  if (!cid) { showError('Enter a Google OAuth Client ID in Settings to connect.'); openSettings(); throw new Error('No client id'); }
+  if (!force && state.gToken && Date.now() + 60000 < state.gTokenExpires) return state.gToken;
+  const r = await requestToken(cid, interactive);
+  state.gToken = r.access_token;
+  state.gTokenExpires = Date.now() + (Number(r.expires_in)||3600)*1000;
+  state.gAuthed = true;
+  try { const p = await fetchProfile(state.gToken); state.gEmail = p.email || ''; state.gs.lastAccountEmail = state.gEmail; saveGsConfig(state.gs); } catch {}
+  log('✅ Connected to Google account');
+  renderGsStatus();
+  return state.gToken;
+}
+async function runWithGoogleAuth(op){
+  let tok = await doGoogleAuth(false);
+  try { return await op(tok); }
+  catch(e){ if (!isGoogleAuthError(e)) throw e; log('🔐 token expired, renewing'); state.gToken=null; tok = await doGoogleAuth(false, true); return op(tok); }
+}
+function isGoogleReady(){ return Boolean(state.gAuthed && state.gToken && nid(state.gs.spreadsheetId)); }
+
+async function syncToGoogle(tweets, handle){
+  const sid = nid(state.gs.spreadsheetId);
+  if (!state.gs.clientId || !sid || !(state.gToken || state.gs.lastAccountEmail)) return;
+  try {
+    const tab = getHandleTab(handle);
+    await runWithGoogleAuth(async tok => { await ensureTweetTab(tok, sid, tab); await writeTweetsToSheet(tok, sid, tab, tweets); });
+    log(`☁️ Synced ${tweets.length} posts → tab ${tab}`);
+  } catch(e){ log('❌ Google sync error: ' + em(e)); }
+}
+
+// ---------- Rendering ----------
+function timeAgo(iso){
+  const d = new Date(iso); const diff = (Date.now()-d.getTime())/1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60)+'m ago';
+  if (diff < 86400) return Math.floor(diff/3600)+'h ago';
+  if (diff < 86400*30) return Math.floor(diff/86400)+'d ago';
+  return d.toLocaleDateString();
+}
+function fmtDate(iso){ return new Date(iso).toLocaleString('en-US',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}); }
+function typeBadgeClass(type){
+  return {
+    new: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    thread: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+    reply: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    retweet: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
+    quote: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20',
+  }[type] || 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+}
+function statusMeta(s){
+  if (s==='starred') return {icon:'⭐', label:'Starred', cls:'text-yellow-500 bg-yellow-500/10 border-yellow-500/20'};
+  if (s==='read') return {icon:'🟢', label:'Read', cls:'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'};
+  return {icon:'⚪️', label:'Unread', cls:'text-slate-400 bg-slate-500/10 border-slate-500/20'};
+}
+
+function getProcessed(){
+  if (!state.tweets) return [];
+  let list = state.tweets.slice();
+  const f = state.filters;
+  if (f.type) list = list.filter(t => t.type === f.type);
+  if (f.status) list = list.filter(t => (t.status||'unread') === f.status);
+  if (f.text) { const q = f.text.toLowerCase(); list = list.filter(t => t.text.toLowerCase().includes(q)); }
+  if (state.threadFilter) list = list.filter(t => t.conversationId === state.threadFilter);
+  list.sort((a,b) => {
+    const k = state.sort.key; let av=a[k], bv=b[k];
+    if (k==='datetime') { av=new Date(av).getTime(); bv=new Date(bv).getTime(); }
+    if (av<bv) return state.sort.dir==='asc'?-1:1;
+    if (av>bv) return state.sort.dir==='asc'?1:-1;
+    return 0;
+  });
+  return list;
+}
+
+function render(){
+  const has = Boolean(state.tweets);
+  document.getElementById('statsBar').classList.toggle('hidden', !has);
+  document.getElementById('filterBar').classList.toggle('hidden', !has);
+  document.getElementById('tableWrap').classList.toggle('hidden', !has || state.loading);
+  document.getElementById('emptyState').classList.toggle('hidden', has || state.loading);
+  if (!has) return;
+
+  const all = state.tweets;
+  const counts = { new:0, thread:0, reply:0, retweet:0, quote:0 };
+  all.forEach(t => counts[t.type] = (counts[t.type]||0)+1);
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-2"><div class="text-lg font-bold">${all.length}</div><div class="text-[10px] text-slate-500 uppercase">Total</div></div>
+    <div class="rounded-lg border border-blue-500/20 bg-blue-500/5 p-2"><div class="text-lg font-bold text-blue-500">${counts.new||0}</div><div class="text-[10px] text-slate-500 uppercase">New Posts</div></div>
+    <div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-2"><div class="text-lg font-bold text-purple-500">${counts.thread||0}</div><div class="text-[10px] text-slate-500 uppercase">Thread Follow-ups</div></div>
+    <div class="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2"><div class="text-lg font-bold text-amber-500">${counts.reply||0}</div><div class="text-[10px] text-slate-500 uppercase">Replies</div></div>
+    <div class="rounded-lg border border-teal-500/20 bg-teal-500/5 p-2 col-span-2 md:col-span-1"><div class="text-lg font-bold text-teal-500">${(counts.retweet||0)+(counts.quote||0)}</div><div class="text-[10px] text-slate-500 uppercase">RT / Quote</div></div>
+  `;
+
+  document.getElementById('filterBar').innerHTML = `
+    <select id="filterType" class="text-xs px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <option value="">All types</option>
+      <option value="new">🆕 New Post</option>
+      <option value="thread">🧵 Thread follow-up</option>
+      <option value="reply">↩️ Reply</option>
+      <option value="retweet">🔁 Retweet</option>
+      <option value="quote">💬 Quote</option>
+    </select>
+    <select id="filterStatus" class="text-xs px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <option value="">All status</option>
+      <option value="unread">⚪️ Unread</option>
+      <option value="read">🟢 Read</option>
+      <option value="starred">⭐ Starred</option>
+    </select>
+    <input id="filterText" type="text" placeholder="Search text…" class="text-xs px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 flex-1 min-w-[140px]">
+    <select id="sortKey" class="text-xs px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <option value="datetime">Sort: Date</option>
+      <option value="like">Sort: Likes</option>
+      <option value="retweet">Sort: Retweets</option>
+    </select>
+    ${state.threadFilter ? `<button id="clearThread" class="text-xs px-2 py-1.5 rounded-lg border border-purple-400 text-purple-500">🧵 Thread view — clear</button>` : ''}
+    <div class="flex items-center gap-1 ml-auto">
+      <span class="text-[10px] text-slate-400">A</span>
+      <input id="scaleSlider" type="range" min="0" max="100" value="${Math.round(((state.scale-0.7)/0.8)*100)}" class="scale-slider w-20">
+      <span class="text-xs text-slate-400">A</span>
+    </div>
+  `;
+  document.getElementById('filterType').value = state.filters.type;
+  document.getElementById('filterStatus').value = state.filters.status;
+  document.getElementById('filterText').value = state.filters.text;
+  document.getElementById('sortKey').value = state.sort.key;
+  bindFilterEvents();
+
+  const processed = getProcessed();
+  document.getElementById('inventoryTitle').textContent = `📋 Timeline Inventory (${processed.length} / ${all.length})`;
+  const fs = Math.round(13*state.scale);
+  document.getElementById('tableBody').style.fontSize = fs+'px';
+  document.getElementById('tableBody').innerHTML = processed.map(rowHtml).join('') || `<tr><td colspan="6" class="text-center text-slate-400 py-6">No posts match current filters.</td></tr>`;
+  document.getElementById('cardsList').innerHTML = processed.map(cardHtml).join('') || `<div class="text-center text-slate-400 py-6 text-sm">No posts match current filters.</div>`;
+  bindRowEvents();
+}
+
+function rowHtml(t){
+  const sm = statusMeta(t.status);
+  return `<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-900/40 align-top thread-bar transition-colors" style="border-left-color:${threadColor(t.conversationId)}">
+    <td class="px-4 py-2.5 whitespace-nowrap text-slate-500 text-xs">${fmtDate(t.datetime)}<div class="text-[10px] text-slate-400">${timeAgo(t.datetime)}</div></td>
+    <td class="px-4 py-2.5"><span class="inline-block px-2 py-0.5 rounded-md border text-[10px] font-semibold ${typeBadgeClass(t.type)}">${t.typeLabel}</span>
+      ${t.type==='thread'||t.type==='reply' ? `<button data-thread="${t.conversationId}" class="threadBtn block mt-1 text-[10px] text-purple-500 hover:underline">view thread ↗</button>` : ''}
+    </td>
+    <td class="px-4 py-2.5"><div class="whitespace-pre-wrap break-words">${escapeHtml(t.text).slice(0,400)}</div><a href="${t.url}" target="_blank" rel="noreferrer" class="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline">Open on 𝕏 ↗</a></td>
+    <td class="px-4 py-2.5 text-[11px] text-slate-500 whitespace-nowrap">❤️ ${t.like}<br>🔁 ${t.retweet}<br>💬 ${t.reply}</td>
+    <td class="px-4 py-2.5"><button data-status="${t.id}" class="statusBtn px-2 py-1 text-[11px] font-bold border rounded-md w-full ${sm.cls}" title="Click to cycle status">${sm.icon} ${sm.label}</button></td>
+    <td class="px-4 py-2.5"><input data-note="${t.id}" value="${escapeHtml(t.note)}" placeholder="Add note…" class="noteInput w-full text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-emerald-500"></td>
+  </tr>`;
+}
+function cardHtml(t){
+  const sm = statusMeta(t.status);
+  return `<div class="border rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700/60 space-y-1.5 thread-bar" style="border-left-color:${threadColor(t.conversationId)}">
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <span class="inline-block px-2 py-0.5 rounded-md border text-[10px] font-semibold flex-shrink-0 ${typeBadgeClass(t.type)}">${t.typeLabel}</span>
+        <span class="text-[10px] text-slate-400 truncate">${timeAgo(t.datetime)}</span>
+      </div>
+      <a href="${t.url}" target="_blank" rel="noreferrer" title="Open on X" data-tip="Open" class="has-tip w-7 h-7 rounded-md border-0 bg-transparent flex items-center justify-center text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex-shrink-0">↗</a>
+    </div>
+    <div class="text-sm whitespace-pre-wrap break-words leading-snug">${escapeHtml(t.text).slice(0,400)}</div>
+    <div class="text-[10px] text-slate-500">❤️ ${t.like} &nbsp; 🔁 ${t.retweet} &nbsp; 💬 ${t.reply}</div>
+    <div class="flex items-center gap-2 pt-0.5">
+      <button data-status="${t.id}" class="statusBtn px-2 py-1 text-[11px] font-bold border rounded-md ${sm.cls}" title="Click to cycle status">${sm.icon} ${sm.label}</button>
+      <input data-note="${t.id}" value="${escapeHtml(t.note)}" placeholder="Add note…" class="noteInput flex-1 min-w-0 text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-emerald-500">
+    </div>
+  </div>`;
+}
+function threadColor(id){
+  let h = 0; for (let i=0;i<String(id).length;i++) h = (h*31 + String(id).charCodeAt(i)) % 360;
+  return `hsl(${h},60%,55%)`;
+}
+function bindRowEvents(){
+  document.querySelectorAll('.statusBtn').forEach(b => b.addEventListener('click', () => cycleStatus(b.dataset.status)));
+  document.querySelectorAll('.noteInput').forEach(inp => {
+    inp.addEventListener('change', () => saveNote(inp.dataset.note, inp.value));
+  });
+  document.querySelectorAll('.threadBtn').forEach(b => b.addEventListener('click', () => { state.threadFilter = b.dataset.thread; render(); }));
+}
+function bindFilterEvents(){
+  document.getElementById('filterType').addEventListener('change', e => { state.filters.type = e.target.value; savePrefs(); render(); });
+  document.getElementById('filterStatus').addEventListener('change', e => { state.filters.status = e.target.value; savePrefs(); render(); });
+  document.getElementById('filterText').addEventListener('input', e => { state.filters.text = e.target.value; savePrefs(); render(); });
+  document.getElementById('sortKey').addEventListener('change', e => { state.sort.key = e.target.value; savePrefs(); render(); });
+  const ct = document.getElementById('clearThread'); if (ct) ct.addEventListener('click', () => { state.threadFilter=null; render(); });
+  document.getElementById('scaleSlider').addEventListener('input', e => { state.scale = 0.7 + (Number(e.target.value)/100)*0.8; savePrefs(); render(); });
+}
+
+function renderGsStatus(){
+  const el = document.getElementById('gsStatus');
+  const sid = nid(state.gs.spreadsheetId);
+  const connected = state.gAuthed && Boolean(sid);
+  const tab = getHandleTab(state.handle);
+  el.textContent = connected
+    ? `Connected as ${state.gEmail || '(unknown)'}`
+    : state.gAuthed
+      ? `Google connected as ${state.gEmail || '(unknown)'} — attach or create a spreadsheet.`
+      : 'Not connected to Google Sheets.';
+  document.getElementById('btnGsConnect').classList.toggle('hidden', state.gAuthed);
+  document.getElementById('btnGsDisconnect').classList.toggle('hidden', !state.gAuthed);
+  document.getElementById('currentSheetTab').textContent = tab;
+  const link = document.getElementById('gsSheetLink');
+  link.classList.toggle('hidden', !sid);
+  if (sid) {
+    link.href = surl(sid);
+    link.textContent = surl(sid);
+  }
+  const badge = document.getElementById('sheetSyncBadge');
+  badge.classList.toggle('hidden', !connected);
+  if (connected) badge.textContent = `☁️ Synced to Google Sheets • tab: ${tab}`;
+}
+
+// ---------- Wiring ----------
+function openSettings(){ document.getElementById('settingsWrap').classList.add('open'); }
+function closeSettings(){ document.getElementById('settingsWrap').classList.remove('open'); }
 
 function applyTheme(){
   document.documentElement.classList.toggle('dark', state.dark);
   document.getElementById('btnDark').textContent = state.dark ? '☀' : '🌙';
 }
 
-function updateHandleUi(){
-  document.getElementById('handleInput').value = state.handle;
-  document.getElementById('timelineTitle').textContent = `𝕏 @${state.handle} Timeline`;
-  document.getElementById('btnOpenX').href = `https://x.com/${encodeURIComponent(state.handle)}/with_replies`;
-}
-
-function waitForWidgets(timeoutMs = 15000){
-  return new Promise((resolve, reject) => {
-    const started = Date.now();
-    const check = () => {
-      if (window.twttr?.widgets?.createTimeline) return resolve(window.twttr);
-      if (Date.now() - started >= timeoutMs) return reject(new Error('The official X widget library timed out. A browser extension or network filter may be blocking platform.twitter.com.'));
-      setTimeout(check, 50);
-    };
-    check();
-  });
-}
-
-function loadWidgets(){
-  if (window.twttr?.widgets?.createTimeline) return Promise.resolve(window.twttr);
-  if (widgetsPromise) return widgetsPromise;
-  widgetsPromise = new Promise((resolve, reject) => {
-    let script = document.getElementById('twitter-wjs');
-    if (!script) {
-      script = document.createElement('script');
-      script.id = 'twitter-wjs';
-      script.src = WIDGETS_SRC;
-      script.async = true;
-      script.charset = 'utf-8';
-      script.onerror = () => reject(new Error('Could not load X widgets.js. Check content blockers and network settings.'));
-      document.head.appendChild(script);
-    }
-    waitForWidgets().then(resolve).catch(reject);
-  }).catch(error => { widgetsPromise = null; throw error; });
-  return widgetsPromise;
-}
-
-function withTimeout(promise, timeoutMs){
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(
-      'The official X timeline did not respond. X’s syndication service may be returning HTTP 429 (rate limited), which is a known upstream embed problem.'
-    )), timeoutMs);
-    Promise.resolve(promise).then(
-      value => { clearTimeout(timer); resolve(value); },
-      error => { clearTimeout(timer); reject(error); }
-    );
-  });
-}
-
-async function renderTimeline(){
-  const thisRender = ++state.renderId;
-  const host = document.getElementById('timelineHost');
-  showError('');
-  setLoading(true);
-  host.innerHTML = '';
-  updateHandleUi();
-  savePrefs();
-  log(`⚡ Loading official timeline for @${state.handle}`);
-
-  try {
-    const twttr = await loadWidgets();
-    if (thisRender !== state.renderId) return;
-    const height = Math.max(640, Math.min(1200, window.innerHeight - 150));
-    const widget = await withTimeout(
-      twttr.widgets.createTimeline(
-        { sourceType: 'profile', screenName: state.handle },
-        host,
-        {
-          height,
-          theme: state.dark ? 'dark' : 'light',
-          chrome: 'nofooter',
-          dnt: true,
-          showReplies: true,
-          ariaPolite: 'polite'
-        }
-      ),
-      TIMELINE_TIMEOUT_MS
-    );
-    if (thisRender !== state.renderId) return;
-    if (!widget) throw new Error(`X did not return an embedded timeline for @${state.handle}. Confirm that the account exists and is public.`);
-    setLoading(false);
-    log(`✅ Official timeline loaded for @${state.handle}`);
-  } catch (error) {
-    if (thisRender !== state.renderId) return;
-    setLoading(false);
-    host.innerHTML = `
-      <div class="p-6 md:p-10 text-center space-y-4">
-        <div class="text-3xl">⚠️</div>
-        <div>
-          <div class="font-semibold text-slate-700 dark:text-slate-200">X’s official embedded timeline is unavailable</div>
-          <p class="mt-1 text-xs text-slate-500 max-w-2xl mx-auto">X’s syndication service can return HTTP 429 and leave its standard widget hidden. This happens upstream on X and cannot be bypassed by this static page.</p>
-        </div>
-        <div class="flex flex-wrap justify-center gap-2">
-          <button id="btnRetryEmbed" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">Retry official embed</button>
-          <a class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800" href="https://x.com/${encodeURIComponent(state.handle)}/with_replies" target="_blank" rel="noreferrer">Open @${escapeHtml(state.handle)} on X ↗</a>
-        </div>
-      </div>`;
-    document.getElementById('btnRetryEmbed').addEventListener('click', renderTimeline);
-    showError(error instanceof Error ? error.message : String(error));
-    document.getElementById('widgetStatus').textContent = 'X embed unavailable';
-  }
-}
-
-function useHandleFromInput(){
-  const input = document.getElementById('handleInput');
-  const handle = normalizeHandle(input.value);
-  if (!handle) {
-    showError('Enter a valid public X handle or profile URL.');
-    input.focus();
-    return;
-  }
+function setActiveHandle(value, loadCache = true){
+  const handle = extractHandle(value) || DEFAULT_HANDLE;
   state.handle = handle;
-  renderTimeline();
+  state.currentKey = handle.toLowerCase();
+  state.currentMeta = { id: state.currentKey, name: handle };
+  saveMetaMap(handle, state.currentMeta);
+  document.getElementById('handleInput').value = handle;
+  document.getElementById('btnOpenCollector').href = `https://x.com/${encodeURIComponent(handle)}/with_replies`;
+  savePrefs();
+  renderGsStatus();
+  if (loadCache) {
+    state.tweets = getCache(state.currentKey);
+    if (state.tweets) log(`📦 Loaded ${state.tweets.length} cached posts for @${handle}`);
+    render();
+  }
+}
+
+async function pasteCollectorFromClipboard(){
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) throw new Error('Clipboard is empty.');
+    document.getElementById('importText').value = text;
+    handleManualImport();
+  } catch (error) {
+    document.getElementById('importModal').classList.remove('hidden');
+    showError(`Could not read collector JSON from the clipboard. Paste it in the import dialog. (${em(error)})`);
+  }
 }
 
 function init(){
+  document.getElementById('gsClientId').value = state.gs.clientId || '';
+  document.getElementById('gsSheetId').value = state.gs.spreadsheetId || '';
   applyTheme();
-  updateHandleUi();
-  renderLogs();
+  renderGsStatus();
 
   document.getElementById('btnSettings').addEventListener('click', () => document.getElementById('settingsWrap').classList.toggle('open'));
-  document.getElementById('btnCloseSettings').addEventListener('click', () => document.getElementById('settingsWrap').classList.remove('open'));
+  document.getElementById('btnCloseSettings').addEventListener('click', closeSettings);
   document.getElementById('btnDebug').addEventListener('click', () => document.getElementById('debugWrap').classList.toggle('open'));
   document.getElementById('btnClearLogs').addEventListener('click', () => { state.logs = []; renderLogs(); });
-  document.getElementById('btnRefresh').addEventListener('click', useHandleFromInput);
-  document.getElementById('btnDark').addEventListener('click', () => { state.dark = !state.dark; applyTheme(); renderTimeline(); });
-  document.getElementById('handleInput').addEventListener('change', useHandleFromInput);
-  document.getElementById('handleInput').addEventListener('keydown', event => { if (event.key === 'Enter') useHandleFromInput(); });
+  document.getElementById('btnDark').addEventListener('click', () => { state.dark = !state.dark; savePrefs(); applyTheme(); });
 
-  renderTimeline();
+  document.getElementById('handleInput').addEventListener('change', event => setActiveHandle(event.target.value));
+  document.getElementById('handleInput').addEventListener('keydown', event => { if (event.key === 'Enter') setActiveHandle(event.target.value); });
+  document.getElementById('btnPaste').addEventListener('click', pasteCollectorFromClipboard);
+  document.getElementById('btnExport').addEventListener('click', exportCsv);
+  document.getElementById('btnImport').addEventListener('click', () => document.getElementById('importModal').classList.remove('hidden'));
+  document.getElementById('btnImportCancel').addEventListener('click', () => document.getElementById('importModal').classList.add('hidden'));
+  document.getElementById('btnImportConfirm').addEventListener('click', handleManualImport);
+  document.getElementById('importFile').addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try { document.getElementById('importText').value = await file.text(); }
+    catch(error) { showError('Could not read JSON file: ' + em(error)); }
+  });
+
+  const toggleSecret = id => {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  };
+  const copyValue = async (id, label) => {
+    const value = document.getElementById(id).value || '';
+    try { await navigator.clipboard.writeText(value); log(`📋 Copied ${label}`); }
+    catch { showError(`Could not copy ${label}. Select and copy it manually.`); }
+  };
+  document.getElementById('toggleClientId').addEventListener('click', () => toggleSecret('gsClientId'));
+  document.getElementById('copyClientId').addEventListener('click', () => copyValue('gsClientId', 'Client ID'));
+  document.getElementById('toggleSheetId').addEventListener('click', () => toggleSecret('gsSheetId'));
+  document.getElementById('copySheetId').addEventListener('click', () => copyValue('gsSheetId', 'Spreadsheet ID'));
+
+  document.getElementById('btnGoogle').addEventListener('click', () => { openSettings(); document.getElementById('googleSheetsSettings').scrollIntoView({behavior:'smooth', block:'start'}); });
+  document.getElementById('gsClientId').addEventListener('change', event => { state.gs.clientId = event.target.value.trim(); saveGsConfig(state.gs); });
+  document.getElementById('gsSheetId').addEventListener('change', event => { state.gs.spreadsheetId = event.target.value.trim(); saveGsConfig(state.gs); renderGsStatus(); });
+  document.getElementById('btnGsConnect').addEventListener('click', async () => {
+    try { await doGoogleAuth(true, true); renderGsStatus(); if (state.tweets) syncToGoogle(state.tweets, state.handle); }
+    catch(error){ showError(em(error)); }
+  });
+  document.getElementById('btnGsDisconnect').addEventListener('click', () => {
+    if (state.gToken && window.google?.accounts?.oauth2?.revoke) { try { window.google.accounts.oauth2.revoke(state.gToken, ()=>{}); } catch{} }
+    state.gToken = null; state.gTokenExpires = 0; state.gAuthed = false; state.gEmail = ''; renderGsStatus(); log('🔌 Disconnected from Google');
+  });
+  document.getElementById('btnGsAttach').addEventListener('click', async () => {
+    const sid = nid(state.gs.spreadsheetId);
+    if (!sid) { showError('Enter a valid Spreadsheet ID/URL first.'); return; }
+    try {
+      const tab = getHandleTab(state.handle);
+      const rows = await runWithGoogleAuth(async token => { await ensureTweetTab(token, sid, tab); return readTweetsFromSheet(token, sid, tab); });
+      state.gs.spreadsheetId = sid; saveGsConfig(state.gs); renderGsStatus();
+      log('✅ Tab ensured: ' + tab);
+      if (rows.length) {
+        const local = getCache(state.currentKey) || [];
+        const byId = Object.fromEntries(local.map(row => [row.id, row]));
+        rows.forEach(row => { byId[row.id] = { ...row, typeLabel: classifyLabelFromCode(row.type), conversationId: row.conversationId || row.id }; });
+        state.tweets = Object.values(byId).sort((a,b) => new Date(b.datetime) - new Date(a.datetime));
+        setCache(state.currentKey, state.tweets);
+        log(`☁️ Loaded and merged ${rows.length} posts from sheet`);
+        render();
+      }
+    } catch(error){ showError('Attach failed: ' + em(error)); }
+  });
+  document.getElementById('btnGsCreate').addEventListener('click', async () => {
+    try {
+      const tab = getHandleTab(state.handle);
+      const created = await runWithGoogleAuth(async token => {
+        const result = await createNewSpreadsheet(token, `X Dashboard - ${state.handle}`, tab);
+        if (state.tweets?.length) await writeTweetsToSheet(token, result.spreadsheetId, tab, state.tweets);
+        return result;
+      });
+      state.gs.spreadsheetId = created.spreadsheetId; saveGsConfig(state.gs); renderGsStatus();
+      log('✅ Created spreadsheet: ' + created.spreadsheetUrl);
+    } catch(error){ showError('Create failed: ' + em(error)); }
+  });
+
+  setActiveHandle(state.handle);
+  if (!state.tweets) openSettings();
+}
+
+function classifyLabelFromCode(code){
+  return { new:'🆕 New Post', thread:'🧵 Thread follow-up', reply:'↩️ Reply', retweet:'🔁 Retweet', quote:'💬 Quote Post' }[code] || code;
+}
+
+function exportCsv(){
+  const list = getProcessed();
+  if (!list.length) return;
+  const headers = ['Datetime','Type','Text','URL','Author','InReplyTo','Likes','Retweets','Replies','Views','Status','Note','Media','CapturedAt'];
+  const rows = list.map(t => [t.datetime, t.type, '"'+ (t.text||'').replace(/"/g,'""') +'"', t.url, t.author, t.inReplyTo, t.like, t.retweet, t.reply, t.view, t.status, '"'+(t.note||'').replace(/"/g,'""')+'"', '"'+(t.media||[]).join(' ').replace(/"/g,'""')+'"', t.capturedAt||'']);
+  const csv = [headers.join(','), ...rows.map(r=>r.join(','))].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `x_${state.handle}_${Date.now()}.csv`; a.click();
+}
+
+function handleManualImport(){
+  const input = document.getElementById('importText');
+  const raw = input.value.trim();
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) && parsed.schema && parsed.schema !== 'daggerok-x-collector/v1') {
+      throw new Error(`Unsupported collector schema: ${parsed.schema}`);
+    }
+    const arr = Array.isArray(parsed) ? parsed : (parsed.tweets || parsed.data || []);
+    if (!Array.isArray(arr) || !arr.length) throw new Error('No collected tweets were found in the JSON.');
+    const handle = extractHandle(Array.isArray(parsed) ? state.handle : (parsed.handle || state.handle));
+    if (!handle) throw new Error('Collector JSON does not contain a valid profile handle.');
+    setActiveHandle(handle, false);
+    const key = handle.toLowerCase();
+    const meta = { id: key, name: handle };
+    saveMetaMap(handle, meta);
+    const cached = getCache(key) || [];
+    const existingMap = Object.fromEntries(cached.map(tweet => [tweet.id, tweet]));
+    const normalized = arr
+      .filter(tweet => tweet && tweet.id)
+      .map(tweet => normalizeTweet(tweet, key, handle, existingMap));
+    if (!normalized.length) throw new Error('Collected JSON contains no valid post IDs.');
+    const beforeIds = new Set(cached.map(tweet => tweet.id));
+    const byId = Object.fromEntries(cached.map(tweet => [tweet.id, tweet]));
+    normalized.forEach(tweet => { byId[tweet.id] = tweet; });
+    const finalList = Object.values(byId).sort((a,b) => new Date(b.datetime) - new Date(a.datetime));
+    const added = normalized.filter(tweet => !beforeIds.has(tweet.id)).length;
+    state.currentKey = key;
+    state.currentMeta = meta;
+    state.tweets = finalList;
+    setCache(key, finalList);
+    log(`📋 Imported ${normalized.length} captured posts for @${handle} (${added} new, ${finalList.length} total)`);
+    document.getElementById('importModal').classList.add('hidden');
+    input.value = '';
+    showError(null);
+    if (isGoogleReady()) syncToGoogle(finalList, handle);
+    renderGsStatus();
+    render();
+  } catch(error) {
+    showError('Collector import failed: ' + em(error));
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
