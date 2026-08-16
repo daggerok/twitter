@@ -4,10 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>𝕏 Timeline Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="icon" type="image/x-icon" href="./favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+  };
+</script>
 <style>
   @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  .animate-fade-in{animation:fadeIn .35s ease-out}
+  .animate-fade-in{animation:fadeIn .4s ease-out}
   .dark-scroll::-webkit-scrollbar{height:6px;width:6px}
   .dark-scroll::-webkit-scrollbar-track{background:transparent}
   .dark-scroll::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
@@ -22,14 +32,22 @@
   .settings-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(.4,0,.2,1),opacity .25s ease-out;opacity:0;overflow:hidden}
   .settings-wrap.open{grid-template-rows:1fr;opacity:1}
   .settings-inner{overflow:hidden;min-height:0}
-  html.dark, html.dark body{background:#020617!important;color:#f1f5f9!important;color-scheme:dark}
+  .debug-panel{font-size:12px;border-radius:8px}
+  .debug-row{transition:background .1s}
+  .debug-row:hover{background:rgba(148,163,184,.08)}
   input[type=range].scale-slider{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
   input[type=range].scale-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;cursor:pointer}
   input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;cursor:pointer;border:none}
   .dark input[type=range].scale-slider{background:#334155}
   .dark input[type=range].scale-slider::-webkit-slider-thumb{background:#10b981}
+  .dark input[type=range].scale-slider::-moz-range-thumb{background:#10b981}
   html:not(.dark) input[type=range].scale-slider{background:#cbd5e1}
   html:not(.dark) input[type=range].scale-slider::-webkit-slider-thumb{background:#059669}
+  html:not(.dark) input[type=range].scale-slider::-moz-range-thumb{background:#059669}
+  html.dark,html.dark body{background:#020617!important;color:#f1f5f9!important;color-scheme:dark}
+  html.dark table{color:#e2e8f0}
+  html.dark table td{color:inherit}
+  html.dark table th{color:#94a3b8}
   .has-tip{position:relative}
   .has-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(4px);background:#0f172a;color:#f8fafc;font-size:10px;line-height:1.2;font-weight:600;white-space:nowrap;padding:4px 7px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .12s ease,transform .12s ease;z-index:40;box-shadow:0 4px 12px rgba(0,0,0,.25)}
   .has-tip:hover::after,.has-tip:focus-visible::after{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -38,178 +56,257 @@
 </style>
 </head>
 <body class="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
-<div id="app" class="max-w-6xl mx-auto px-3 md:px-6 pb-24">
+<div id="app" class="min-h-screen pb-24">
 
-  <!-- Navbar -->
-  <div class="sticky top-0 z-30 pt-4 pb-3 bg-white/95 dark:bg-slate-950/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
-    <div class="flex items-center gap-2 mb-3">
-      <div class="text-2xl">𝕏</div>
-      <div>
-        <div class="font-bold text-lg leading-tight">Timeline Dashboard</div>
-        <div class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Track new posts, thread follow-ups &amp; replies</div>
-      </div>
-    </div>
-    <div class="flex flex-col md:flex-row gap-2">
-      <input id="handleInput" type="text" placeholder="X handle or profile URL (e.g. @I_Am_The_ICT)"
-        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 font-mono font-medium text-sm focus:outline-none focus:border-emerald-500 transition-colors">
-      <div class="grid grid-cols-4 md:flex gap-1 md:gap-1.5">
-        <button id="btnSettings" title="Settings" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">⚙️</button>
-        <button id="btnDebug" title="Debug console" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800">🐞</button>
-        <button id="btnUpdate" title="Update (new posts only)" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20">⬇</button>
-        <button id="btnRefresh" title="Full refresh" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800">🔄</button>
-        <button id="btnGoogle" title="Connect Google Sheets" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800">☁️</button>
-        <button id="btnImport" title="Manual JSON import" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800">📋</button>
-        <button id="btnExport" title="Export CSV" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800">📥</button>
-        <button id="btnDark" title="Toggle theme" class="tbBtn w-full md:w-9 h-9 rounded-lg flex items-center justify-center text-base hover:bg-slate-100 dark:hover:bg-slate-800 text-yellow-400">☀</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Debug console -->
-  <div id="debugWrap" class="console-wrap">
-    <div class="console-inner">
-      <div class="mt-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 debug-panel">
-        <div class="flex items-center justify-between mb-2">
-          <div class="font-bold text-xs">🐞 Debug Console (<span id="logCount">0</span>)</div>
-          <button id="btnClearLogs" class="text-[10px] px-2 py-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700">Clear</button>
+  <!-- Navbar: intentionally mirrors daggerok/youtube -->
+  <div class="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
+    <div class="px-4 xl:px-8">
+      <div class="flex flex-col md:flex-row md:items-center gap-2 py-3">
+        <div class="w-full md:flex-1 min-w-0">
+          <input id="handleInput" type="text" title="X profile link or @handle"
+            placeholder="X profile link or handle (@I_Am_The_ICT)..."
+            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 font-mono font-medium text-sm focus:outline-none focus:border-emerald-500 transition-colors">
         </div>
-        <div id="logList" class="max-h-56 overflow-y-auto dark-scroll text-[11px] font-mono space-y-0.5"></div>
+        <div class="grid grid-flow-col auto-cols-fr justify-items-center gap-1.5 w-full md:flex md:w-auto">
+          <button id="btnSettings" title="Settings" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">⚙️</button>
+          <button id="btnDebug" title="Toggle debug console" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base hover:bg-slate-100 dark:hover:bg-slate-800">🐛</button>
+          <button id="btnUpdate" title="Update (new posts only)" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20">⬇</button>
+          <button id="btnRefresh" title="Full refresh" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">🔄</button>
+          <button id="btnGoogle" title="Google Sheets settings" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-blue-500 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20">☁️</button>
+          <button id="btnImport" title="Manual JSON import" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base hover:bg-slate-100 dark:hover:bg-slate-800">📋</button>
+          <button id="btnExport" title="Export CSV" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800">📥</button>
+          <button id="btnDark" title="Toggle theme" class="w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base text-yellow-400 hover:bg-slate-100 dark:hover:bg-slate-800">☀</button>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Settings -->
-  <div id="settingsWrap" class="settings-wrap">
-    <div class="settings-inner">
-      <div class="mt-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-5 text-sm">
-        <div class="flex items-center justify-between">
-          <div class="font-bold">📋 Setup &amp; Data Sources</div>
-          <button id="btnCloseSettings" class="text-xs px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Close</button>
-        </div>
-
-        <div class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-          ⚠️ X/Twitter's official API no longer offers free read access (free tier is write-only). This dashboard uses
-          <a href="https://twitterapi.io" target="_blank" class="text-emerald-600 dark:text-emerald-400 underline">twitterapi.io</a>
-          — a cheap pay-per-use proxy (~$0.15 per 1,000 posts, new accounts get free trial credit, no card required) which is effectively
-          free for tracking a single account's timeline. All requests run directly from your browser using your own key. Data is cached in
-          <b>localStorage</b> and can optionally sync to your own <b>Google Sheet</b>.
-        </div>
-
-        <!-- twitterapi.io key -->
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">twitterapi.io API Key</label>
-            <div class="flex gap-1">
-              <button id="toggleApiKey" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">👁️</button>
-              <button id="copyApiKey" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">📋</button>
+      <!-- Debug Console: same card/table treatment as daggerok/youtube -->
+      <div id="debugWrap" class="console-wrap">
+        <div class="console-inner">
+          <div class="pb-2 -mt-1">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm debug-panel">
+              <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/40 flex items-center justify-between text-[11px]">
+                <div class="font-semibold text-emerald-500 flex items-center gap-2">🐛 Debug Console <span class="font-normal text-[10px] text-slate-400">(<span id="logCount">0</span>)</span></div>
+                <button id="btnClearLogs" class="text-[10px] px-2 py-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700">Clear</button>
+              </div>
+              <div id="logList" class="max-h-[180px] overflow-auto dark-scroll light-scroll px-3 py-2 text-[11px] font-mono"></div>
             </div>
           </div>
-          <input id="apiKeyInput" type="password" placeholder="paste your x-api-key from twitterapi.io"
-            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-emerald-500">
-          <div class="text-[11px] text-slate-500 mt-1">
-            Get a key: 1) go to <a href="https://twitterapi.io" target="_blank" class="underline text-emerald-600 dark:text-emerald-400">twitterapi.io</a> →
-            2) sign in with Google (no card, no OAuth dance) → 3) copy your API key from the dashboard → 4) paste it above.
-          </div>
         </div>
+      </div>
+    </div>
+  </div>
 
-        <!-- Fetch options -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 block mb-1">Max posts per Load</label>
-            <input id="maxPostsInput" type="number" min="20" max="500" step="20" value="100"
-              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs">
+  <!-- Main workspace: same full-width spacing as daggerok/youtube -->
+  <div class="px-4 xl:px-8 py-1">
+    <div id="settingsWrap" class="settings-wrap">
+      <div class="settings-inner">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg text-sm mb-2">
+          <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700/50 bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-900/30 dark:to-slate-900/10 flex items-center justify-between">
+            <h3 class="font-bold text-emerald-500 text-[15px]">📋 Core Architecture &amp; Setup</h3>
+            <button id="btnCloseSettings" class="text-xs px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">Close</button>
           </div>
-          <div>
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 block mb-1">Optional CORS proxy prefix</label>
-            <input id="proxyInput" type="text" placeholder="e.g. https://your-worker.dev/?url="
-              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono">
-          </div>
-        </div>
-        <div class="text-[11px] text-slate-500 -mt-3">
-          If the browser blocks direct calls (CORS), requests are retried through this prefix + URL-encoded target. Leave empty to call twitterapi.io directly. If both fail, use 📋 Manual JSON Import instead (paste a response from Postman/curl).
-        </div>
 
-        <!-- Google Sheets -->
-        <div class="border-t border-slate-200 dark:border-slate-800 pt-4">
-          <div class="font-semibold mb-2">☁️ Google Sheets Sync (cross-device, optional)</div>
-          <div class="text-[11px] text-slate-500 leading-relaxed mb-2">
-            1. Go to <a href="https://console.cloud.google.com" target="_blank" class="underline text-emerald-600 dark:text-emerald-400">console.cloud.google.com</a>,
-            enable the <b>Google Sheets API</b>, configure the OAuth consent screen (add yourself as a Test user), then create an
-            <b>OAuth 2.0 Client ID</b> (Web application) with authorized JavaScript origins <code>https://daggerok.github.io</code> and <code>http://localhost</code>.<br>
-            2. Paste the Client ID + a Spreadsheet ID (or URL) below. Each tracked handle gets its own tab, e.g. <code>TW-@I_Am_The_ICT</code>.
-            Only the Client ID is stored — no secrets. The access token lives in memory only.
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="p-5 space-y-4">
+            <div class="space-y-2 text-xs text-slate-500 dark:text-slate-400">
+              <div><strong class="text-emerald-500">Auto-Load + Cross-device Sync:</strong> localStorage + Google Sheets. Connect Google to keep post statuses and notes on your devices.</div>
+              <div><strong class="text-blue-500 dark:text-blue-400">Per-handle tabs:</strong> Each X account gets its own tab (for example <code>TW-@I_Am_The_ICT</code>) inside one spreadsheet.</div>
+            </div>
+
+            <!-- twitterapi.io setup guide -->
+            <div class="pt-1 border-t border-slate-200 dark:border-slate-700/30">
+              <div class="font-semibold text-sm mb-2">twitterapi.io API (live X data)</div>
+              <details class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-amber-900 dark:text-amber-200">📋 twitterapi.io Setup (API key &amp; pricing)</summary>
+                <div class="px-4 pb-4 space-y-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                  <div>
+                    <div class="font-semibold">1. Sign in and open the dashboard</div>
+                    <p class="mt-1">Go to <a href="https://twitterapi.io/dashboard" target="_blank" rel="noreferrer" class="underline">twitterapi.io/dashboard</a> and sign in with Google. No credit card is required for the starter credit.</p>
+                  </div>
+                  <div>
+                    <div class="font-semibold">2. Copy your API key</div>
+                    <p class="mt-1">In the dashboard, find your API key, copy it, paste it below, then close Settings and press <b>⬇ Update</b>. It is an API key for twitterapi.io—not an official X developer key.</p>
+                  </div>
+                  <div>
+                    <div class="font-semibold">3. Understand the “free” limit</div>
+                    <p class="mt-1"><b>twitterapi.io is free to start, not free forever.</b> Its current site advertises a one-time <b>$0.10 starter credit</b>. After that credit is used, live reads are pay-as-you-go: currently <b>$0.15 per 1,000 returned tweets</b> and <b>$0.18 per 1,000 user profiles</b>, with a small minimum charge per request. There is no recurring free monthly quota.</p>
+                  </div>
+                  <div class="rounded-lg border border-amber-300/60 dark:border-amber-700 bg-white/50 dark:bg-slate-950/20 p-2">
+                    <b>Cost control:</b> This app caches data locally, merges only unseen posts on Update, and stops paging after it reaches a known post. Full Refresh and a large “Max posts” value consume more credit. Confirm the latest rates on the <a href="https://twitterapi.io/pricing" target="_blank" rel="noreferrer" class="underline">official pricing page</a>.
+                  </div>
+                  <div class="text-rose-700 dark:text-rose-300"><b>Security:</b> Use this only as your private personal dashboard. The key is stored in this browser’s localStorage and sent directly to twitterapi.io. Never commit or share your key.</div>
+                </div>
+              </details>
+            </div>
+
             <div>
-              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 block mb-1">Google OAuth Client ID</label>
-              <input id="gsClientId" type="text" placeholder="1234567890-abc.apps.googleusercontent.com"
-                class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-semibold">twitterapi.io API Key</label>
+                <div class="flex items-center gap-1">
+                  <button id="toggleApiKey" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Show or hide API key">👁️‍🗨️</button>
+                  <button id="copyApiKey" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Copy API key">📋</button>
+                </div>
+              </div>
+              <input id="apiKeyInput" type="password" autocomplete="off" placeholder="Paste your X-API-Key from twitterapi.io"
+                class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-emerald-500 transition-colors">
             </div>
-            <div>
-              <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 block mb-1">Spreadsheet ID or URL</label>
-              <input id="gsSheetId" type="text" placeholder="https://docs.google.com/spreadsheets/d/.../edit"
-                class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs font-medium text-slate-600 dark:text-slate-400 block mb-1">Max posts per load</label>
+                <input id="maxPostsInput" type="number" min="20" max="500" step="20" value="100"
+                  class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500">
+              </div>
+              <div>
+                <label class="text-xs font-medium text-slate-600 dark:text-slate-400 block mb-1">Optional CORS proxy prefix</label>
+                <input id="proxyInput" type="text" placeholder="https://your-worker.dev/?url="
+                  class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500">
+              </div>
+            </div>
+            <div class="text-[10px] text-slate-500 -mt-3">Direct browser calls are tried first. If CORS blocks them, the optional proxy is tried; otherwise use 📋 Manual JSON Import.</div>
+
+            <!-- Google Sheets menu and guide, matching daggerok/youtube -->
+            <div id="googleSheetsSettings" class="pt-1 border-t border-slate-200 dark:border-slate-700/30">
+              <div class="font-semibold text-sm mb-2">Google Sheets Sync (Cross-device)</div>
+              <div class="space-y-4 animate-fade-in">
+                <details class="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+                  <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-900 dark:text-blue-200">📋 Google Sheets Setup (per-channel tabs)</summary>
+                  <div class="px-4 pb-4 space-y-3 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+                    <div>
+                      <div class="font-semibold">1. Create or select a Google Cloud project</div>
+                      <p class="mt-1">Open <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" class="underline">console.cloud.google.com</a>. Create a project (or select one), then open <b>APIs &amp; Services → Library</b>, find <b>Google Sheets API</b>, and click <b>Enable</b>.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">2. Configure the OAuth consent screen</div>
+                      <p class="mt-1">Open <b>Google Auth Platform → Branding / Audience</b>. Choose <b>External</b> for a personal Gmail account, complete the required app fields, keep the app in Testing, and add your Google email under <b>Test users</b>. Add the scopes for Google Sheets, <code>openid</code>, email, and profile if Google asks.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">3. Create the Web OAuth Client ID</div>
+                      <p class="mt-1">Open <b>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</b>. Select <b>Web application</b> and add these Authorized JavaScript origins:</p>
+                      <ul class="list-disc pl-4 mt-1 text-[10px] space-y-1">
+                        <li><code class="bg-blue-100 dark:bg-blue-800 px-1">https://daggerok.github.io</code></li>
+                        <li><code class="bg-blue-100 dark:bg-blue-800 px-1">http://localhost</code> (only for local testing)</li>
+                      </ul>
+                      <p class="mt-1">Copy the Client ID ending in <code>.apps.googleusercontent.com</code>. No client secret is used by this browser-only app.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">4. Connect a spreadsheet</div>
+                      <p class="mt-1">Paste the Client ID below. Either paste an existing Google Spreadsheet URL/ID and choose <b>Attach / Ensure Tabs</b>, or choose <b>Create new Spreadsheet</b>. Allow the requested permissions in Google’s popup.</p>
+                    </div>
+                    <div>
+                      <div class="font-semibold">5. Use per-handle tabs</div>
+                      <p class="mt-1">One spreadsheet stores every tracked X account in a separate tab named <code>TW-@handle</code>. Statuses and notes sync after you connect. Keep the sheet private unless you intentionally want to share it.</p>
+                    </div>
+                    <div class="text-amber-700 dark:text-amber-300"><b>Security:</b> Only the public OAuth Client ID and Spreadsheet ID are kept in localStorage. Google’s access token is held in memory and disappears when the page closes.</div>
+                  </div>
+                </details>
+
+                <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+                    <div>
+                      <div id="gsStatus" class="font-medium text-slate-700 dark:text-slate-300">Not connected to Google Sheets.</div>
+                      <a id="gsSheetLink" href="#" target="_blank" rel="noreferrer" class="hidden text-xs underline text-emerald-600 dark:text-emerald-400 break-all mt-1"></a>
+                    </div>
+                    <div class="flex gap-2">
+                      <button id="btnGsConnect" class="px-3 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium disabled:opacity-50">Connect Google</button>
+                      <button id="btnGsDisconnect" class="text-xs px-3 py-1 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hidden">Disconnect</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Google OAuth Client ID</label>
+                    <div class="flex items-center gap-1">
+                      <button id="toggleClientId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Show or hide Client ID">👁️‍🗨️</button>
+                      <button id="copyClientId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Copy Client ID">📋</button>
+                    </div>
+                  </div>
+                  <input id="gsClientId" type="password" autocomplete="off" placeholder="1234567890-abc123.apps.googleusercontent.com"
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Spreadsheet ID or full URL</label>
+                    <div class="flex items-center gap-1">
+                      <button id="toggleSheetId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Show or hide Spreadsheet ID">👁️‍🗨️</button>
+                      <button id="copySheetId" type="button" class="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Copy Spreadsheet ID">📋</button>
+                    </div>
+                  </div>
+                  <input id="gsSheetId" type="password" autocomplete="off" placeholder="https://docs.google.com/spreadsheets/d/1abc.../edit"
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500">
+                  <div class="text-[10px] mt-0.5 text-slate-500">One spreadsheet holds tabs for all tracked X accounts.</div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <button id="btnGsAttach" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">Attach / Ensure Tabs</button>
+                  <button id="btnGsCreate" class="text-xs px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">Create new Spreadsheet</button>
+                </div>
+                <div class="text-[10px] text-slate-400">Current handle tab (auto): <span id="currentSheetTab" class="font-mono">TW-@I_Am_The_ICT</span></div>
+              </div>
             </div>
           </div>
-          <div class="flex flex-wrap gap-2 mt-3">
-            <button id="btnGsConnect" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Connect Google</button>
-            <button id="btnGsDisconnect" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hidden">Disconnect</button>
-            <button id="btnGsAttach" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Attach / Ensure Tab</button>
-            <button id="btnGsCreate" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Create New Spreadsheet</button>
-          </div>
-          <div id="gsStatus" class="text-[11px] mt-2 text-slate-500">Not connected to Google Sheets.</div>
         </div>
       </div>
     </div>
+
+    <div id="errorBanner" class="hidden flex bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-xl mb-6 text-sm items-start justify-between gap-2 animate-fade-in max-w-3xl mx-auto"></div>
+
+    <div id="statsBar" class="hidden mb-2 grid grid-cols-2 md:grid-cols-5 gap-2 text-center"></div>
+    <div id="filterBar" class="hidden flex mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-3 flex-wrap gap-2 items-center"></div>
+
+    <div id="tableWrap" class="hidden space-y-6 animate-fade-in">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg">
+        <div class="px-4 py-3 bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-900/30 dark:to-slate-900/10 flex items-center justify-between gap-4">
+          <div>
+            <h3 id="inventoryTitle" class="font-bold text-emerald-500 text-base">📋 Timeline Inventory</h3>
+            <div id="sheetSyncBadge" class="hidden text-[10px] mt-0.5 text-emerald-400">☁️ Synced to Google Sheets</div>
+          </div>
+        </div>
+        <div class="hidden md:block overflow-x-auto dark-scroll light-scroll">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="text-left text-[11px] uppercase tracking-wider text-slate-500">
+                <th class="px-4 py-3 w-40">Datetime</th>
+                <th class="px-4 py-3 w-36">Type</th>
+                <th class="px-4 py-3">Post</th>
+                <th class="px-4 py-3 w-28">Stats</th>
+                <th class="px-4 py-3 w-24">Status</th>
+                <th class="px-4 py-3 w-40">Note</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-700/30"></tbody>
+          </table>
+        </div>
+        <div id="cardsList" class="block md:hidden p-3 space-y-2"></div>
+      </div>
+    </div>
+
+    <div id="emptyState" class="text-center py-20 text-slate-500 dark:text-slate-400">
+      <p class="text-lg">Paste your twitterapi.io key + Google OAuth Client ID in Settings to start.</p>
+      <p class="text-xs mt-2">The default profile is <b>@I_Am_The_ICT</b>. Data caches locally and can sync to a per-handle Google Sheets tab.</p>
+    </div>
+
+    <div id="loadingState" class="hidden text-center py-20 text-slate-500 dark:text-slate-400 animate-fade-in">
+      <div class="flex items-center justify-center gap-3">
+        <div class="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full"></div>
+        <span id="loadingText">Synchronizing with twitterapi.io…</span>
+      </div>
+    </div>
   </div>
-
-  <div id="errorBanner" class="hidden mt-3 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-3 py-2 text-sm flex items-start justify-between gap-2"></div>
-
-  <!-- Stats bar -->
-  <div id="statsBar" class="hidden mt-4 grid grid-cols-2 md:grid-cols-5 gap-2 text-center"></div>
-
-  <!-- Filters -->
-  <div id="filterBar" class="hidden mt-3 flex flex-wrap gap-2 items-center"></div>
-
-  <!-- Table (desktop) -->
-  <div id="tableWrap" class="hidden mt-3 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto dark-scroll">
-    <table class="w-full text-sm hidden md:table">
-      <thead>
-        <tr class="text-left border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-slate-500">
-          <th class="px-3 py-2 w-40">Date</th>
-          <th class="px-3 py-2 w-36">Type</th>
-          <th class="px-3 py-2">Post</th>
-          <th class="px-3 py-2 w-28">Stats</th>
-          <th class="px-3 py-2 w-24">Status</th>
-          <th class="px-3 py-2 w-40">Note</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-    <div id="cardsList" class="md:hidden divide-y divide-slate-200 dark:divide-slate-800"></div>
-  </div>
-
-  <div id="emptyState" class="mt-10 text-center text-slate-500 text-sm">
-    Paste your twitterapi.io API key in ⚙️ Settings, then click ⬇ Update to load
-    <b>@I_Am_The_ICT</b>'s timeline (or any other handle).
-  </div>
-
-  <div id="loadingState" class="hidden mt-10 text-center text-slate-500 text-sm animate-fade-in">
-    <div class="inline-block w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-    <div id="loadingText">Fetching timeline…</div>
-  </div>
-
 </div>
 
 <!-- Manual Import Modal -->
-<div id="importModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
-  <div class="bg-white dark:bg-slate-900 rounded-xl max-w-xl w-full p-4 space-y-3">
-    <div class="font-bold">📋 Manual JSON Import</div>
-    <div class="text-xs text-slate-500">Paste the JSON response body from twitterapi.io's <code>/twitter/user/last_tweets</code> endpoint (or an array of tweet objects). Useful if direct browser calls get CORS-blocked.</div>
-    <textarea id="importText" rows="8" class="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2"></textarea>
-    <div class="flex justify-end gap-2">
-      <button id="btnImportCancel" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700">Cancel</button>
-      <button id="btnImportConfirm" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Import</button>
+<div id="importModal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-xl w-full overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/40 font-bold">📋 Manual JSON Import</div>
+    <div class="p-4 space-y-3">
+      <div class="text-xs text-slate-500">Paste the response body from twitterapi.io’s <code>/twitter/user/last_tweets</code> endpoint, or an array of tweet objects.</div>
+      <textarea id="importText" rows="8" class="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus:border-emerald-500"></textarea>
+      <div class="flex justify-end gap-2">
+        <button id="btnImportCancel" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700">Cancel</button>
+        <button id="btnImportConfirm" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Import</button>
+      </div>
     </div>
   </div>
 </div>
@@ -370,11 +467,16 @@ function normalizeTweet(t, trackedId, trackedHandle, existing){
 // ---------- Fetching timeline ----------
 async function resolveUser(handle){
   const meta = getMetaMap()[handle.toLowerCase()];
+  // A profile lookup is billable too. Reuse resolved metadata after the first load.
+  if (meta?.id) {
+    log(`📦 Reused cached profile for @${handle}`);
+    return meta;
+  }
   const j = await apiGet('/twitter/user/info', { userName: handle });
   const u = j && (j.data || j.user || j);
   const id = u && (u.id || u.userId);
   const name = u && (u.userName || handle);
-  const info = { id: id || (meta && meta.id) || handle, name, avatar: u && u.profilePicture, followers: u && u.followers };
+  const info = { id: id || handle, name, avatar: u && u.profilePicture, followers: u && u.followers };
   saveMetaMap(handle, info);
   return info;
 }
@@ -663,6 +765,7 @@ function render(){
   bindFilterEvents();
 
   const processed = getProcessed();
+  document.getElementById('inventoryTitle').textContent = `📋 Timeline Inventory (${processed.length} / ${all.length})`;
   const fs = Math.round(13*state.scale);
   document.getElementById('tableBody').style.fontSize = fs+'px';
   document.getElementById('tableBody').innerHTML = processed.map(rowHtml).join('') || `<tr><td colspan="6" class="text-center text-slate-400 py-6">No posts match current filters.</td></tr>`;
@@ -672,32 +775,32 @@ function render(){
 
 function rowHtml(t){
   const sm = statusMeta(t.status);
-  return `<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-900/40 align-top thread-bar" style="border-left-color:${threadColor(t.conversationId)}">
-    <td class="px-3 py-2 whitespace-nowrap text-slate-500 text-xs">${fmtDate(t.datetime)}<div class="text-[10px] text-slate-400">${timeAgo(t.datetime)}</div></td>
-    <td class="px-3 py-2"><span class="inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold ${typeBadgeClass(t.type)}">${t.typeLabel}</span>
+  return `<tr class="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-900/40 align-top thread-bar transition-colors" style="border-left-color:${threadColor(t.conversationId)}">
+    <td class="px-4 py-2.5 whitespace-nowrap text-slate-500 text-xs">${fmtDate(t.datetime)}<div class="text-[10px] text-slate-400">${timeAgo(t.datetime)}</div></td>
+    <td class="px-4 py-2.5"><span class="inline-block px-2 py-0.5 rounded-md border text-[10px] font-semibold ${typeBadgeClass(t.type)}">${t.typeLabel}</span>
       ${t.type==='thread'||t.type==='reply' ? `<button data-thread="${t.conversationId}" class="threadBtn block mt-1 text-[10px] text-purple-500 hover:underline">view thread ↗</button>` : ''}
     </td>
-    <td class="px-3 py-2"><div class="whitespace-pre-wrap break-words">${escapeHtml(t.text).slice(0,400)}</div><a href="${t.url}" target="_blank" class="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline">Open on 𝕏 ↗</a></td>
-    <td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">❤️ ${t.like}<br>🔁 ${t.retweet}<br>💬 ${t.reply}</td>
-    <td class="px-3 py-2"><button data-status="${t.id}" class="statusBtn px-2 py-1 text-[11px] font-bold border rounded-md w-full ${sm.cls}">${sm.icon} ${sm.label}</button></td>
-    <td class="px-3 py-2"><input data-note="${t.id}" value="${escapeHtml(t.note)}" placeholder="Add note…" class="noteInput w-full text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent"></td>
+    <td class="px-4 py-2.5"><div class="whitespace-pre-wrap break-words">${escapeHtml(t.text).slice(0,400)}</div><a href="${t.url}" target="_blank" rel="noreferrer" class="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline">Open on 𝕏 ↗</a></td>
+    <td class="px-4 py-2.5 text-[11px] text-slate-500 whitespace-nowrap">❤️ ${t.like}<br>🔁 ${t.retweet}<br>💬 ${t.reply}</td>
+    <td class="px-4 py-2.5"><button data-status="${t.id}" class="statusBtn px-2 py-1 text-[11px] font-bold border rounded-md w-full ${sm.cls}" title="Click to cycle status">${sm.icon} ${sm.label}</button></td>
+    <td class="px-4 py-2.5"><input data-note="${t.id}" value="${escapeHtml(t.note)}" placeholder="Add note…" class="noteInput w-full text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-emerald-500"></td>
   </tr>`;
 }
 function cardHtml(t){
   const sm = statusMeta(t.status);
-  return `<div class="p-3 thread-bar" style="border-left-color:${threadColor(t.conversationId)}">
-    <div class="flex items-center justify-between gap-2 mb-1">
-      <span class="inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold ${typeBadgeClass(t.type)}">${t.typeLabel}</span>
-      <span class="text-[10px] text-slate-400">${timeAgo(t.datetime)}</span>
+  return `<div class="border rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700/60 space-y-1.5 thread-bar" style="border-left-color:${threadColor(t.conversationId)}">
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <span class="inline-block px-2 py-0.5 rounded-md border text-[10px] font-semibold flex-shrink-0 ${typeBadgeClass(t.type)}">${t.typeLabel}</span>
+        <span class="text-[10px] text-slate-400 truncate">${timeAgo(t.datetime)}</span>
+      </div>
+      <a href="${t.url}" target="_blank" rel="noreferrer" title="Open on X" data-tip="Open" class="has-tip w-7 h-7 rounded-md border-0 bg-transparent flex items-center justify-center text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex-shrink-0">↗</a>
     </div>
-    <div class="text-sm whitespace-pre-wrap break-words mb-1">${escapeHtml(t.text).slice(0,400)}</div>
-    <div class="flex items-center justify-between text-[11px] text-slate-500 mb-2">
-      <span>❤️ ${t.like} 🔁 ${t.retweet} 💬 ${t.reply}</span>
-      <a href="${t.url}" target="_blank" class="text-emerald-600 dark:text-emerald-400">Open ↗</a>
-    </div>
-    <div class="flex items-center gap-2">
-      <button data-status="${t.id}" class="statusBtn px-2 py-1 text-[11px] font-bold border rounded-md ${sm.cls}">${sm.icon} ${sm.label}</button>
-      <input data-note="${t.id}" value="${escapeHtml(t.note)}" placeholder="note…" class="noteInput flex-1 text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent">
+    <div class="text-sm whitespace-pre-wrap break-words leading-snug">${escapeHtml(t.text).slice(0,400)}</div>
+    <div class="text-[10px] text-slate-500">❤️ ${t.like} &nbsp; 🔁 ${t.retweet} &nbsp; 💬 ${t.reply}</div>
+    <div class="flex items-center gap-2 pt-0.5">
+      <button data-status="${t.id}" class="statusBtn px-2 py-1 text-[11px] font-bold border rounded-md ${sm.cls}" title="Click to cycle status">${sm.icon} ${sm.label}</button>
+      <input data-note="${t.id}" value="${escapeHtml(t.note)}" placeholder="Add note…" class="noteInput flex-1 min-w-0 text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:border-emerald-500">
     </div>
   </div>`;
 }
@@ -723,9 +826,26 @@ function bindFilterEvents(){
 
 function renderGsStatus(){
   const el = document.getElementById('gsStatus');
-  const connected = state.gAuthed && nid(state.gs.spreadsheetId);
-  el.textContent = connected ? `Connected as ${state.gEmail || '(unknown)'}. Tab for current handle: ${getHandleTab(state.handle)}` : 'Not connected to Google Sheets.';
+  const sid = nid(state.gs.spreadsheetId);
+  const connected = state.gAuthed && Boolean(sid);
+  const tab = getHandleTab(state.handle);
+  el.textContent = connected
+    ? `Connected as ${state.gEmail || '(unknown)'}`
+    : state.gAuthed
+      ? `Google connected as ${state.gEmail || '(unknown)'} — attach or create a spreadsheet.`
+      : 'Not connected to Google Sheets.';
+  document.getElementById('btnGsConnect').classList.toggle('hidden', state.gAuthed);
   document.getElementById('btnGsDisconnect').classList.toggle('hidden', !state.gAuthed);
+  document.getElementById('currentSheetTab').textContent = tab;
+  const link = document.getElementById('gsSheetLink');
+  link.classList.toggle('hidden', !sid);
+  if (sid) {
+    link.href = surl(sid);
+    link.textContent = surl(sid);
+  }
+  const badge = document.getElementById('sheetSyncBadge');
+  badge.classList.toggle('hidden', !connected);
+  if (connected) badge.textContent = `☁️ Synced to Google Sheets • tab: ${tab}`;
 }
 
 // ---------- Wiring ----------
@@ -746,6 +866,7 @@ function init(){
   document.getElementById('gsSheetId').value = state.gs.spreadsheetId || '';
   applyTheme();
   renderGsStatus();
+  if (!state.apiKey) openSettings();
 
   document.getElementById('btnSettings').addEventListener('click', () => {
     document.getElementById('settingsWrap').classList.toggle('open');
@@ -755,16 +876,27 @@ function init(){
   document.getElementById('btnClearLogs').addEventListener('click', () => { state.logs = []; renderLogs(); });
   document.getElementById('btnDark').addEventListener('click', () => { state.dark = !state.dark; savePrefs(); applyTheme(); });
 
-  document.getElementById('handleInput').addEventListener('change', e => { state.handle = extractHandle(e.target.value); savePrefs(); });
-  document.getElementById('handleInput').addEventListener('keydown', e => { if (e.key==='Enter') { state.handle = extractHandle(e.target.value); savePrefs(); fetchTimeline(state.handle, 'load'); } });
+  document.getElementById('handleInput').addEventListener('change', e => { state.handle = extractHandle(e.target.value); e.target.value = state.handle; savePrefs(); renderGsStatus(); });
+  document.getElementById('handleInput').addEventListener('keydown', e => { if (e.key==='Enter') { state.handle = extractHandle(e.target.value); e.target.value = state.handle; savePrefs(); renderGsStatus(); fetchTimeline(state.handle, 'load'); } });
 
   document.getElementById('apiKeyInput').addEventListener('change', e => { state.apiKey = e.target.value.trim(); savePrefs(); });
   document.getElementById('maxPostsInput').addEventListener('change', e => { state.maxPosts = Number(e.target.value)||100; savePrefs(); });
   document.getElementById('proxyInput').addEventListener('change', e => { state.proxyPrefix = e.target.value.trim(); savePrefs(); });
-  document.getElementById('toggleApiKey').addEventListener('click', () => {
-    const i = document.getElementById('apiKeyInput'); i.type = i.type==='password' ? 'text' : 'password';
-  });
-  document.getElementById('copyApiKey').addEventListener('click', () => { navigator.clipboard.writeText(state.apiKey||''); log('📋 Copied API key'); });
+  const toggleSecret = id => {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  };
+  const copyValue = async (id, label) => {
+    const value = document.getElementById(id).value || '';
+    try { await navigator.clipboard.writeText(value); log(`📋 Copied ${label}`); }
+    catch { showError(`Could not copy ${label}. Select and copy it manually.`); }
+  };
+  document.getElementById('toggleApiKey').addEventListener('click', () => toggleSecret('apiKeyInput'));
+  document.getElementById('copyApiKey').addEventListener('click', () => copyValue('apiKeyInput', 'API key'));
+  document.getElementById('toggleClientId').addEventListener('click', () => toggleSecret('gsClientId'));
+  document.getElementById('copyClientId').addEventListener('click', () => copyValue('gsClientId', 'Client ID'));
+  document.getElementById('toggleSheetId').addEventListener('click', () => toggleSecret('gsSheetId'));
+  document.getElementById('copySheetId').addEventListener('click', () => copyValue('gsSheetId', 'Spreadsheet ID'));
 
   document.getElementById('btnUpdate').addEventListener('click', () => { const h = extractHandle(document.getElementById('handleInput').value)||state.handle; state.handle=h; savePrefs(); fetchTimeline(h, state.tweets ? 'update' : 'load'); });
   document.getElementById('btnRefresh').addEventListener('click', () => { const h = extractHandle(document.getElementById('handleInput').value)||state.handle; state.handle=h; savePrefs(); fetchTimeline(h, 'refresh'); });
@@ -774,7 +906,7 @@ function init(){
   document.getElementById('btnImportCancel').addEventListener('click', () => document.getElementById('importModal').classList.add('hidden'));
   document.getElementById('btnImportConfirm').addEventListener('click', handleManualImport);
 
-  document.getElementById('btnGoogle').addEventListener('click', () => { openSettings(); document.getElementById('btnGsConnect').scrollIntoView({behavior:'smooth', block:'center'}); });
+  document.getElementById('btnGoogle').addEventListener('click', () => { openSettings(); document.getElementById('googleSheetsSettings').scrollIntoView({behavior:'smooth', block:'start'}); });
   document.getElementById('gsClientId').addEventListener('change', e => { state.gs.clientId = e.target.value.trim(); saveGsConfig(state.gs); });
   document.getElementById('gsSheetId').addEventListener('change', e => { state.gs.spreadsheetId = e.target.value.trim(); saveGsConfig(state.gs); renderGsStatus(); });
   document.getElementById('btnGsConnect').addEventListener('click', async () => {
@@ -791,7 +923,7 @@ function init(){
     try {
       const tab = getHandleTab(state.handle);
       const rows = await runWithGoogleAuth(async tok => { await ensureTweetTab(tok, sid, tab); return readTweetsFromSheet(tok, sid, tab); });
-      state.gs.spreadsheetId = sid; saveGsConfig(state.gs);
+      state.gs.spreadsheetId = sid; saveGsConfig(state.gs); renderGsStatus();
       log('✅ Tab ensured: ' + tab);
       if (rows.length) { state.tweets = rows.map(r => ({...r, typeLabel: classifyLabelFromCode(r.type)})); state.currentKey = state.currentKey || state.handle; setCache(state.currentKey, state.tweets); log(`☁️ Loaded ${rows.length} posts from sheet`); render(); }
     } catch(e){ showError('Attach failed: ' + em(e)); }
