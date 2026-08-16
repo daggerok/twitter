@@ -1,38 +1,59 @@
 # X / Twitter Timeline Dashboard
 
-A mobile-first, browser-only viewer for public X timelines, styled and structured like [`daggerok/youtube`](https://github.com/daggerok/youtube).
+A mobile-first, browser-only tracker for public X timelines, styled and structured like [`daggerok/youtube`](https://github.com/daggerok/youtube).
 
-Live app: <https://daggerok.github.io/twitter/>
+Live dashboard: <https://daggerok.github.io/twitter/>
 
-## 100% free official mode
+## How the free collector works
 
-The app now uses X's official embedded-profile widget:
+X's free embedded timeline is unreliable and frequently returns HTTP 429. X's official data API is pay-per-use. This project therefore provides an optional logged-in-browser collector:
 
-- no twitterapi.io account or key
-- no official X developer account or Bearer Token
-- no CORS proxy, Cloudflare Worker, or other server
-- no purchased API credit
-- defaults to [`@I_Am_The_ICT`](https://x.com/I_Am_The_ICT/with_replies)
-- requests replies through the official widget configuration
-- remembers the selected handle and theme in browser `localStorage`
-- remains a single-file application in [`index.html`](./index.html)
+1. Install [Tampermonkey](https://www.tampermonkey.net/).
+2. Install [`collector.user.js`](https://daggerok.github.io/twitter/collector.user.js).
+3. Log into X normally and open [`@I_Am_The_ICT` Posts & replies](https://x.com/I_Am_The_ICT/with_replies).
+4. Use the floating **ICT Collector** panel:
+   - **Start Manual** records rendered tweet cards while you scroll.
+   - **Start + Auto** performs slow, capped assisted scrolling.
+   - **Pause** stops immediately.
+5. Choose **Copy New JSON** or **Download JSON**.
+6. Return to the dashboard and use **📋 Paste** or the **📄 JSON import** dialog.
 
-## Important limitations
+No X password, session cookie, authorization token, or private browser storage is copied to the dashboard. The collector observes only tweet cards rendered in the current X page.
 
-The official widget renders its timeline inside a cross-origin iframe. Browsers intentionally prevent this application from reading the iframe's post data. Consequently, the free version cannot:
+## Dashboard features
 
-- classify individual posts as new posts, thread follow-ups, or replies
-- cache individual posts in `localStorage`
-- filter, annotate, or export post records
-- synchronize tweet rows to Google Sheets
+- Defaults to `@I_Am_The_ICT`, but supports other public profile handles.
+- Heuristically classifies captured cards as new posts, self-thread follow-ups, replies, reposts, or quotes.
+- Merges and deduplicates captures by post ID.
+- Caches records, statuses, notes, filters, and preferences in dashboard `localStorage`.
+- Optionally syncs records to Google Sheets using one `TW-@handle` tab per profile.
+- Preserves visible metrics, media URLs, capture time, and rendered reply/repost context.
+- Supports filters, statuses, notes, CSV export, and responsive desktop/mobile views.
 
-X controls the ordering, availability, and number of posts rendered by the widget. Use the **↗** toolbar action to open the complete Posts & replies page on X.
+## Collector safety controls
 
-X's syndication service is also known to return HTTP 429 for standard embedded timelines—even on a first request. When the official widget stalls, the app now stops waiting after 12 seconds and displays Retry/Open-on-X actions instead of an endless spinner. The `widgets.js` console message about “recent updates” links to a September 2022 parameter announcement; it is informational, not the cause of the failed load.
+Assisted scrolling is deliberately conservative:
 
-Structured tracking would require a data API and a server-side proxy. The official X API currently uses pay-per-use pricing, while third-party APIs are metered after their trial credit. Those integrations are deliberately omitted from this free-only build.
+- explicit user start and pause controls
+- configurable 1.8–6 second delay
+- configurable scroll cap, defaulting to 80
+- stops after repeated scans with no new rendered posts
+- stops after reaching posts seen in an earlier collector run
+- stores only post IDs in Tampermonkey storage to recognize previous captures
 
-## References
+## Important limitations and Terms
 
-- [X: How to embed a timeline](https://help.twitter.com/en/using-twitter/embed-twitter-feed)
-- [X API pay-per-usage pricing](https://docs.x.com/x-api/getting-started/pricing)
+- Collection is limited to cards X actually renders for the logged-in user.
+- X virtualizes its timeline, changes its DOM frequently, and may omit or reorder posts.
+- Reply/thread/quote classification is heuristic because the rendered DOM exposes less metadata than the API.
+- Assisted scrolling may trigger X anti-automation protections or account rate limits.
+- X's current Terms state that scraping without express written permission is prohibited. Review [X's Terms of Service](https://x.com/en/tos) and use this collector only if you accept the account and Terms risk.
+
+## Google Sheets
+
+Open **⚙️ Settings** in the dashboard and expand **📋 Google Sheets Setup (per-channel tabs)**. The Google OAuth access token remains in memory; the public OAuth Client ID and Spreadsheet ID are stored in dashboard `localStorage`.
+
+## Files
+
+- [`index.html`](./index.html) — dashboard, cache, classification, filtering, CSV, and Google Sheets sync
+- [`collector.user.js`](./collector.user.js) — Tampermonkey companion that observes rendered X tweet cards
