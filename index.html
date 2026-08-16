@@ -119,24 +119,45 @@
                 <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-amber-900 dark:text-amber-200">📋 Tampermonkey Collector Setup (assisted scrolling)</summary>
                 <div class="px-4 pb-4 space-y-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                   <div>
-                    <div class="font-semibold">1. Install Tampermonkey once</div>
-                    <p class="mt-1">Install the <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer" class="underline">Tampermonkey browser extension</a>, then open <a href="./collector.user.js" target="_blank" class="underline font-semibold">collector.user.js</a> and approve the userscript installation.</p>
+                    <div class="font-semibold">1. Install Tampermonkey</div>
+                    <p class="mt-1">Install the <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer" class="underline">Tampermonkey browser extension</a>.</p>
                   </div>
                   <div>
-                    <div class="font-semibold">2. Use your normal X login</div>
-                    <p class="mt-1">Click the <b>𝕏</b> toolbar button to open <code>@I_Am_The_ICT</code> Posts &amp; replies. Log in to X normally if needed. The collector never reads, copies, or exports your password, session cookies, or authorization tokens.</p>
+                    <div class="font-semibold">2. Allow Chrome to execute userscripts — required</div>
+                    <p class="mt-1">Right-click the Tampermonkey toolbar icon → <b>Manage extension</b> → turn on <b>Allow User Scripts</b>. On Chrome 138+, an installed/enabled script can silently do nothing until this is enabled. If that toggle is unavailable, open <code>chrome://extensions</code> and enable <b>Developer mode</b>. Also set Tampermonkey’s site access to <b>On all sites</b> or allow <code>x.com</code>.</p>
+                    <p class="mt-1"><a href="https://www.tampermonkey.net/faq.php?locale=en#Q209" target="_blank" rel="noreferrer" class="underline">Tampermonkey’s official permission instructions ↗</a></p>
                   </div>
                   <div>
-                    <div class="font-semibold">3. Collect rendered posts</div>
-                    <p class="mt-1">Use the floating <b>ICT Collector</b> panel on X. Press <b>Start + Auto</b> for slow assisted scrolling, or <b>Start Manual</b> and scroll yourself. Keep the tab visible. Pause or stop at any time. The collector stops after repeated no-new-post scans, its configured scroll cap, or when it reaches previously collected posts.</p>
+                    <div class="font-semibold">3. Install or update the collector</div>
+                    <p class="mt-1">Open <a href="./collector.user.js" target="_blank" class="underline font-semibold">collector.user.js</a> and approve Install/Update. The current script version is <b>1.1.0</b>.</p>
                   </div>
                   <div>
-                    <div class="font-semibold">4. Transfer to this dashboard</div>
-                    <p class="mt-1">Press <b>Copy New JSON</b> in the X panel. Return here and press the purple <b>📋</b> toolbar button. You can also download JSON on X and paste/upload its contents through the <b>📄</b> import dialog.</p>
+                    <div class="font-semibold">4. Reload X after installation</div>
+                    <p class="mt-1">Click the <b>𝕏</b> toolbar button to open <code>@I_Am_The_ICT</code> Posts &amp; replies, log in normally, then perform a hard reload with <b>Ctrl+Shift+R</b> (Windows/Linux) or <b>Cmd+Shift+R</b> (macOS). A userscript is not injected retroactively into a tab that was already open before installation.</p>
+                  </div>
+                  <div>
+                    <div class="font-semibold">5. Verify the floating panel</div>
+                    <p class="mt-1">A dark <b>𝕏 ICT Collector</b> panel must appear at the bottom-right of the X page. If it does not, click Tampermonkey and run <b>Show / reopen ICT Collector panel</b>. In DevTools Console, a successful injection also logs <code>[daggerok X Collector] userscript v1.1.0 loaded</code>.</p>
+                  </div>
+                  <div>
+                    <div class="font-semibold">6. Collect and transfer</div>
+                    <p class="mt-1">Press <b>Start + Auto</b> for slow assisted scrolling, or <b>Start Manual</b> and scroll yourself. Keep the tab visible. When finished, press <b>Copy New JSON</b>, return here, and press the purple <b>📋</b> toolbar button. You can alternatively download JSON and use the <b>📄</b> import dialog.</p>
                   </div>
                   <div class="rounded-lg border border-amber-300/60 dark:border-amber-700 bg-white/50 dark:bg-slate-950/20 p-2">
                     <b>What is collected:</b> only tweet cards rendered in the visible X page—post ID/URL/time/text, author, visible reply/repost context, visible metrics, and media URLs. Classification is heuristic because the web page exposes less metadata than an API.
                   </div>
+                  <details class="rounded-lg border border-rose-300/60 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/20">
+                    <summary class="cursor-pointer p-2 font-semibold text-rose-800 dark:text-rose-300">Panel still missing? Check these in order</summary>
+                    <ol class="list-decimal pl-7 pr-3 pb-3 space-y-1 text-rose-800 dark:text-rose-300">
+                      <li>Tampermonkey’s global status says <b>Enabled</b>.</li>
+                      <li>The collector’s own toggle is green.</li>
+                      <li><b>Allow User Scripts</b> is enabled in Chrome’s Tampermonkey extension details.</li>
+                      <li>Tampermonkey site access permits <code>https://x.com/*</code>.</li>
+                      <li>You installed/updated collector version <b>1.1.0</b>.</li>
+                      <li>You hard-reloaded the X tab after installation.</li>
+                      <li>Try the Tampermonkey command <b>Show / reopen ICT Collector panel</b>.</li>
+                    </ol>
+                  </details>
                   <div class="text-rose-700 dark:text-rose-300"><b>Important:</b> X’s Terms prohibit scraping without express permission. Assisted scrolling can also trigger anti-automation limits. Use conservative settings, stop if X warns or rate-limits you, and proceed only if you accept the account/Terms risk.</div>
                 </div>
               </details>

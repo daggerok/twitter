@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         daggerok X Timeline Collector
 // @namespace    https://daggerok.github.io/twitter/
-// @version      1.0.0
+// @version      1.1.0
 // @description  Collect tweet cards rendered while you browse a public X profile; exports JSON for daggerok/twitter.
 // @author       daggerok
 // @homepageURL  https://daggerok.github.io/twitter/
 // @supportURL   https://github.com/daggerok/twitter/issues
+// @updateURL    https://daggerok.github.io/twitter/collector.user.js
+// @downloadURL  https://daggerok.github.io/twitter/collector.user.js
 // @match        https://x.com/*
 // @match        https://twitter.com/*
 // @run-at       document-idle
@@ -14,6 +16,7 @@
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        GM_setClipboard
+// @grant        GM_registerMenuCommand
 // ==/UserScript==
 
 (function () {
@@ -39,9 +42,12 @@
   let lastReason = 'Ready';
   let ui = null;
 
-  const gmGet = async (key, fallback) => await Promise.resolve(GM_getValue(key, fallback));
-  const gmSet = async (key, value) => await Promise.resolve(GM_setValue(key, value));
+  const gmGet = async (key, fallback) => typeof GM_getValue === 'function' ? await Promise.resolve(GM_getValue(key, fallback)) : fallback;
+  const gmSet = async (key, value) => { if (typeof GM_setValue === 'function') await Promise.resolve(GM_setValue(key, value)); };
   const knownKey = () => `known:${(targetHandle || 'unknown').toLowerCase()}`;
+
+  console.info('[daggerok X Collector] userscript v1.1.0 loaded', location.href);
+  document.documentElement.dataset.daggerokXCollector = '1.1.0';
 
   function getProfileHandle() {
     const part = location.pathname.split('/').filter(Boolean)[0] || '';
@@ -244,7 +250,9 @@
       updateUi();
       return;
     }
-    GM_setClipboard(JSON.stringify(payload(), null, 2), 'text');
+    const json = JSON.stringify(payload(), null, 2);
+    if (typeof GM_setClipboard === 'function') GM_setClipboard(json, 'text');
+    else await navigator.clipboard.writeText(json);
     lastReason = `Copied ${session.size} new post${session.size === 1 ? '' : 's'} as JSON`;
     updateUi();
   }
@@ -273,7 +281,7 @@
     session.clear();
     knownIds.clear();
     initialKnownIds.clear();
-    await GM_deleteValue(knownKey());
+    if (typeof GM_deleteValue === 'function') await Promise.resolve(GM_deleteValue(knownKey()));
     updateUi();
   }
 
@@ -287,6 +295,10 @@
   }
 
   function createPanel() {
+    if (!document.body) {
+      setTimeout(createPanel, 100);
+      return;
+    }
     document.getElementById(PANEL_ID)?.remove();
     const host = document.createElement('div');
     host.id = PANEL_ID;
@@ -361,5 +373,34 @@
     }
   }, 1000);
 
-  loadKnown().then(createPanel);
+  async function showPanel(reason = 'Collector panel opened') {
+    targetHandle = getProfileHandle();
+    lastReason = reason;
+    createPanel();
+    try {
+      await loadKnown();
+      lastReason = targetHandle ? reason : 'Open a public X profile page first';
+    } catch (error) {
+      lastReason = `Panel loaded; collector storage unavailable: ${error?.message || error}`;
+      console.error('[daggerok X Collector] storage initialization failed', error);
+    }
+    updateUi();
+  }
+
+  if (typeof GM_registerMenuCommand === 'function') {
+    GM_registerMenuCommand('Show / reopen ICT Collector panel', () => showPanel('Panel reopened from Tampermonkey'));
+    GM_registerMenuCommand('Start manual collection', async () => { await showPanel('Starting manual collection'); await start(false); });
+    GM_registerMenuCommand('Start assisted auto-scroll', async () => { await showPanel('Starting assisted scrolling'); await start(true); });
+  }
+
+  // Mount the UI first so a storage permission/error cannot make the collector fail invisibly.
+  createPanel();
+  loadKnown().then(() => {
+    lastReason = targetHandle ? 'Ready' : 'Open a public X profile page first';
+    updateUi();
+  }).catch(error => {
+    lastReason = `Panel loaded; collector storage unavailable: ${error?.message || error}`;
+    console.error('[daggerok X Collector] storage initialization failed', error);
+    updateUi();
+  });
 })();
