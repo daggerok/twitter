@@ -1,4 +1,4 @@
-# youtube
+# x / twitter
 
 ## prerequisites
 

@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X / Twitter Handle Content Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+
+    <!-- React, ReactDOM, Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+
+    <style>
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        .animate-fade-in{animation:fadeIn .4s ease-out}
+        .dark-scroll::-webkit-scrollbar{height:6px;width:6px}
+        .dark-scroll::-webkit-scrollbar-track{background:transparent}
+        .dark-scroll::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+        .dark-scroll{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+
+        .light-scroll::-webkit-scrollbar{height:6px;width:6px}
+        .light-scroll::-webkit-scrollbar-track{background:transparent}
+        .light-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+        .light-scroll{scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
+
+        .console-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease-out,opacity .25s ease-out;opacity:0;overflow:hidden}
+        .console-wrap.open{grid-template-rows:1fr;opacity:1}
+        .console-inner{overflow:hidden;min-height:0}
+
+        .settings-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(0.4, 0, 0.2, 1), opacity .25s ease-out;opacity:0;overflow:hidden}
+        .settings-wrap.open{grid-template-rows:1fr;opacity:1}
+        .settings-inner{overflow:hidden;min-height:0}
+
+        .debug-panel {
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .debug-panel table { font-size: 11px; }
+        .debug-row { transition: background .1s; }
+        .debug-row:hover { background: rgba(148,163,184,0.08); }
+
+        input[type=range].scale-slider{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
+        input[type=range].scale-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;cursor:pointer}
+        input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;cursor:pointer;border:none}
+        .dark input[type=range].scale-slider{background:#334155}
+        .dark input[type=range].scale-slider::-webkit-slider-thumb{background:#10b981}
+        .dark input[type=range].scale-slider::-moz-range-thumb{background:#10b981}
+        html:not(.dark) input[type=range].scale-slider{background:#cbd5e1}
+        html:not(.dark) input[type=range].scale-slider::-webkit-slider-thumb{background:#059669}
+        html:not(.dark) input[type=range].scale-slider::-moz-range-thumb{background:#059669}
+
+        html.dark, html.dark body { background:#020617 !important; color:#f1f5f9 !important; color-scheme: dark; }
+        html.dark table { color:#e2e8f0; }
+        html.dark table td { color:inherit; }
+        html.dark table th { color:#94a3b8; }
+
+        .animate-slide-down { animation: slideDown 0.2s ease-out forwards; }
+        .animate-slide-up { animation: slideUp 0.2s ease-out forwards; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+
+        .has-tip { position: relative; }
+        .has-tip::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background: #0f172a;
+            color: #f8fafc;
+            font-size: 10px;
+            line-height: 1.2;
+            font-weight: 600;
+            white-space: nowrap;
+            padding: 4px 7px;
+            border-radius: 6px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .12s ease, transform .12s ease;
+            z-index: 40;
+            box-shadow: 0 4px 12px rgba(0,0,0,.25);
+        }
+        html:not(.dark) .has-tip::after { background: #1e293b; color: #f8fafc; }
+        .has-tip:hover::after, .has-tip:focus-visible::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+    const React = window.React || {};
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // --- Local Storage keys (existing + new) ---
+    const LS_P = 'yt-dashboard-prefs';
+    const LS_GS = 'yt-gs-config'; // Google Sheets config
+    const LS_META = 'yt-meta-map';
+
+    const lp = () => { try { return JSON.parse(localStorage.getItem(LS_P)) || {}; } catch { return {}; } };
+    const sp = p => { try { localStorage.setItem(LS_P, JSON.stringify(p)); } catch {} };
+
+    const getGsConfig = () => {
+        try { return JSON.parse(localStorage.getItem(LS_GS)) || { clientId: '', spreadsheetId: '', lastAccountEmail: '' }; } catch { return { clientId: '', spreadsheetId: '', lastAccountEmail: '' }; }
+    };
+    const saveGsConfig = (cfg) => { try { localStorage.setItem(LS_GS, JSON.stringify(cfg)); } catch {} };
+
+    // --- Data Storage (Local) ---
+    const getCache = (channelId) => {
+        try { return JSON.parse(localStorage.getItem(`yt-data-${channelId}`)) || null; } catch { return null; }
+    };
+    const setCache = (channelId, data) => {
+        try { localStorage.setItem(`yt-data-${channelId}`, JSON.stringify(data)); } catch {}
+    };
+
+    const getMetaMap = () => {
+        try { return JSON.parse(localStorage.getItem(LS_META)) || {}; } catch { return {}; }
+    };
+    const saveMetaMap = (handle, meta) => {
+        try {
+            const map = getMetaMap();
+            map[handle] = meta;
+            localStorage.setItem(LS_META, JSON.stringify(map));
+        } catch {}
+    };
+
+    const sliderToScale = v => 0.7 + (v / 100) * 0.8;
+    const DEFAULT_SCALE_SLIDER = 50;
+
+    // --- Google Sheets constants (adapted from google impl) ---
+    const DEFAULT_SHEET_PREFIX = 'YT-';
+    const VIDEO_HEADERS = ['datetime', 'type', 'name', 'url', 'status', 'note', 'created', 'updated'];
+    const SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'openid', 'email', 'profile'].join(' ');
+    const GIS_SRC = 'https://accounts.google.com/gsi/client';
+    const SHEETS_API = 'https://sheets.googleapis.com/v4';
+    const USERINFO = 'https://www.googleapis.com/oauth2/v3/userinfo';
+    const DEBUG = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'true';
+    const dbg = (...a) => { if (DEBUG) console.log('[YT-GS-DBG]', ...a); };
+
+    const nid = (v) => {
+        const t = (v || '').trim();
+        if (!t) return '';
+        const m = t.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        return m?.[1] ?? t.replace(/\/edit.*$/, '');
+    };
+    const surl = (id) => `https://docs.google.com/spreadsheets/d/${id}/edit`;
+    const qt = (n) => {
+        const s = (n || '').trim();
+        return /^[A-Za-z0-9_]+$/.test(s) ? s : `'${s.replace(/'/g, "''")}'`;
+    };
+    const sr = (t, c) => `${qt(t)}!${c}`;
+    const em = (e) => e instanceof Error ? e.message : typeof e === 'string' ? e : 'Unknown error';
+
+    // --- Google Sheets helpers (port from google impl) ---
+    let gp = null;
+    const wg = (to = 12000) => new Promise((ok, f) => {
+        const t0 = Date.now();
+        const tk = () => {
+            if (window.google?.accounts?.oauth2) return ok();
+            if (Date.now() - t0 > to) return f(new Error('GIS timeout'));
+            setTimeout(tk, 50);
+        };
+        tk();
+    });
+    const lg = async () => {
+        if (window.google?.accounts?.oauth2) return;
+        if (!gp) {
+            gp = new Promise((ok, f) => {
+                if (document.querySelector('script[data-gis]')) {
+                    wg().then(ok).catch(e => { gp = null; f(e); });
+                    return;
+                }
+                const s = document.createElement('script');
+                s.src = GIS_SRC;
+                s.async = true;
+                s.defer = true;
+                s.dataset.gis = '1';
+                s.onload = () => wg().then(ok).catch(e => { gp = null; f(e); });
+                s.onerror = () => { gp = null; f(new Error('GIS fail')); };
+                document.head.appendChild(s);
+            });
+        }
+        await gp;
+    };
+    const rt = async (cid, inter) => {
+        await lg();
+        if (!window.google?.accounts?.oauth2) throw new Error('GIS N/A');
+        return new Promise((ok, f) => {
+            const tc = window.google.accounts.oauth2.initTokenClient({
+                client_id: cid,
+                scope: SCOPES,
+                callback: r => {
+                    if (r.error) return f(new Error(r.error));
+                    if (!r.access_token) return f(new Error('No token'));
+                    ok(r);
+                },
+                error_callback: e => f(new Error(e?.type || e?.message || 'GIS err'))
+            });
+            tc.requestAccessToken({ prompt: inter ? 'consent' : '' });
+        });
+    };
+    const gf = async (url, tok, init = {}) => {
+        dbg('gf', init.method ?? 'GET', url);
+        const h = new Headers(init.headers);
+        h.set('Authorization', `Bearer ${tok}`);
+        if (init.body && !h.has('Content-Type')) h.set('Content-Type', 'application/json');
+        const res = await fetch(url, { ...init, headers: h });
+        const txt = await res.text();
+        let json = null;
+        try { json = txt ? JSON.parse(txt) : null; } catch {}
+        if (!res.ok) {
+            let msg = txt || `HTTP ${res.status}`;
+            if (json && json.error && json.error.message) msg = json.error.message;
+            const err = new Error(`Google API ${res.status}: ${msg}`);
+            err.status = res.status;
+            throw err;
+        }
+        return json;
+    };
+    const isGoogleAuthError = e => e?.status === 401;
+    const sa = (p, tok, i) => gf(`${SHEETS_API}${p}`, tok, i);
+    const fp = async (tok) => gf(USERINFO, tok);
+
+    const getChannelTab = (handle, channelId) => {
+        const safe = (handle || channelId || 'default').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+        return `${DEFAULT_SHEET_PREFIX}${safe}`;
+    };
+
+    const ensureVideoTab = async (tok, sid, tab) => {
+        const id = nid(sid);
+        if (!id) throw new Error('No spreadsheet ID');
+        const t = tab.trim();
+        const m = await sa(`/spreadsheets/${id}`, tok);
+        const exists = (m.sheets || []).some(s => s.properties && s.properties.title === t);
+        if (!exists) {
+            try {
+                await sa(`/spreadsheets/${id}:batchUpdate`, tok, {
+                    method: 'POST',
+                    body: JSON.stringify({ requests: [{ addSheet: { properties: { title: t } } }] })
+                });
+            } catch (e) {
+                // A concurrent request may have created the same tab already.
+                // Never hide auth/server failures; the token retry layer needs to see them.
+                if (e?.status !== 400) throw e;
+            }
+        }
+        // ensure headers
+        const hr = sr(t, 'A1:H1');
+        await sa(`/spreadsheets/${id}/values/${encodeURIComponent(hr)}?valueInputOption=RAW`, tok, {
+            method: 'PUT',
+            body: JSON.stringify({ range: hr, majorDimension: 'ROWS', values: [VIDEO_HEADERS] })
+        });
+    };
+
+    const readVideosFromSheet = async (tok, sid, tab) => {
+        const id = nid(sid);
+        const t = tab.trim();
+        if (!id) return [];
+        try {
+            const r = await sa(`/spreadsheets/${id}/values/${encodeURIComponent(sr(t, 'A2:H'))}`, tok);
+            const rows = r.values || [];
+            const nowIso = new Date().toISOString();
+            return rows.map(row => {
+                const created = row[6] ? row[6] : nowIso;
+                const updated = row[7] ? row[7] : created;
+                return {
+                    datetime: row[0] || '',
+                    type: row[1] || 'Video',
+                    name: row[2] || '',
+                    url: row[3] || '',
+                    status: row[4] || 'unwatched',
+                    note: row[5] || '',
+                    created,
+                    updated
+                };
+            }).filter(v => v.url);
+        } catch (e) {
+            dbg('readVideosFromSheet error', e);
+            throw e;
+        }
+    };
+
+    const writeVideosToSheet = async (tok, sid, tab, videos) => {
+        const id = nid(sid);
+        const t = tab.trim();
+        if (!id) throw new Error('No spreadsheet ID');
+        const nowIso = new Date().toISOString();
+        const clean = (videos || []).map(v => ([
+            v.datetime || '',
+            v.type || 'Video',
+            v.name || '',
+            v.url || '',
+            v.status || 'unwatched',
+            v.note || '',
+            v.created || nowIso,
+            v.updated || v.created || nowIso
+        ]));
+        // clear data rows
+        await sa(`/spreadsheets/${id}/values/${encodeURIComponent(sr(t, 'A2:H'))}:clear`, tok, { method: 'POST', body: '{}' });
+        if (!clean.length) return;
+        const pr = sr(t, 'A2:H');
+        await sa(`/spreadsheets/${id}/values/${encodeURIComponent(pr)}?valueInputOption=RAW`, tok, {
+            method: 'PUT',
+            body: JSON.stringify({ range: pr, majorDimension: 'ROWS', values: clean })
+        });
+    };
+
+    const createNewSpreadsheet = async (tok, title, tabName) => {
+        const t = tabName.trim() || `${DEFAULT_SHEET_PREFIX}Main`;
+        const res = await sa('/spreadsheets', tok, {
+            method: 'POST',
+            body: JSON.stringify({
+                properties: { title: title.trim() || 'YouTube Dashboard' },
+                sheets: [{ properties: { title: t } }]
+            })
+        });
+        const newId = res.spreadsheetId;
+        if (!newId) throw new Error('Failed to create spreadsheet');
+        await ensureVideoTab(tok, newId, t);
+        return { spreadsheetId: newId, spreadsheetUrl: res.spreadsheetUrl || surl(newId) };
+    };
+
+    // --- App ---
+    const App = () => {
+        const prefs = useMemo(() => lp(), []);
+        const gsCfg = useMemo(() => getGsConfig(), []);
+
+        // Existing state
+        const [apiKey, setApiKey] = useState(prefs.apiKey || '');
+        const [channelUrl, setChannelUrl] = useState(prefs.channelUrl || 'https://www.youtube.com/@InnerCircleTrader');
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState(null);
+        const [dark, setDark] = useState(prefs.dark !== false);
+        const [scaleSlider, setScaleSlider] = useState(prefs.scaleSlider ?? DEFAULT_SCALE_SLIDER);
+
+        const [videos, setVideos] = useState(null);
+        const [currentChannelId, setCurrentChannelId] = useState(null);
+        const [currentHandle, setCurrentHandle] = useState(() => {
+            const url = prefs.channelUrl || 'https://www.youtube.com/@InnerCircleTrader';
+            const m = url.match(/@([a-zA-Z0-9_\\-\\.]+)/);
+            return m ? m[1] : null;
+        });
+        const [showSettings, setShowSettings] = useState(!prefs.apiKey);
+        const [logs, setLogs] = useState([]); // {id, msg, ts}
+        const [showDebug, setShowDebug] = useState(false);
+        const [editNoteUrl, setEditNoteUrl] = useState(null);
+        const [editNoteText, setEditNoteText] = useState('');
+
+        // Persistent Filters & Sort
+        const [sortConfig, setSortConfig] = useState(prefs.sortConfig || { key: 'datetime', direction: 'desc' });
+        const [filters, setFilters] = useState(prefs.filters || { datetime: '', type: '', name: '', url: '', status: '', note: '' });
+
+        // NEW: Google Sheets state (port from google impl)
+        const [gsConfig, setGsConfig] = useState(gsCfg);
+        const [isGoogleAuthed, setIsGoogleAuthed] = useState(false);
+        const [gEmail, setGEmail] = useState(gsCfg.lastAccountEmail || '');
+        const [gsSyncing, setGsSyncing] = useState(false);
+        const gTokRef = useRef(null);
+        const gTokExpiresAtRef = useRef(0);
+        const gAuthPromiseRef = useRef(null);
+        const googleSessionDisabledRef = useRef(false);
+        const [showGsSetup, setShowGsSetup] = useState(false);
+
+        // Sensitive fields eye toggle & copy feedback state
+        const [showApiKey, setShowApiKey] = useState(false);
+        const [showClientId, setShowClientId] = useState(false);
+        const [showSpreadsheetId, setShowSpreadsheetId] = useState(false);
+        const [showEmail, setShowEmail] = useState(false);
+        const [copiedField, setCopiedField] = useState(null);
+
+        const copyToClipboard = (text, fieldName) => {
+            if (!text) return;
+            navigator.clipboard.writeText(text);
+            setCopiedField(fieldName);
+            setTimeout(() => {
+                setCopiedField(current => current === fieldName ? null : current);
+            }, 1500);
+        };
+
+        const maskEmail = (email) => {
+            if (!email) return '••••••••••••';
+            const parts = email.split('@');
+            if (parts.length !== 2) return '•'.repeat(email.length);
+            const [name, domain] = parts;
+            const maskedName = name.length <= 2 ? '•'.repeat(name.length) : name[0] + '•'.repeat(name.length - 2) + name[name.length - 1];
+            return `${maskedName}@${domain}`;
+        };
+
+        const maskSpreadsheetUrl = (url) => {
+            if (!url) return '';
+            const idx = url.indexOf('/d/');
+            if (idx === -1) return '•'.repeat(Math.min(url.length, 24));
+            const prefix = url.slice(0, idx + 3);
+            const rest = url.slice(idx + 3);
+            const idPart = rest.split('/')[0];
+            const suffix = rest.slice(idPart.length);
+            const maskedId = idPart.length <= 4 ? '••••••••' : idPart.slice(0, 3) + '••••••••••••••••' + idPart.slice(-3);
+            return `${prefix}${maskedId}${suffix}`;
+        };
+
+        const scale = sliderToScale(scaleSlider);
+        const log = useCallback((msg) => {
+            const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            setLogs(p => [...p.slice(-29), { msg, ts }]);
+        }, []);
+
+        // Save prefs (extended)
+        useEffect(() => {
+            sp({ apiKey, channelUrl, dark, scaleSlider, sortConfig, filters });
+        }, [apiKey, channelUrl, dark, scaleSlider, sortConfig, filters]);
+
+        // Save Google config
+        useEffect(() => {
+            saveGsConfig(gsConfig);
+        }, [gsConfig]);
+
+        useEffect(() => {
+            document.documentElement.classList.toggle('dark', dark);
+            const bg = dark ? '#020617' : '#f8fafc';
+            const text = dark ? '#f1f5f9' : '#0f172a';
+            document.documentElement.style.backgroundColor = bg;
+            document.documentElement.style.color = text;
+            document.body.style.backgroundColor = bg;
+            document.body.style.color = text;
+        }, [dark]);
+
+        const extractUsername = (url) => {
+            const match = url.match(/@([a-zA-Z0-9_\-\\.]+)/);
+            return match ? match[1] : url.trim();
+        };
+
+        // --- Google Auth helpers ---
+        // Google Identity Services access tokens are short-lived and intentionally stay in memory.
+        // Keep their expiry beside the token and deduplicate concurrent silent-renewal requests.
+        const doGoogleAuth = useCallback(async (interactive = false, force = false) => {
+            const cid = (gsConfig.clientId || '').trim();
+            if (!cid) {
+                setError('Enter Google OAuth Client ID in Settings to connect.');
+                setShowSettings(true);
+                throw new Error('No Client ID');
+            }
+
+            const hasFreshToken = gTokRef.current && Date.now() + 60_000 < gTokExpiresAtRef.current;
+            if (!force && hasFreshToken) return gTokRef.current;
+            if (gAuthPromiseRef.current) return gAuthPromiseRef.current;
+
+            const authPromise = (async () => {
+                try {
+                    const response = await rt(cid, interactive);
+                    const token = response.access_token;
+                    const expiresInSeconds = Number(response.expires_in) || 3600;
+                    gTokRef.current = token;
+                    gTokExpiresAtRef.current = Date.now() + expiresInSeconds * 1000;
+                    googleSessionDisabledRef.current = false;
+                    setIsGoogleAuthed(true);
+
+                    try {
+                        const profile = await fp(token);
+                        const email = profile.email || '';
+                        setGEmail(email);
+                        if (email) setGsConfig(p => ({ ...p, lastAccountEmail: email }));
+                    } catch (e) {
+                        if (!gEmail) setGEmail(gsConfig.lastAccountEmail || '');
+                    }
+
+                    log(force && !interactive ? '✅ Google Sheets session renewed' : '✅ Connected to Google account for Sheets');
+                    return token;
+                } catch (err) {
+                    log(`❌ Google auth error: ${em(err)}`);
+                    setIsGoogleAuthed(false);
+                    gTokRef.current = null;
+                    gTokExpiresAtRef.current = 0;
+                    throw err;
+                }
+            })();
+
+            gAuthPromiseRef.current = authPromise;
+            try {
+                return await authPromise;
+            } finally {
+                if (gAuthPromiseRef.current === authPromise) gAuthPromiseRef.current = null;
+            }
+        }, [gsConfig.clientId, gsConfig.lastAccountEmail, gEmail, log]);
+
+        // Run every Sheets operation with a fresh token. If Google rejects a token before
+        // its advertised expiry (revocation, restored tab, clock skew), renew once and retry.
+        const runWithGoogleAuth = useCallback(async (operation) => {
+            let token = await doGoogleAuth(false);
+            try {
+                return await operation(token);
+            } catch (err) {
+                if (!isGoogleAuthError(err)) throw err;
+                log('🔐 Google access token expired; renewing and retrying…');
+                gTokRef.current = null;
+                gTokExpiresAtRef.current = 0;
+                setIsGoogleAuthed(false);
+                token = await doGoogleAuth(false, true);
+                return operation(token);
+            }
+        }, [doGoogleAuth, log]);
+
+        // User-clicked Google actions may fall back to an interactive consent window when
+        // there is no restorable session. Automatic startup never invokes this helper.
+        const runWithGoogleAuthFromClick = useCallback(async (operation) => {
+            if (!gTokRef.current && !gsConfig.lastAccountEmail) {
+                await doGoogleAuth(true, true);
+            }
+            try {
+                return await runWithGoogleAuth(operation);
+            } catch (err) {
+                if (gTokRef.current) throw err;
+                await doGoogleAuth(true, true);
+                return runWithGoogleAuth(operation);
+            }
+        }, [doGoogleAuth, runWithGoogleAuth, gsConfig.lastAccountEmail]);
+
+        const disconnectGoogle = useCallback(() => {
+            if (gTokRef.current && window.google?.accounts?.oauth2?.revoke) {
+                try { window.google.accounts.oauth2.revoke(gTokRef.current, () => {}); } catch {}
+            }
+            googleSessionDisabledRef.current = true;
+            gTokRef.current = null;
+            gTokExpiresAtRef.current = 0;
+            setIsGoogleAuthed(false);
+            setGEmail('');
+            log('🔌 Disconnected from Google Sheets');
+        }, [log]);
+
+        const isGoogleReady = useMemo(() => {
+            return Boolean(isGoogleAuthed && gTokRef.current && nid(gsConfig.spreadsheetId));
+        }, [isGoogleAuthed, gsConfig.spreadsheetId]);
+
+        // --- Google Sheets sync functions for videos ---
+        const syncToGoogle = useCallback(async (videosToSave, handleForTab) => {
+            const sid = nid(gsConfig.spreadsheetId);
+            const canUseGoogle = !googleSessionDisabledRef.current &&
+                Boolean(gsConfig.clientId && sid && (gTokRef.current || gsConfig.lastAccountEmail));
+            if (!canUseGoogle || !videosToSave || !handleForTab) return false;
+
+            setGsSyncing(true);
+            try {
+                const tab = getChannelTab(handleForTab, currentChannelId);
+                await runWithGoogleAuth(async token => {
+                    await ensureVideoTab(token, sid, tab);
+                    await writeVideosToSheet(token, sid, tab, videosToSave);
+                });
+
+                log(`☁️ Synced ${videosToSave.length} videos → tab: ${tab}`);
+
+                // === RICH VIDEO DETAILS IN DEBUG ===
+                if (videosToSave.length > 0) {
+                    const examples = videosToSave.slice(0, 3);
+                    examples.forEach((v, idx) => {
+                        const shortTitle = (v.name || '').length > 48 ? (v.name || '').slice(0, 48) + '…' : (v.name || '');
+                        log(`   ${idx+1}. ${formatDate(v.datetime)} • ${shortTitle}`);
+                        log(`      ${v.url}`);
+                    });
+                    if (videosToSave.length > 3) log(`   … +${videosToSave.length - 3} more`);
+                }
+                return true;
+            } catch (err) {
+                log(`❌ Google sync error: ${em(err)}`);
+                setError(`Google Sheets sync failed: ${em(err)}`);
+                return false;
+            } finally {
+                setGsSyncing(false);
+            }
+        }, [gsConfig.clientId, gsConfig.spreadsheetId, gsConfig.lastAccountEmail, currentChannelId, runWithGoogleAuth, log]);
+
+        const loadFromGoogle = useCallback(async (handleForTab) => {
+            const sid = nid(gsConfig.spreadsheetId);
+            const canUseGoogle = !googleSessionDisabledRef.current &&
+                Boolean(gsConfig.clientId && sid && (gTokRef.current || gsConfig.lastAccountEmail));
+            if (!canUseGoogle || !handleForTab) return null;
+
+            setGsSyncing(true);
+            try {
+                const tab = getChannelTab(handleForTab, currentChannelId || '');
+                const sheetVideos = await runWithGoogleAuth(async token => {
+                    await ensureVideoTab(token, sid, tab);
+                    return readVideosFromSheet(token, sid, tab);
+                });
+                if (sheetVideos.length > 0) {
+                    log(`☁️ Loaded ${sheetVideos.length} videos from tab: ${tab}`);
+
+                    // Show sample video info in debug
+                    const samples = sheetVideos.slice(0, 2);
+                    samples.forEach((v, i) => {
+                        const t = (v.name || '').length > 48 ? (v.name || '').slice(0,48)+'…' : (v.name || '');
+                        log(`   ${i+1}. ${formatDate(v.datetime)} • ${t}`);
+                        log(`      ${v.url}`);
+                    });
+                    if (sheetVideos.length > 2) log(`   … +${sheetVideos.length-2} more`);
+                }
+                // [] means the cloud read succeeded but this channel tab is empty.
+                return sheetVideos;
+            } catch (err) {
+                log(`⚠️ Google load error (will use local): ${em(err)}`);
+                return null;
+            } finally {
+                setGsSyncing(false);
+            }
+        }, [gsConfig.clientId, gsConfig.spreadsheetId, gsConfig.lastAccountEmail, currentChannelId, runWithGoogleAuth, log]);
+
+        // --- Existing handleFetch (enhanced with Google Sheets) ---
+        const handleFetch = async (mode = 'load') => {
+            if (!apiKey.trim() && mode !== 'load') {
+                setError("Google API Key (YouTube Data) is required for fetching new data. Please check settings.");
+                setShowSettings(true);
+                return;
+            }
+            if (!channelUrl.trim()) return;
+
+            setLoading(true);
+            setError(null);
+
+            if (mode !== 'load') setLogs([]);
+
+            const handle = extractUsername(channelUrl);
+            setCurrentHandle(handle);
+            let meta = getMetaMap()[handle];
+
+            try {
+                // 1. Resolve metadata
+                if (!meta || mode === 'refresh') {
+                    if (!apiKey.trim()) {
+                        if (mode === 'load') { setLoading(false); return; }
+                    }
+                    log(`🔍 API: Resolving channel metadata: @${handle}`);
+                    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(handle)}&key=${apiKey}`;
+                    const sRes = await fetch(searchUrl);
+                    if (!sRes.ok) throw new Error(`Search API error. Status: ${sRes.status}`);
+                    const sData = await sRes.json();
+
+                    if (!sData.items || sData.items.length === 0) throw new Error(`Channel @${handle} not found.`);
+                    const channelId = sData.items[0].id.channelId;
+
+                    const chDetailsUrl = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails,snippet&id=${channelId}&key=${apiKey}`;
+                    const chRes = await fetch(chDetailsUrl);
+                    const chData = await chRes.json();
+
+                    meta = {
+                        channelId: channelId,
+                        title: chData.items[0].snippet.title,
+                        uploadsPlaylistId: chData.items[0].contentDetails.relatedPlaylists.uploads
+                    };
+                    saveMetaMap(handle, meta);
+                } else if (mode !== 'load') {
+                    log(`⚡ Resolved @${handle} metadata from local map.`);
+                }
+
+                setCurrentChannelId(meta.channelId);
+
+                // Read cloud state before every YouTube update, including Full Refresh.
+                // loadFromGoogle restores/renews Google auth itself, so this works in the
+                // same startup render instead of waiting for React auth state to catch up.
+                const sheetData = await loadFromGoogle(handle);
+                const googleReadSucceeded = Array.isArray(sheetData);
+                const cachedData = getCache(meta.channelId) || [];
+                const knownUrls = new Set([
+                    ...cachedData,
+                    ...(sheetData || [])
+                ].map(v => v.url));
+
+                // 2. LOAD mode
+                if (mode === 'load') {
+                    let dataToUse = null;
+
+                    if (sheetData && sheetData.length > 0) {
+                        dataToUse = sheetData;
+                        log(`📦 Loaded from Google Sheets + local merge`);
+                    } else if (cachedData.length > 0) {
+                        dataToUse = cachedData;
+                        log(`📦 Auto-loaded ${cachedData.length} items from local cache.`);
+                    } else if (apiKey.trim()) {
+                        mode = 'refresh';
+                    } else {
+                        setLoading(false);
+                        return;
+                    }
+
+                    if (dataToUse) {
+                        const nowIso = new Date().toISOString();
+                        dataToUse = dataToUse.map(v => ({
+                            ...v,
+                            created: v.created || nowIso,
+                            updated: v.updated || v.created || nowIso
+                        }));
+                        setVideos(dataToUse);
+                        // also update cache
+                        setCache(meta.channelId, dataToUse);
+                        // Populate a newly-created/empty cloud tab even when no YouTube API key is available.
+                        if (googleReadSucceeded && sheetData.length === 0) {
+                            await syncToGoogle(dataToUse, handle);
+                        }
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // 3. UPDATE / REFRESH from YouTube
+                log(`📥 Syncing ${mode === 'update' ? 'new videos only' : 'entire archive'} from YouTube...`);
+                let newItems = [];
+                let nextPageToken = '';
+                let pageCount = 0;
+                let hitExisting = false;
+
+                log(`📥 Fetching videos from YouTube...`);
+
+                do {
+                    const playlistItemsUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${meta.uploadsPlaylistId}&maxResults=50&key=${apiKey}${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
+                    const pRes = await fetch(playlistItemsUrl);
+                    if (!pRes.ok) throw new Error(`Playlist API Error. Status: ${pRes.status}`);
+                    const pData = await pRes.json();
+
+                    if (pData.items) {
+                        for (let item of pData.items) {
+                            const videoId = item.snippet.resourceId.videoId;
+                            const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                            if (mode === 'update' && knownUrls.has(videoUrl)) {
+                                hitExisting = true;
+                                break;
+                            }
+                            newItems.push(item);
+                        }
+                    }
+                    if (hitExisting) break;
+                    nextPageToken = pData.nextPageToken;
+                    pageCount++;
+                } while (nextPageToken);
+
+                log(`📥 Fetched ${newItems.length} raw items across ${pageCount} pages.`);
+
+                // Merge status/note/created/updated from both cache + sheetData
+                const statusMap = {};
+                const noteMap = {};
+                const createdMap = {};
+                const updatedMap = {};
+                [...cachedData, ...(sheetData || [])].forEach(v => {
+                    // Sheet rows are applied last and are authoritative, including an
+                    // explicit "unwatched" status or a cleared note.
+                    if (v.status) statusMap[v.url] = v.status;
+                    if (Object.prototype.hasOwnProperty.call(v, 'note')) noteMap[v.url] = v.note || '';
+                    if (v.created) createdMap[v.url] = v.created;
+                    if (v.updated) updatedMap[v.url] = v.updated;
+                });
+
+                const nowIso = new Date().toISOString();
+                const processedNew = newItems.map(item => {
+                    const title = item.snippet.title;
+                    const videoId = item.snippet.resourceId.videoId;
+                    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+                    let type = 'Video';
+                    if (title.toLowerCase().includes('#shorts') || title.toLowerCase().includes('shorts')) type = 'Shorts';
+                    else if (title.toLowerCase().includes('live') || title.toLowerCase().includes('stream')) type = 'Live';
+
+                    return {
+                        datetime: item.snippet.publishedAt,
+                        type,
+                        name: title,
+                        url: videoUrl,
+                        status: statusMap[videoUrl] || 'unwatched',
+                        note: noteMap[videoUrl] || '',
+                        created: createdMap[videoUrl] || nowIso,
+                        updated: updatedMap[videoUrl] || createdMap[videoUrl] || nowIso
+                    };
+                });
+
+                let finalData;
+                if (mode === 'update') {
+                    // combine with existing (dedup by url)
+                    const existingMap = {};
+                    // Cloud rows are loaded after local cache so cross-device status/note changes win.
+                    [...cachedData, ...(sheetData || [])].forEach(v => { existingMap[v.url] = v; });
+                    processedNew.forEach(v => { existingMap[v.url] = v; });
+                    finalData = Object.values(existingMap).sort((a, b) => (b.datetime || '').localeCompare(a.datetime || ''));
+                    log(`✅ Smart Update complete. Merged ${processedNew.length} new items. Total: ${finalData.length}`);
+
+                    // Show sample video details
+                    if (processedNew.length > 0) {
+                        const sample = processedNew[0];
+                        log(`   Latest new: ${formatDate(sample.datetime)} • ${sample.name.length > 45 ? sample.name.slice(0,45)+'…' : sample.name}`);
+                        log(`   ${sample.url}`);
+                    }
+                } else {
+                    finalData = processedNew;
+                    log(`✅ Full Refresh complete. ${finalData.length} items.`);
+
+                    // Show a few sample videos in debug console
+                    if (finalData.length > 0) {
+                        const samples = finalData.slice(0, 2);
+                        samples.forEach((v, i) => {
+                            const t = v.name.length > 48 ? v.name.slice(0,48)+'…' : v.name;
+                            log(`   ${i+1}. ${formatDate(v.datetime)} • ${t}`);
+                            log(`      ${v.url}`);
+                        });
+                        if (finalData.length > 2) log(`   … +${finalData.length-2} more`);
+                    }
+                }
+
+                const finalNowIso = new Date().toISOString();
+                finalData = finalData.map(v => ({
+                    ...v,
+                    created: v.created || finalNowIso,
+                    updated: v.updated || v.created || finalNowIso
+                }));
+
+                setVideos(finalData);
+                setCache(meta.channelId, finalData);
+
+                // Only write after a successful cloud read. This prevents a transient
+                // auth/network failure from overwriting newer cross-device sheet data.
+                if (googleReadSucceeded) {
+                    await syncToGoogle(finalData, handle);
+                }
+
+            } catch (err) {
+                log(`❌ Error: ${err.message}`);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        // --- Zero-click startup sync ---
+        // One ordered pipeline avoids the old stale-state race:
+        // silent Google restore → Sheets read → YouTube smart update → Sheets write.
+        useEffect(() => {
+            if (channelUrl) {
+                handleFetch(apiKey.trim() ? 'update' : 'load');
+            }
+            // Initial persisted values only; user-triggered updates use the toolbar actions.
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, []);
+
+        // --- Save Note (enhanced with GS) ---
+        const saveNote = (url, text) => {
+            if (!currentChannelId || !videos || !currentHandle) return;
+            const nowIso = new Date().toISOString();
+            const next = videos.map(v => (
+                v.url === url ? { ...v, note: text || '', updated: nowIso, created: v.created || nowIso } : v
+            ));
+            setVideos(next);
+            setCache(currentChannelId, next);
+            setEditNoteUrl(null);
+            setEditNoteText('');
+            // Sync to GS
+            if (isGoogleReady) {
+                syncToGoogle(next, currentHandle);
+            }
+        };
+
+        // --- Status Toggle (enhanced with GS) ---
+        const toggleStatus = (url) => {
+            if (!currentChannelId || !videos || !currentHandle) return;
+            const nowIso = new Date().toISOString();
+            const nextVideos = videos.map(v => {
+                if (v.url === url) {
+                    const current = v.status || 'unwatched';
+                    let nextStatus = 'unwatched';
+                    if (current === 'unwatched') nextStatus = 'watching';
+                    else if (current === 'watching') nextStatus = 'watched';
+                    return { ...v, status: nextStatus, updated: nowIso, created: v.created || nowIso };
+                }
+                return v;
+            });
+
+            setVideos(nextVideos);
+            setCache(currentChannelId, nextVideos);
+            // Sync immediately to Google Sheets
+            if (isGoogleReady) {
+                syncToGoogle(nextVideos, currentHandle);
+            }
+        };
+
+        // --- CSV Export (unchanged) ---
+        const handleExportCSV = () => {
+            if (!processedVideos || processedVideos.length === 0) return;
+
+            const headers = ['Datetime', 'Date', 'Time', 'Type', 'Status', 'Name', 'URL', 'Note'];
+            const rows = processedVideos.map(v => {
+                const safeName = v.name.replace(/\"/g, '""');
+                const d = new Date(v.datetime);
+                const isoStr = d.toISOString();
+                const dateStr = isoStr.split('T')[0];
+                const timeStr = isoStr.split('T')[1].replace('Z', '');
+                return `"${isoStr}","${dateStr}","${timeStr}","${v.type}","${v.status || 'unwatched'}","${safeName}","${v.url}","${(v.note || '').replace(/\"/g, '""')}"`;
+            });
+
+            const csvContent = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `yt_export_${new Date().getTime()}.csv`;
+            link.click();
+        };
+
+        // --- Sort & Filter (unchanged) ---
+        const requestSort = (key) => {
+            let direction = 'asc';
+            if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+            setSortConfig({ key, direction });
+        };
+
+        const handleFilterChange = (key, value) => {
+            setFilters(prev => ({ ...prev, [key]: value }));
+        };
+
+        // --- Core Processed Data (unchanged) ---
+        const processedVideos = useMemo(() => {
+            if (!videos) return [];
+            let result = [...videos];
+
+            Object.keys(filters).forEach(key => {
+                const filterVal = filters[key].toLowerCase();
+                if (filterVal) {
+                    result = result.filter(v => {
+                        const cellVal = String(v[key] || (key === 'status' ? 'unwatched' : '')).toLowerCase();
+                        return cellVal.includes(filterVal);
+                    });
+                }
+            });
+
+            result.sort((a, b) => {
+                const aVal = a[sortConfig.key] || '';
+                const bVal = b[sortConfig.key] || '';
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            return result;
+        }, [videos, sortConfig, filters]);
+
+        // --- Visual Helpers (unchanged) ---
+        const getBadgeStyle = (type) => {
+            if (type === 'Live') return dark ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-red-50 text-red-700 border-red-200';
+            if (type === 'Shorts') return dark ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-purple-50 text-purple-700 border-purple-200';
+            return dark ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-700 border-blue-200';
+        };
+
+        const getStatusDisplay = (status) => {
+            if (status === 'watched') return { label: '🟢 Watched', cls: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 shadow-sm shadow-emerald-500/10' };
+            if (status === 'watching') return { label: '🟡 Watching', cls: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20 shadow-sm shadow-yellow-500/10' };
+            return { label: '⚪️ Unwatched', cls: dark ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-100 border-slate-200' };
+        };
+
+        const formatDate = (isoStr) => {
+            return new Date(isoStr).toLocaleString('en-US', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hour12: false
+            });
+        };
+
+        // --- GS config updater ---
+        const updateGsConfig = (patch) => {
+            setGsConfig(prev => ({ ...prev, ...patch }));
+        };
+
+        const handleGsConnect = async () => {
+            try {
+                await doGoogleAuth(true, true);
+                // A successful explicit connection immediately runs the same ordered sync
+                // as page startup; no separate Attach/Refresh click is required.
+                if (channelUrl) await handleFetch(apiKey.trim() ? 'update' : 'load');
+            } catch (e) {
+                // error already logged
+            }
+        };
+
+        const handleGsDisconnect = () => {
+            disconnectGoogle();
+        };
+
+        const handleGsAttach = async () => {
+            const sid = nid(gsConfig.spreadsheetId);
+            if (!sid) {
+                setError('Please enter a valid Spreadsheet ID or URL first.');
+                return;
+            }
+
+            try {
+                setGsSyncing(true);
+                const tab = getChannelTab(currentHandle || 'default', currentChannelId);
+                const sheetData = await runWithGoogleAuthFromClick(async token => {
+                    await ensureVideoTab(token, sid, tab);
+                    const rows = currentHandle ? await readVideosFromSheet(token, sid, tab) : [];
+                    if (currentHandle && rows.length === 0 && videos?.length) {
+                        await writeVideosToSheet(token, sid, tab, videos);
+                    }
+                    return rows;
+                });
+                updateGsConfig({ spreadsheetId: sid, spreadsheetUrl: surl(sid) });
+                log('✅ Tab ensured: ' + tab);
+
+                if (sheetData.length > 0) {
+                    setVideos(sheetData);
+                    if (currentChannelId) setCache(currentChannelId, sheetData);
+                    log(`☁️ Loaded ${sheetData.length} videos from tab: ${tab}`);
+                }
+            } catch (e) {
+                setError('Ensure tab failed: ' + em(e));
+            } finally {
+                setGsSyncing(false);
+            }
+        };
+
+        const handleCreateGsSpreadsheet = async () => {
+            const suggestedTitle = `YT Dashboard - ${currentHandle || 'Main'}`;
+            const tab = getChannelTab(currentHandle || 'default', currentChannelId);
+            try {
+                setGsSyncing(true);
+                const created = await runWithGoogleAuthFromClick(async token => {
+                    const result = await createNewSpreadsheet(token, suggestedTitle, tab);
+                    if (videos?.length && currentHandle) {
+                        await writeVideosToSheet(token, result.spreadsheetId, tab, videos);
+                    }
+                    return result;
+                });
+                updateGsConfig({
+                    spreadsheetId: created.spreadsheetId,
+                    spreadsheetUrl: created.spreadsheetUrl
+                });
+                log(`✅ Created new spreadsheet: ${created.spreadsheetUrl}`);
+            } catch (e) {
+                setError('Create spreadsheet failed: ' + em(e));
+            } finally {
+                setGsSyncing(false);
+            }
+        };
+
+        // --- Tailwind Theme Classes ---
+        const bg = dark ? 'bg-slate-950/95 text-slate-100' : 'bg-white/95 text-slate-900';
+        const bdr = dark ? 'border-slate-800' : 'border-slate-200';
+        const card = dark ? 'bg-slate-800 border-slate-600 text-slate-100' : 'bg-white border-slate-200 text-slate-900 shadow-sm';
+        const inp = dark ? 'bg-slate-800 border-slate-700 text-emerald-400' : 'bg-slate-50 border-slate-300 text-emerald-700';
+        const inpFilter = dark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800';
+        const mt = dark ? 'text-slate-400' : 'text-slate-500';
+        const t1 = dark ? 'text-slate-100' : 'text-slate-800';
+        const sB = dark ? 'bg-slate-800' : 'bg-white';
+        const hR = dark ? 'hover:bg-slate-700/20' : 'hover:bg-slate-50';
+        const scCls = dark ? 'dark-scroll' : 'light-scroll';
+
+        const tblFs = `${Math.round(14 * scale)}px`;
+        const tblHFs = `${Math.round(11 * scale)}px`;
+        const tblCellPy = `${Math.round(10 * scale)}px`;
+        const tbBtn = 'w-full md:w-9 h-9 rounded-lg border-0 bg-transparent transition-all flex items-center justify-center disabled:opacity-40 text-base';
+        const iconBtn = 'w-7 h-7 rounded-md border-0 bg-transparent flex items-center justify-center text-xs transition-all active:scale-95 flex-shrink-0';
+
+        const Th = ({ label, columnKey, width }) => (
+            <th className={`px-4 align-top ${width || ''}`} style={{ fontSize: tblHFs, paddingTop: tblCellPy, paddingBottom: tblCellPy }}>
+                <div className="flex flex-col gap-1.5">
+                    <button
+                        onClick={() => requestSort(columnKey)}
+                        title={`Sort by ${label}`}
+                        className={`flex items-center gap-1 font-semibold uppercase tracking-wider text-left transition-colors hover:text-emerald-500 ${sortConfig.key === columnKey ? 'text-emerald-500' : mt}`}
+                    >
+                        {label}
+                        <span className="text-[10px]">
+                            {sortConfig.key === columnKey ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '↕'}
+                        </span>
+                    </button>
+                    <input
+                        type="text"
+                        placeholder="Filter..."
+                        title={`Filter by ${label}`}
+                        value={filters[columnKey]}
+                        onChange={(e) => handleFilterChange(columnKey, e.target.value)}
+                        className={`w-full px-2 py-1 text-[10px] rounded border focus:outline-none focus:border-emerald-500 transition-colors ${inpFilter}`}
+                    />
+                </div>
+            </th>
+        );
+
+        // --- Google Sheets Settings UI (full port/adapt) ---
+        const renderGoogleSettings = () => {
+            const hasClient = Boolean((gsConfig.clientId || '').trim());
+            const hasSheet = Boolean(nid(gsConfig.spreadsheetId));
+            const connected = isGoogleAuthed && hasSheet;
+
+            return (
+                <div className="space-y-4 animate-fade-in">
+                    <details className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+                        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-900 dark:text-blue-200">📋 Google Sheets Setup (per-channel tabs)</summary>
+                        <div className="px-4 pb-4 space-y-3 text-xs text-blue-800 dark:text-blue-300">
+                            <div>
+                                <div className="font-semibold">1. Create OAuth Client ID in Google Cloud</div>
+                                <p className="mt-1">Go to <a href="https://console.cloud.google.com/" target="_blank" className="underline">console.cloud.google.com</a>, enable Google Sheets API, configure OAuth consent (add your email to Test users), create OAuth 2.0 Client ID (Web app) and add origins:</p>
+                                <ul className="list-disc pl-4 mt-1 text-[10px]">
+                                    <li><code className="bg-blue-100 dark:bg-blue-800 px-1">https://daggerok.github.io</code></li>
+                                    <li><code className="bg-blue-100 dark:bg-blue-800 px-1">http://localhost</code></li>
+                                </ul>
+                            </div>
+                            <div>
+                                <div className="font-semibold">2. Paste Client ID + Spreadsheet ID below</div>
+                                <p className="mt-1">Each YouTube channel will automatically get its own tab named <code>YT-@handle</code> in your spreadsheet.</p>
+                            </div>
+                            <div className="text-amber-700 dark:text-amber-300">Security: Only Client ID is used (no secrets). Token lives in memory only. Your data stays private in your Google account.</div>
+                        </div>
+                    </details>
+
+                    <div className={`rounded-xl border p-4 ${connected ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
+                        <div className="flex items-center justify-between text-sm">
+                            <div>
+                                <div className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                    <span>
+                                        {connected ? `Connected as ${showEmail ? gEmail : maskEmail(gEmail)}` : 'Not connected to Google Sheets'}
+                                    </span>
+                                    {connected && gEmail && (
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowEmail(!showEmail)}
+                                                className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                title={showEmail ? "Hide email" : "Show email"}
+                                            >
+                                                {showEmail ? "👁️" : "👁️‍🗨️"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(gEmail, 'gEmail')}
+                                                className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                title="Copy email address"
+                                            >
+                                                {copiedField === 'gEmail' ? "✅" : "📋"}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                {gsConfig.spreadsheetId && (
+                                    <a href={surl(nid(gsConfig.spreadsheetId))} target="_blank" className="text-xs underline text-emerald-600 dark:text-emerald-400 break-all block mt-1">
+                                        {showSpreadsheetId ? surl(nid(gsConfig.spreadsheetId)) : maskSpreadsheetUrl(surl(nid(gsConfig.spreadsheetId)))}
+                                    </a>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                {!connected ? (
+                                    <button onClick={handleGsConnect} disabled={gsSyncing || !hasClient} className="px-3 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium disabled:opacity-50">Connect Google</button>
+                                ) : (
+                                    <button onClick={handleGsDisconnect} disabled={gsSyncing} className="px-3 py-1 text-xs rounded-lg border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20">Disconnect</button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Google OAuth Client ID</label>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowClientId(!showClientId)}
+                                    className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    title={showClientId ? "Hide Client ID" : "Show Client ID"}
+                                >
+                                    {showClientId ? "👁️" : "👁️‍🗨️"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(gsConfig.clientId, 'clientId')}
+                                    className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    title="Copy Client ID"
+                                >
+                                    {copiedField === 'clientId' ? "✅" : "📋"}
+                                </button>
+                            </div>
+                        </div>
+                        <input
+                            type={showClientId ? "text" : "password"}
+                            value={gsConfig.clientId}
+                            onChange={e => updateGsConfig({ clientId: e.target.value })}
+                            placeholder="1234567890-abc123.apps.googleusercontent.com"
+                            className={`w-full ${inp} border rounded-lg px-3 py-2 text-xs font-mono`}
+                        />
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Spreadsheet ID or full URL</label>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSpreadsheetId(!showSpreadsheetId)}
+                                    className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    title={showSpreadsheetId ? "Hide Spreadsheet ID" : "Show Spreadsheet ID"}
+                                >
+                                    {showSpreadsheetId ? "👁️" : "👁️‍🗨️"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(gsConfig.spreadsheetId, 'spreadsheetId')}
+                                    className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    title="Copy Spreadsheet ID"
+                                >
+                                    {copiedField === 'spreadsheetId' ? "✅" : "📋"}
+                                </button>
+                            </div>
+                        </div>
+                        <input
+                            type={showSpreadsheetId ? "text" : "password"}
+                            value={gsConfig.spreadsheetId}
+                            onChange={e => updateGsConfig({ spreadsheetId: e.target.value })}
+                            placeholder="https://docs.google.com/spreadsheets/d/1abc.../edit"
+                            className={`w-full ${inp} border rounded-lg px-3 py-2 text-xs font-mono`}
+                        />
+                        <div className="text-[10px] mt-0.5 text-slate-500">One spreadsheet holds tabs for ALL your channels.</div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <button onClick={handleGsAttach} disabled={gsSyncing || !hasClient || !hasSheet} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">Attach / Ensure Tabs</button>
+                        <button onClick={handleCreateGsSpreadsheet} disabled={gsSyncing || !hasClient} className="text-xs px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">Create new Spreadsheet</button>
+                    </div>
+
+                    {connected && (
+                        <div className="text-[11px] bg-emerald-100/50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded p-2">
+                            ✅ Connected. Data for each channel is stored in separate tab e.g. <span className="font-mono">YT-@InnerCircleTrader</span>.<br />
+                            Status &amp; notes are synced across devices after login.
+                        </div>
+                    )}
+
+                    <div className="text-[10px] text-slate-400">Current channel tab (auto): <span className="font-mono">{currentHandle ? getChannelTab(currentHandle, currentChannelId) : '—'}</span></div>
+                </div>
+            );
+        };
+
+        return (
+            <React.Fragment>
+                {/* Navbar */}
+                <div className={`sticky top-0 z-50 ${bg} backdrop-blur-md`}>
+                    <div className="px-4 xl:px-8">
+                        <div className="flex flex-col md:flex-row md:items-center gap-2 py-3">
+                            {/* Input first (full width on mobile) */}
+                            <div className="w-full md:flex-1 min-w-0">
+                                <input
+                                    type="text"
+                                    title="Channel link or @handle"
+                                    value={channelUrl}
+                                    onChange={e => setChannelUrl(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleFetch('load')}
+                                    placeholder="YouTube Channel link or handle (@InnerCircleTrader)..."
+                                    className={`w-full ${inp} border rounded-lg px-3 py-2 font-mono font-medium text-sm focus:outline-none focus:border-emerald-500 transition-colors`}
+                                />
+                            </div>
+
+                            {/* All actions after the input — centered equal-width icons on mobile */}
+                            <div className="grid grid-flow-col auto-cols-fr justify-items-center gap-1.5 w-full md:flex md:w-auto">
+                                <button
+                                    onClick={() => setShowSettings(!showSettings)}
+                                    title="Settings"
+                                    className={`${tbBtn} ${showSettings ? (dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600') : (dark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100')}`}
+                                >
+                                    ⚙️
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDebug(p => !p)}
+                                    title="Toggle debug console"
+                                    className={`${tbBtn} ${dark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}
+                                >
+                                    <span className="flex items-center justify-center gap-1">
+                                        <span className={`h-2 w-2 rounded-full ${apiKey ? 'bg-emerald-500' : 'bg-red-500'}`} title={apiKey ? "YT API Key OK" : "YT API Key missing"}></span>
+                                        <span className={`h-2 w-2 rounded-full ${isGoogleReady ? 'bg-blue-500' : 'bg-slate-400'}`} title={isGoogleReady ? `Google Sheets: ${gEmail}` : "Google Sheets not connected"}></span>
+                                    </span>
+                                </button>
+
+                                <button onClick={() => handleFetch('update')} disabled={loading || !channelUrl} title="Update (new videos only)" className={`${tbBtn} font-bold ${dark ? 'text-blue-400 hover:bg-blue-500/20' : 'text-blue-600 hover:bg-blue-100'}`}>
+                                    ⬇
+                                </button>
+
+                                <button onClick={() => handleFetch('refresh')} disabled={loading || !channelUrl} title="Full Refresh" className={`${tbBtn} ${dark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}>
+                                    🔄
+                                </button>
+
+                                {gsConfig.clientId && (
+                                    <>
+                                        {!isGoogleAuthed ? (
+                                            <button onClick={handleGsConnect} disabled={gsSyncing} title="Connect Google Sheets" className={`${tbBtn} text-blue-400 hover:bg-blue-500/20`}>☁️</button>
+                                        ) : (
+                                            <button onClick={handleGsDisconnect} disabled={gsSyncing} title="Disconnect Google" className={`${tbBtn} text-rose-400 hover:bg-rose-500/20`}>🔌</button>
+                                        )}
+                                        {isGoogleReady && (
+                                            <button
+                                                onClick={handleGsAttach}
+                                                disabled={gsSyncing}
+                                                title="Ensure tab & reload from Google Sheets"
+                                                className={`${tbBtn} text-emerald-400 hover:bg-emerald-500/20`}
+                                            >
+                                                ↻
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+
+                                <button onClick={handleExportCSV} disabled={!videos || videos.length === 0} title="Export CSV" className={`${tbBtn} ${dark ? 'hover:bg-slate-800 text-emerald-400' : 'hover:bg-slate-100 text-emerald-600'}`}>
+                                    📥
+                                </button>
+
+                                <button onClick={() => setDark(!dark)} title={dark ? "Switch to light mode" : "Switch to dark mode"} className={`${tbBtn} ${dark ? 'text-yellow-400 hover:text-yellow-300 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
+                                    {dark ? '☀' : '🌙'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Debug Console - nice table style matching site */}
+                        <div className={`console-wrap ${showDebug ? 'open' : ''}`}>
+                            <div className="console-inner">
+                                <div className="pb-2 -mt-1">
+                                    <div className={`${card} border rounded-xl overflow-hidden shadow-sm`}>
+                                        <div className={`px-3 py-2 border-b ${dark ? 'border-slate-700/50 bg-slate-900/40' : 'border-slate-200 bg-slate-50'} flex items-center justify-between text-[11px]`}>
+                                            <div className="font-semibold text-emerald-500 flex items-center gap-2">
+                                                🐛 Debug Console
+                                                <span className="font-normal text-[10px] text-slate-400">({logs.length})</span>
+                                            </div>
+                                            <button onClick={() => setLogs([])} className="text-[10px] px-2 py-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700">Clear</button>
+                                        </div>
+                                        {logs.length > 0 ? (
+                                            <div className={`max-h-[180px] overflow-auto ${scCls} p-1`}>
+                                                <table className="w-full text-[11px] font-mono">
+                                                    <thead>
+                                                        <tr className={dark ? 'text-slate-400' : 'text-slate-500'}>
+                                                            <th className="px-2 py-1 text-left w-10">#</th>
+                                                            <th className="px-2 py-1 text-left">Event</th>
+                                                            <th className="px-2 py-1 text-right w-28">Time</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-700/20 text-xs">
+                                                        {logs.slice().reverse().map((l, i) => {
+                                                            const isSuccess = (l.msg || '').startsWith('✅') || (l.msg || '').startsWith('📦') || (l.msg || '').startsWith('☁️');
+                                                            const isError = (l.msg || '').startsWith('❌');
+                                                            const isInfo = (l.msg || '').startsWith('⚡');
+                                                            return (
+                                                                <tr key={i} className="debug-row">
+                                                                    <td className="px-2 py-1 text-slate-500 tabular-nums">{logs.length - i}</td>
+                                                                    <td className={`px-2 py-1 ${isSuccess ? 'text-emerald-400' : isError ? 'text-red-400' : isInfo ? 'text-blue-400' : mt}`}>
+                                                                        {l.msg}
+                                                                    </td>
+                                                                    <td className="px-2 py-1 text-right text-[10px] text-slate-500 tabular-nums">{l.ts}</td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div className="px-3 py-4 text-center text-[11px] text-slate-500">No events yet. Actions will appear here.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Workspace Area */}
+                <div className="px-4 xl:px-8 py-1">
+                    {/* Settings Panel — EXACT same width + style as the inventory table, animated collapse */}
+                    <div className={`settings-wrap ${showSettings ? 'open mb-2' : ''}`}>
+                        <div className={`${card} border rounded-xl overflow-hidden shadow-lg text-sm`}>
+                            <div className={`px-4 py-3 border-b ${dark ? 'border-slate-700/50 bg-gradient-to-r from-slate-900/30 to-slate-900/10' : 'border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100/50'} flex items-center justify-between`}>
+                                <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(15 * scale)}px` }}>📋 Core Architecture &amp; Setup</h3>
+                                <button 
+                                    onClick={() => setShowSettings(false)} 
+                                    className="text-xs px-3 py-1 rounded-lg border transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                            <div className="p-5 space-y-4">
+                                <div className="space-y-2 text-xs text-slate-400">
+                                    <div><strong className="text-emerald-500">Auto-Load + Cross-device Sync:</strong> LocalStorage + Google Sheets. Login with Google → same watch statuses &amp; notes on any device.</div>
+                                    <div><strong className="text-blue-400">Per-channel tabs:</strong> Each YouTube channel gets its own tab (e.g. YT-@InnerCircleTrader) inside a single spreadsheet.</div>
+                                </div>
+
+                                {/* YT API Key */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-xs font-semibold">YouTube Data API v3 Key</label>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowApiKey(!showApiKey)}
+                                                className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                title={showApiKey ? "Hide YouTube API Key" : "Show YouTube API Key"}
+                                            >
+                                                {showApiKey ? "👁️" : "👁️‍🗨️"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(apiKey, 'apiKey')}
+                                                className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                title="Copy YouTube API Key"
+                                            >
+                                                {copiedField === 'apiKey' ? "✅" : "📋"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <input
+                                        type={showApiKey ? "text" : "password"}
+                                        value={apiKey}
+                                        onChange={e => setApiKey(e.target.value)}
+                                        placeholder="AIzaSy..."
+                                        className={`w-full ${inp} border rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
+                                    />
+                                </div>
+
+                                {/* Google Sheets */}
+                                <div className="pt-1 border-t border-slate-700/30">
+                                    <div className="font-semibold text-sm mb-2">Google Sheets Sync (Cross-device)</div>
+                                    {renderGoogleSettings()}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-xl mb-6 text-sm flex items-start gap-2 animate-fade-in max-w-3xl mx-auto">
+                            <span className="flex-shrink-0 mt-0.5">✕</span><span className="flex-1">{error}</span>
+                        </div>
+                    )}
+
+                    {/* Table View Component */}
+                    {videos && !loading && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className={`${card} border rounded-xl overflow-hidden shadow-lg`}>
+                                <div className={`px-4 py-3 bg-gradient-to-r ${dark ? 'from-slate-900/30 to-slate-900/10' : 'from-slate-50 to-slate-100/50'} flex items-center justify-between gap-4`}>
+                                    <div>
+                                        <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(16 * scale)}px` }}>
+                                            📋 Channel Inventory ({processedVideos.length} / {videos.length})
+                                        </h3>
+                                        {isGoogleReady && currentHandle && (
+                                            <div className="text-[10px] mt-0.5 text-emerald-400 flex items-center gap-1">
+                                                ☁️ Synced to Google Sheets • tab: <span className="font-mono">{getChannelTab(currentHandle, currentChannelId)}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className={`text-[10px] ${mt}`}>A</span>
+                                        <input
+                                            type="range" min="0" max="100" value={scaleSlider} onChange={e => setScaleSlider(Number(e.target.value))}
+                                            className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`}
+                                        />
+                                        <span className={`text-xs font-bold ${mt}`}>A</span>
+                                    </div>
+                                </div>
+
+                                {/* Desktop Table */}
+                                <div className={`hidden md:block overflow-x-auto ${scCls}`}>
+                                    <table className="w-full text-left border-collapse" style={{ fontSize: tblFs }}>
+                                        <thead>
+                                        <tr className={dark ? 'text-slate-400' : 'text-slate-500'}>
+                                            <Th label="Datetime" columnKey="datetime" width="w-44" />
+                                            <Th label="Type" columnKey="type" width="w-28" />
+                                            <Th label="Name" columnKey="name" />
+                                            <Th label="URL" columnKey="url" width="w-24" />
+                                            <Th label="Status" columnKey="status" width="w-36" />
+                                            <Th label="Note" columnKey="note" width="w-48" />
+                                        </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${dark ? 'divide-slate-700/30' : 'divide-slate-100'}`}>
+                                        {processedVideos.map((v, i) => {
+                                            const statusMeta = getStatusDisplay(v.status || 'unwatched');
+                                            return (
+                                                <tr key={i} className={`${hR} transition-colors group`}>
+                                                    <td className={`px-4 font-mono ${mt} sticky left-0 z-10 ${sB} whitespace-nowrap`} style={{ paddingTop: tblCellPy, paddingBottom: tblCellPy }}>
+                                                        {formatDate(v.datetime)}
+                                                    </td>
+                                                    <td className="px-4 whitespace-nowrap" style={{ paddingTop: tblCellPy, paddingBottom: tblCellPy }}>
+                                                        <span className={`px-2 py-0.5 text-[11px] font-bold border rounded-md ${getBadgeStyle(v.type)}`}>
+                                                            {v.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`px-4 font-medium ${t1} max-w-sm xl:max-w-xl truncate`} style={{ paddingTop: tblCellPy, paddingBottom: tblCellPy }} title={v.name}>
+                                                        {v.name}
+                                                    </td>
+                                                    <td className="px-4 whitespace-nowrap text-right" style={{ paddingTop: tblCellPy, paddingBottom: tblCellPy }}>
+                                                        <a href={v.url} target="_blank" rel="noreferrer" className="text-emerald-500 hover:text-emerald-400 font-bold transition-colors">
+                                                            Open ↗
+                                                        </a>
+                                                    </td>
+                                                    <td className="px-4 whitespace-nowrap" style={{ paddingTop: tblCellPy, paddingBottom: tblCellPy }}>
+                                                        <button
+                                                            onClick={() => toggleStatus(v.url)}
+                                                            className={`px-3 py-1 text-[11px] font-bold border rounded-md transition-all active:scale-95 w-full text-left ${statusMeta.cls}`}
+                                                            title="Click to track learning progress"
+                                                        >
+                                                            {statusMeta.label}
+                                                        </button>
+                                                    </td>
+                                                    <td className="px-4 whitespace-nowrap" style={{ paddingTop: tblCellPy, paddingBottom: tblCellPy }}>
+                                                        {editNoteUrl === v.url ? (
+                                                            <input
+                                                                type="text"
+                                                                autoFocus
+                                                                value={editNoteText}
+                                                                onChange={e => setEditNoteText(e.target.value)}
+                                                                onBlur={() => saveNote(v.url, editNoteText)}
+                                                                onKeyDown={e => { if (e.key === 'Enter') saveNote(v.url, editNoteText); if (e.key === 'Escape') { setEditNoteUrl(null); setEditNoteText(''); } }}
+                                                                className={`w-full px-2 py-1 text-[11px] rounded border focus:outline-none focus:border-emerald-500 transition-colors ${inpFilter}`}
+                                                                title="Edit note"
+                                                            />
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => { setEditNoteUrl(v.url); setEditNoteText(v.note || ''); }}
+                                                                title={v.note ? v.note : 'Add note'}
+                                                                className="text-left w-full truncate text-[11px] px-2 py-1 rounded border hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-900/30 dark:hover:border-emerald-700 transition-colors"
+                                                            >
+                                                                <span className="inline-flex items-center gap-1">
+                                                                    {(v.note && v.note.trim()) ? (
+                                                                        <span className={`${dark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                                                            {v.note.length > 30 ? v.note.slice(0, 30) + '…' : v.note}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className={`${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                                            ✏️ Add note
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {processedVideos.length === 0 && (
+                                            <tr>
+                                                <td colSpan="6" className={`text-center py-12 ${mt}`}>No data matched the current column filters.</td>
+                                            </tr>
+                                        )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Cards — compact icons instead of large action buttons */}
+                                <div className="block md:hidden p-3 space-y-2">
+                                    <div className="pb-1 flex gap-2">
+                                        <input type="text" placeholder="Filter Name..." title="Filter by Name" value={filters.name} onChange={e => handleFilterChange('name', e.target.value)} className={`flex-1 min-w-0 px-3 py-2 text-xs rounded border ${inpFilter}`} />
+                                        <input type="text" placeholder="Filter Status..." title="Filter by Status" value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} className={`w-28 px-3 py-2 text-xs rounded border ${inpFilter}`} />
+                                    </div>
+                                    {processedVideos.map((v, i) => {
+                                        const status = v.status || 'unwatched';
+                                        const statusIcon = status === 'watched' ? '🟢' : status === 'watching' ? '🟡' : '⚪️';
+                                        const statusTip = status === 'watched' ? 'Watched — tap to mark unwatched' : status === 'watching' ? 'Watching — tap to mark watched' : 'Unwatched — tap to mark watching';
+                                        const statusIconStyle = status === 'watched'
+                                            ? (dark ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-emerald-600 hover:bg-emerald-100')
+                                            : status === 'watching'
+                                                ? (dark ? 'text-yellow-400 hover:bg-yellow-500/20' : 'text-yellow-600 hover:bg-yellow-100')
+                                                : (dark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100');
+                                        return (
+                                            <div key={i} className={`border rounded-xl px-3 py-2.5 ${dark ? 'bg-slate-900/40 border-slate-700/60' : 'bg-slate-50 border-slate-200'} space-y-1.5`}>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0 flex-1 flex items-center gap-2">
+                                                        <span className={`px-2 py-0.5 text-[10px] font-bold border rounded-md flex-shrink-0 ${getBadgeStyle(v.type)}`}>{v.type}</span>
+                                                        <span className="text-[11px] font-mono opacity-60 truncate">{formatDate(v.datetime)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                                                        <button
+                                                            onClick={() => toggleStatus(v.url)}
+                                                            title={statusTip}
+                                                            data-tip={status === 'watched' ? 'Watched' : status === 'watching' ? 'Watching' : 'Unwatched'}
+                                                            aria-label={statusTip}
+                                                            className={`has-tip ${iconBtn} ${statusIconStyle}`}
+                                                        >
+                                                            {statusIcon}
+                                                        </button>
+                                                        <a
+                                                            href={v.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            title="Watch"
+                                                            data-tip="Watch"
+                                                            aria-label="Watch"
+                                                            className={`has-tip ${iconBtn} ${dark ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-emerald-600 hover:bg-emerald-100'}`}
+                                                        >
+                                                            ▶
+                                                        </a>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (editNoteUrl === v.url) { setEditNoteUrl(null); setEditNoteText(''); }
+                                                                else { setEditNoteUrl(v.url); setEditNoteText(v.note || ''); }
+                                                            }}
+                                                            title={v.note ? 'Edit note' : 'Add note'}
+                                                            data-tip={v.note ? 'Edit note' : 'Add note'}
+                                                            aria-label={v.note ? 'Edit note' : 'Add note'}
+                                                            className={`has-tip ${iconBtn} ${editNoteUrl === v.url || (v.note && v.note.trim())
+                                                                ? (dark ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-emerald-700 hover:bg-emerald-100')
+                                                                : (dark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100')}`}
+                                                        >
+                                                            {(v.note && v.note.trim()) ? '📝' : '✏️'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <h4 className={`font-semibold text-sm leading-snug ${t1}`}>{v.name}</h4>
+                                                {editNoteUrl === v.url ? (
+                                                    <input
+                                                        type="text"
+                                                        autoFocus
+                                                        value={editNoteText}
+                                                        onChange={e => setEditNoteText(e.target.value)}
+                                                        onBlur={() => saveNote(v.url, editNoteText)}
+                                                        onKeyDown={e => { if (e.key === 'Enter') saveNote(v.url, editNoteText); if (e.key === 'Escape') { setEditNoteUrl(null); setEditNoteText(''); } }}
+                                                        className={`w-full px-2 py-1 text-[11px] rounded border focus:outline-none focus:border-emerald-500 transition-colors ${inpFilter}`}
+                                                        title="Edit note"
+                                                        placeholder="Write a note…"
+                                                    />
+                                                ) : (v.note && v.note.trim()) ? (
+                                                    <p className={`text-[10px] leading-snug whitespace-pre-wrap break-words ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{v.note}</p>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
+
+                    {loading && (
+                        <div className={`text-center py-20 ${mt} flex items-center justify-center gap-3`}>
+                            <div className="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full"/>
+                            {gsSyncing ? 'Syncing with Google Sheets...' : 'Synchronizing with YouTube API...'}
+                        </div>
+                    )}
+
+                    {!loading && !videos && !error && (
+                        <div className={`text-center py-20 ${mt}`}>
+                            <p className="text-lg">Paste your YouTube API Key + Google OAuth Client ID in Settings to start.</p>
+                            <p className="text-xs mt-2">Connect Google → data is automatically synced per channel tab across devices.</p>
+                        </div>
+                    )}
+                </div>
+            </React.Fragment>
+        );
+    };
+
+    ReactDOM = window.ReactDOM || {
+        createRoot(_) {
+            return {
+                render(_) {
+                    // yep.
+                }
+            };
+        }
+    };
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
