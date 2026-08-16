@@ -114,8 +114,10 @@
               <p>X renders the timeline in a cross-origin iframe and intentionally does not expose its post data to this page. Therefore this version cannot reliably classify a post as new/thread/reply, cache individual posts, filter or export them, attach notes/statuses, or store tweet rows in Google Sheets. X also controls the ordering, availability, and number of posts shown.</p>
             </div>
 
-            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Those structured tracking features require a data API and a server-side proxy. The current official X API is pay-per-use, and third-party APIs are also metered after their trial credit. They have intentionally been removed from this free-only build instead of presenting a broken or misleading setup.
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed space-y-2">
+              <p>Those structured tracking features require a data API and a server-side proxy. The current official X API is pay-per-use, and third-party APIs are also metered after their trial credit. They have intentionally been removed from this free-only build instead of presenting a broken or misleading setup.</p>
+              <p><b>Embed availability:</b> X’s public timeline service sometimes returns HTTP 429 even for the first standard embed request. This is an upstream X limitation reported by other publishers. The app detects a stalled embed and offers Retry/Open-on-X instead of loading forever.</p>
+              <p><b>Console notice:</b> The “recent updates to Embedded X Timelines” message links to a September 2022 parameter announcement. It is informational and is not an application error.</p>
             </div>
 
             <div class="flex flex-wrap gap-2">
@@ -159,6 +161,7 @@
 const LS_PREFS = 'tw-free-embed-prefs';
 const DEFAULT_HANDLE = 'I_Am_The_ICT';
 const WIDGETS_SRC = 'https://platform.twitter.com/widgets.js';
+const TIMELINE_TIMEOUT_MS = 12000;
 
 const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_PREFS)) || {}; } catch { return {}; } })();
 const state = {
@@ -260,6 +263,18 @@ function loadWidgets(){
   return widgetsPromise;
 }
 
+function withTimeout(promise, timeoutMs){
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(
+      'The official X timeline did not respond. X’s syndication service may be returning HTTP 429 (rate limited), which is a known upstream embed problem.'
+    )), timeoutMs);
+    Promise.resolve(promise).then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
 async function renderTimeline(){
   const thisRender = ++state.renderId;
   const host = document.getElementById('timelineHost');
@@ -274,17 +289,20 @@ async function renderTimeline(){
     const twttr = await loadWidgets();
     if (thisRender !== state.renderId) return;
     const height = Math.max(640, Math.min(1200, window.innerHeight - 150));
-    const widget = await twttr.widgets.createTimeline(
-      { sourceType: 'profile', screenName: state.handle },
-      host,
-      {
-        height,
-        theme: state.dark ? 'dark' : 'light',
-        chrome: 'nofooter',
-        dnt: true,
-        showReplies: true,
-        ariaPolite: 'polite'
-      }
+    const widget = await withTimeout(
+      twttr.widgets.createTimeline(
+        { sourceType: 'profile', screenName: state.handle },
+        host,
+        {
+          height,
+          theme: state.dark ? 'dark' : 'light',
+          chrome: 'nofooter',
+          dnt: true,
+          showReplies: true,
+          ariaPolite: 'polite'
+        }
+      ),
+      TIMELINE_TIMEOUT_MS
     );
     if (thisRender !== state.renderId) return;
     if (!widget) throw new Error(`X did not return an embedded timeline for @${state.handle}. Confirm that the account exists and is public.`);
@@ -293,9 +311,21 @@ async function renderTimeline(){
   } catch (error) {
     if (thisRender !== state.renderId) return;
     setLoading(false);
-    host.innerHTML = `<div class="p-8 text-center text-sm text-slate-500">Could not render the embedded timeline. <a class="text-emerald-500 underline" href="https://x.com/${encodeURIComponent(state.handle)}/with_replies" target="_blank" rel="noreferrer">Open @${escapeHtml(state.handle)} on X ↗</a></div>`;
+    host.innerHTML = `
+      <div class="p-6 md:p-10 text-center space-y-4">
+        <div class="text-3xl">⚠️</div>
+        <div>
+          <div class="font-semibold text-slate-700 dark:text-slate-200">X’s official embedded timeline is unavailable</div>
+          <p class="mt-1 text-xs text-slate-500 max-w-2xl mx-auto">X’s syndication service can return HTTP 429 and leave its standard widget hidden. This happens upstream on X and cannot be bypassed by this static page.</p>
+        </div>
+        <div class="flex flex-wrap justify-center gap-2">
+          <button id="btnRetryEmbed" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">Retry official embed</button>
+          <a class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800" href="https://x.com/${encodeURIComponent(state.handle)}/with_replies" target="_blank" rel="noreferrer">Open @${escapeHtml(state.handle)} on X ↗</a>
+        </div>
+      </div>`;
+    document.getElementById('btnRetryEmbed').addEventListener('click', renderTimeline);
     showError(error instanceof Error ? error.message : String(error));
-    document.getElementById('widgetStatus').textContent = 'Unavailable';
+    document.getElementById('widgetStatus').textContent = 'X embed unavailable';
   }
 }
 

@@ -28,6 +28,8 @@ The official widget renders its timeline inside a cross-origin iframe. Browsers 
 
 X controls the ordering, availability, and number of posts rendered by the widget. Use the **↗** toolbar action to open the complete Posts & replies page on X.
 
+X's syndication service is also known to return HTTP 429 for standard embedded timelines—even on a first request. When the official widget stalls, the app now stops waiting after 12 seconds and displays Retry/Open-on-X actions instead of an endless spinner. The `widgets.js` console message about “recent updates” links to a September 2022 parameter announcement; it is informational, not the cause of the failed load.
+
 Structured tracking would require a data API and a server-side proxy. The official X API currently uses pay-per-use pricing, while third-party APIs are metered after their trial credit. Those integrations are deliberately omitted from this free-only build.
 
 ## References
