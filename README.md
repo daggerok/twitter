@@ -4,46 +4,54 @@ A mobile-first, browser-only tracker for public X timelines, styled and structur
 
 Live dashboard: <https://daggerok.github.io/twitter/>
 
-## How the free collector works
+## Free logged-in Chrome collector
 
-X's free embedded timeline is unreliable and frequently returns HTTP 429. X's official data API is pay-per-use. This project therefore provides an optional logged-in-browser collector:
+X's free embedded timeline is unreliable and frequently returns HTTP 429. X's official data API is pay-per-use. This project therefore provides an unpacked Chromium extension that collects tweet cards rendered in your already logged-in X tab.
 
-1. Install [Tampermonkey](https://www.tampermonkey.net/).
-2. **Allow Chrome to execute userscripts:**
-   - Right-click Tampermonkey → **Manage extension**.
-   - Turn on **Allow User Scripts**. Chrome 138+ requires this even when Tampermonkey and the script both appear enabled.
-   - If the toggle is unavailable, enable **Developer mode** at `chrome://extensions`.
-   - Set Tampermonkey site access to **On all sites**, or at least allow `x.com`.
-   - See [Tampermonkey FAQ Q209](https://www.tampermonkey.net/faq.php?locale=en#Q209).
-3. Install or update [`collector.user.js`](https://daggerok.github.io/twitter/collector.user.js). Confirm version **1.1.0**.
-4. Log into X normally and open [`@I_Am_The_ICT` Posts & replies](https://x.com/I_Am_The_ICT/with_replies).
-5. Hard-reload the X tab after installation: **Ctrl+Shift+R** on Windows/Linux or **Cmd+Shift+R** on macOS.
-6. Confirm that the floating **𝕏 ICT Collector** panel appears at the bottom-right:
-   - **Start Manual** records rendered tweet cards while you scroll.
-   - **Start + Auto** performs slow, capped assisted scrolling.
-   - **Pause** stops immediately.
-7. Choose **Copy New JSON** or **Download JSON**.
-8. Return to the dashboard and use **📋 Paste** or the **📄 JSON import** dialog.
+The Chrome extension replaces the earlier Tampermonkey userscript.
 
-No X password, session cookie, authorization token, or private browser storage is copied to the dashboard. The collector observes only tweet cards rendered in the current X page.
+## Install the extension
+
+1. Disable or remove the old **daggerok X Timeline Collector** userscript from Tampermonkey.
+2. Download [`twitter-collector-extension.zip`](https://daggerok.github.io/twitter/twitter-collector-extension.zip).
+3. Unzip it. The extracted `extension` folder must directly contain `manifest.json`.
+4. Open `chrome://extensions`.
+5. Enable **Developer mode** in the top-right.
+6. Click **Load unpacked**.
+7. Select the extracted `extension` folder—not the ZIP and not the repository root.
+8. Pin **daggerok X Timeline Collector** to the browser toolbar.
+
+The source is also available in [`extension/`](./extension/).
+
+## Daily usage
+
+1. Log into X normally and open [`@I_Am_The_ICT` Posts & replies](https://x.com/I_Am_The_ICT/with_replies).
+2. Click the **daggerok X Timeline Collector** extension icon while the X tab is active.
+3. The popup shows whether the collector content script is loaded. It automatically injects/reinjects the script when needed.
+4. Choose:
+   - **Show panel** — display/reopen the floating controls.
+   - **Start Manual** — collect rendered tweet cards while you scroll.
+   - **Start Auto** — perform slow, capped assisted scrolling.
+   - **Pause** — stop immediately.
+5. Choose **Copy New JSON** in the popup or floating panel, or download JSON from the panel.
+6. Return to <https://daggerok.github.io/twitter/> and use **📋 Paste** or the **📄 JSON import** dialog.
+
+No X password, session cookie, authorization token, or private X browser storage is exported. The extension observes only tweet cards rendered in the current X page.
 
 ## If the panel is missing
 
 Check these in order:
 
-1. Tampermonkey's global status is **Enabled**.
-2. The `daggerok X Timeline Collector` toggle is green.
-3. Chrome's Tampermonkey extension details have **Allow User Scripts** enabled.
-4. Tampermonkey site access allows `https://x.com/*`.
-5. The installed collector version is **1.1.0**.
-6. Hard-reload the X tab after installing or updating the script.
-7. Open Tampermonkey on the X tab and run **Show / reopen ICT Collector panel**.
-8. In DevTools Console, successful execution logs:
+1. The unpacked extension is enabled at `chrome://extensions`.
+2. The folder loaded into Chrome directly contains `manifest.json`.
+3. The extension's site access permits `https://x.com/*`.
+4. You are on the X profile tab—not the dashboard—when opening the extension popup.
+5. Click **Show panel**. The popup attempts a direct content-script reinjection when no receiver is detected.
+6. Reload the X tab once after first installing or reloading the unpacked extension.
+7. Open DevTools Console and look for:
    ```text
-   [daggerok X Collector] userscript v1.1.0 loaded
+   [daggerok X Collector] Chrome extension v1.0.0 loaded
    ```
-
-The collector now mounts its panel before loading Tampermonkey storage, so a storage error is displayed in the panel rather than causing an invisible startup failure.
 
 ## Dashboard features
 
@@ -64,7 +72,7 @@ Assisted scrolling is deliberately conservative:
 - configurable scroll cap, defaulting to 80
 - stops after repeated scans with no new rendered posts
 - stops after reaching posts seen in an earlier collector run
-- stores only post IDs in Tampermonkey storage to recognize previous captures
+- stores only post IDs in `chrome.storage.local` to recognize previous captures
 
 ## Important limitations and Terms
 
@@ -81,4 +89,7 @@ Open **⚙️ Settings** in the dashboard and expand **📋 Google Sheets Setup 
 ## Files
 
 - [`index.html`](./index.html) — dashboard, cache, classification, filtering, CSV, and Google Sheets sync
-- [`collector.user.js`](./collector.user.js) — Tampermonkey companion that observes rendered X tweet cards
+- [`extension/manifest.json`](./extension/manifest.json) — Manifest V3 extension configuration
+- [`extension/content.js`](./extension/content.js) — collector injected into X profile pages
+- [`extension/popup.html`](./extension/popup.html) and [`popup.js`](./extension/popup.js) — toolbar controls and reinjection diagnostics
+- `twitter-collector-extension.zip` — downloadable unpacked-extension package

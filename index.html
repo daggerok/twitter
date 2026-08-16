@@ -114,58 +114,62 @@
 
             <!-- Logged-in browser collector -->
             <div class="pt-1 border-t border-slate-200 dark:border-slate-700/30">
-              <div class="font-semibold text-sm mb-2">Logged-in X Browser Collector (free companion)</div>
+              <div class="font-semibold text-sm mb-2">Logged-in X Chrome Extension Collector (free companion)</div>
               <details open class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
-                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-amber-900 dark:text-amber-200">📋 Tampermonkey Collector Setup (assisted scrolling)</summary>
+                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-amber-900 dark:text-amber-200">📋 Chrome Extension Setup (assisted scrolling)</summary>
                 <div class="px-4 pb-4 space-y-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                   <div>
-                    <div class="font-semibold">1. Install Tampermonkey</div>
-                    <p class="mt-1">Install the <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer" class="underline">Tampermonkey browser extension</a>.</p>
+                    <div class="font-semibold">1. Remove or disable the old Tampermonkey collector</div>
+                    <p class="mt-1">Open Tampermonkey and turn off/delete <b>daggerok X Timeline Collector</b>. The new Chrome extension replaces it and prevents two collectors from conflicting.</p>
                   </div>
                   <div>
-                    <div class="font-semibold">2. Allow Chrome to execute userscripts — required</div>
-                    <p class="mt-1">Right-click the Tampermonkey toolbar icon → <b>Manage extension</b> → turn on <b>Allow User Scripts</b>. On Chrome 138+, an installed/enabled script can silently do nothing until this is enabled. If that toggle is unavailable, open <code>chrome://extensions</code> and enable <b>Developer mode</b>. Also set Tampermonkey’s site access to <b>On all sites</b> or allow <code>x.com</code>.</p>
-                    <p class="mt-1"><a href="https://www.tampermonkey.net/faq.php?locale=en#Q209" target="_blank" rel="noreferrer" class="underline">Tampermonkey’s official permission instructions ↗</a></p>
+                    <div class="font-semibold">2. Download and unzip the extension</div>
+                    <p class="mt-1"><a href="./twitter-collector-extension.zip" download class="underline font-semibold">Download twitter-collector-extension.zip</a>, unzip it, and locate the extracted <code>extension</code> folder containing <code>manifest.json</code>.</p>
                   </div>
                   <div>
-                    <div class="font-semibold">3. Install or update the collector</div>
-                    <p class="mt-1">Open <a href="./collector.user.js" target="_blank" class="underline font-semibold">collector.user.js</a> and approve Install/Update. The current script version is <b>1.1.0</b>.</p>
+                    <div class="font-semibold">3. Load it into Chrome</div>
+                    <ol class="list-decimal pl-5 mt-1 space-y-1">
+                      <li>Open <code>chrome://extensions</code>.</li>
+                      <li>Enable <b>Developer mode</b> in the top-right.</li>
+                      <li>Click <b>Load unpacked</b>.</li>
+                      <li>Select the extracted <code>extension</code> folder—not the ZIP and not the repository root.</li>
+                      <li>Pin <b>daggerok X Timeline Collector</b> to the toolbar.</li>
+                    </ol>
                   </div>
                   <div>
-                    <div class="font-semibold">4. Reload X after installation</div>
-                    <p class="mt-1">Click the <b>𝕏</b> toolbar button to open <code>@I_Am_The_ICT</code> Posts &amp; replies, log in normally, then perform a hard reload with <b>Ctrl+Shift+R</b> (Windows/Linux) or <b>Cmd+Shift+R</b> (macOS). A userscript is not injected retroactively into a tab that was already open before installation.</p>
+                    <div class="font-semibold">4. Open the ICT profile and extension popup</div>
+                    <p class="mt-1">Click the dashboard’s <b>𝕏</b> toolbar button, log into X normally, then click the newly installed extension icon. Its popup reports whether the collector is loaded and can inject/reinject it if necessary.</p>
                   </div>
                   <div>
-                    <div class="font-semibold">5. Verify the floating panel</div>
-                    <p class="mt-1">A dark <b>𝕏 ICT Collector</b> panel must appear at the bottom-right of the X page. If it does not, click Tampermonkey and run <b>Show / reopen ICT Collector panel</b>. In DevTools Console, a successful injection also logs <code>[daggerok X Collector] userscript v1.1.0 loaded</code>.</p>
+                    <div class="font-semibold">5. Start collection</div>
+                    <p class="mt-1">In the extension popup click <b>Show panel</b>, <b>Start Manual</b>, or <b>Start Auto</b>. The dark floating panel also provides Pause, delay, scroll-cap, copy, download, and history controls. Keep the X tab visible during assisted scrolling.</p>
                   </div>
                   <div>
-                    <div class="font-semibold">6. Collect and transfer</div>
-                    <p class="mt-1">Press <b>Start + Auto</b> for slow assisted scrolling, or <b>Start Manual</b> and scroll yourself. Keep the tab visible. When finished, press <b>Copy New JSON</b>, return here, and press the purple <b>📋</b> toolbar button. You can alternatively download JSON and use the <b>📄</b> import dialog.</p>
+                    <div class="font-semibold">6. Transfer to this dashboard</div>
+                    <p class="mt-1">Press <b>Copy New JSON</b> in the extension popup or floating panel. Return here and press the purple <b>📋</b> toolbar button. You can alternatively download JSON and use the <b>📄</b> import dialog.</p>
                   </div>
                   <div class="rounded-lg border border-amber-300/60 dark:border-amber-700 bg-white/50 dark:bg-slate-950/20 p-2">
-                    <b>What is collected:</b> only tweet cards rendered in the visible X page—post ID/URL/time/text, author, visible reply/repost context, visible metrics, and media URLs. Classification is heuristic because the web page exposes less metadata than an API.
+                    <b>What is collected:</b> only tweet cards rendered in the visible X page—post ID/URL/time/text, author, visible reply/repost context, visible metrics, and media URLs. The extension never exports passwords, session cookies, or X authorization tokens.
                   </div>
                   <details class="rounded-lg border border-rose-300/60 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/20">
                     <summary class="cursor-pointer p-2 font-semibold text-rose-800 dark:text-rose-300">Panel still missing? Check these in order</summary>
                     <ol class="list-decimal pl-7 pr-3 pb-3 space-y-1 text-rose-800 dark:text-rose-300">
-                      <li>Tampermonkey’s global status says <b>Enabled</b>.</li>
-                      <li>The collector’s own toggle is green.</li>
-                      <li><b>Allow User Scripts</b> is enabled in Chrome’s Tampermonkey extension details.</li>
-                      <li>Tampermonkey site access permits <code>https://x.com/*</code>.</li>
-                      <li>You installed/updated collector version <b>1.1.0</b>.</li>
-                      <li>You hard-reloaded the X tab after installation.</li>
-                      <li>Try the Tampermonkey command <b>Show / reopen ICT Collector panel</b>.</li>
+                      <li>The unpacked extension is enabled at <code>chrome://extensions</code>.</li>
+                      <li>You selected the folder that directly contains <code>manifest.json</code>.</li>
+                      <li>The extension’s site access permits <code>https://x.com/*</code>.</li>
+                      <li>You are on an X tab—not the dashboard—when opening the extension popup.</li>
+                      <li>Click <b>Show panel</b>; the popup automatically reinjects the content script if it is missing.</li>
+                      <li>Reload the X tab once after the first extension installation.</li>
                     </ol>
                   </details>
-                  <div class="text-rose-700 dark:text-rose-300"><b>Important:</b> X’s Terms prohibit scraping without express permission. Assisted scrolling can also trigger anti-automation limits. Use conservative settings, stop if X warns or rate-limits you, and proceed only if you accept the account/Terms risk.</div>
+                  <div class="text-rose-700 dark:text-rose-300"><b>Important:</b> X’s Terms prohibit scraping without express permission. Assisted scrolling can trigger anti-automation limits. Use conservative settings and proceed only if you accept the account/Terms risk.</div>
                 </div>
               </details>
             </div>
 
             <div class="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 text-xs text-emerald-800 dark:text-emerald-300">
-              <div class="font-semibold mb-1">✓ No paid X data API and no proxy</div>
-              <p>Collection happens locally in the already logged-in X tab. The dashboard receives only the JSON you explicitly copy or import. Google Sheets authentication remains separate and uses Google’s OAuth popup.</p>
+              <div class="font-semibold mb-1">✓ No paid X data API, proxy, or Tampermonkey dependency</div>
+              <p>Collection happens locally in the logged-in X tab through an explicitly installed Chrome extension. The dashboard receives only JSON you deliberately copy or import. Google Sheets authentication remains separate.</p>
             </div>
 
             <!-- Google Sheets menu and guide, matching daggerok/youtube -->
@@ -305,7 +309,7 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-xl w-full overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/40 font-bold">📄 Collector JSON Import</div>
     <div class="p-4 space-y-3">
-      <div class="text-xs text-slate-500">Paste JSON copied or downloaded by <code>collector.user.js</code>. Expected schema: <code>daggerok-x-collector/v1</code>.</div>
+      <div class="text-xs text-slate-500">Paste JSON copied or downloaded by the Chrome collector extension. Expected schema: <code>daggerok-x-collector/v1</code>.</div>
       <textarea id="importText" rows="8" class="w-full text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus:border-emerald-500" placeholder="Paste collector JSON here…"></textarea>
       <label class="block text-xs text-slate-500">Or select a downloaded collector JSON file:
         <input id="importFile" type="file" accept="application/json,.json" class="block mt-1 text-xs">
