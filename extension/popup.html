@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X Timeline Collector</title>
+<style>
+  *{box-sizing:border-box}body{width:330px;margin:0;background:#020617;color:#e2e8f0;font:12px/1.4 Inter,system-ui,sans-serif}header{padding:12px 14px;background:#0f172a;border-bottom:1px solid #334155}h1{font-size:14px;color:#34d399;margin:0}.version{font-size:9px;color:#64748b;margin-top:2px}main{padding:12px;display:grid;gap:9px}.status{padding:10px;border:1px solid #334155;border-radius:9px;background:#0b1220;min-height:54px}.status strong{display:block;color:#a7f3d0}.meta{font-size:10px;color:#94a3b8;margin-top:3px}.row{display:flex;gap:7px}.row>*{flex:1}button,a{display:flex;align-items:center;justify-content:center;min-height:34px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#e2e8f0;text-decoration:none;font:inherit;font-weight:650;cursor:pointer}button:hover,a:hover{background:#334155}.primary{background:#059669;border-color:#10b981;color:#fff}.primary:hover{background:#047857}.purple{background:#6d28d9;border-color:#8b5cf6}.purple:hover{background:#5b21b6}.warning{color:#fbbf24;font-size:10px}.error{color:#fda4af}footer{padding:9px 12px;border-top:1px solid #1e293b;color:#64748b;font-size:9px}
+</style>
+</head>
+<body>
+<header><h1>𝕏 Timeline Collector</h1><div class="version">Chrome extension v1.0.0</div></header>
+<main>
+  <div id="status" class="status"><strong>Checking current tab…</strong><div class="meta">Open an X profile page.</div></div>
+  <div class="row"><button id="show" class="primary">Show panel</button><button id="manual">Start Manual</button></div>
+  <div class="row"><button id="auto" class="primary">Start Auto</button><button id="pause">Pause</button></div>
+  <div class="row"><button id="copy" class="purple">Copy New JSON</button><a id="openX" href="https://x.com/I_Am_The_ICT/with_replies" target="_blank">Open ICT</a></div>
+  <a id="dashboard" href="https://daggerok.github.io/twitter/" target="_blank">Open dashboard</a>
+  <div class="warning">Assisted scrolling may trigger X anti-automation limits. Keep the X tab visible and pause if X warns or rate-limits you.</div>
+</main>
+<footer>No passwords, cookies, or X authorization tokens are exported.</footer>
+<script src="popup.js"></script>
+</body>
+</html>

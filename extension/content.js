@@ -1,26 +1,11 @@
-// ==UserScript==
-// @name         daggerok X Timeline Collector
-// @namespace    https://daggerok.github.io/twitter/
-// @version      1.1.0
-// @description  Collect tweet cards rendered while you browse a public X profile; exports JSON for daggerok/twitter.
-// @author       daggerok
-// @homepageURL  https://daggerok.github.io/twitter/
-// @supportURL   https://github.com/daggerok/twitter/issues
-// @updateURL    https://daggerok.github.io/twitter/collector.user.js
-// @downloadURL  https://daggerok.github.io/twitter/collector.user.js
-// @match        https://x.com/*
-// @match        https://twitter.com/*
-// @run-at       document-idle
-// @noframes
-// @grant        GM_getValue
-// @grant        GM_setValue
-// @grant        GM_deleteValue
-// @grant        GM_setClipboard
-// @grant        GM_registerMenuCommand
-// ==/UserScript==
-
-(function () {
+(() => {
   'use strict';
+
+  if (globalThis.__DAGGEROK_X_COLLECTOR_EXTENSION_LOADED__) {
+    globalThis.__DAGGEROK_X_COLLECTOR_EXTENSION_API__?.showPanel('Panel reopened after reinjection');
+    return;
+  }
+  globalThis.__DAGGEROK_X_COLLECTOR_EXTENSION_LOADED__ = true;
 
   const SCHEMA = 'daggerok-x-collector/v1';
   const DEFAULT_MAX_SCROLLS = 80;
@@ -42,12 +27,22 @@
   let lastReason = 'Ready';
   let ui = null;
 
-  const gmGet = async (key, fallback) => typeof GM_getValue === 'function' ? await Promise.resolve(GM_getValue(key, fallback)) : fallback;
-  const gmSet = async (key, value) => { if (typeof GM_setValue === 'function') await Promise.resolve(GM_setValue(key, value)); };
+  const storageGet = (key, fallback) => new Promise(resolve => {
+    chrome.storage.local.get([key], result => {
+      if (chrome.runtime.lastError) return resolve(fallback);
+      resolve(result[key] ?? fallback);
+    });
+  });
+  const storageSet = (key, value) => new Promise(resolve => {
+    chrome.storage.local.set({ [key]: value }, () => resolve());
+  });
+  const storageRemove = key => new Promise(resolve => {
+    chrome.storage.local.remove(key, () => resolve());
+  });
   const knownKey = () => `known:${(targetHandle || 'unknown').toLowerCase()}`;
 
-  console.info('[daggerok X Collector] userscript v1.1.0 loaded', location.href);
-  document.documentElement.dataset.daggerokXCollector = '1.1.0';
+  console.info('[daggerok X Collector] Chrome extension v1.0.0 loaded', location.href);
+  document.documentElement.dataset.daggerokXCollectorExtension = '1.0.0';
 
   function getProfileHandle() {
     const part = location.pathname.split('/').filter(Boolean)[0] || '';
@@ -141,14 +136,14 @@
   }
 
   async function loadKnown() {
-    const values = await gmGet(knownKey(), []);
+    const values = await storageGet(knownKey(), []);
     knownIds = new Set(Array.isArray(values) ? values.map(String) : []);
     initialKnownIds = new Set(knownIds);
   }
 
   async function persistKnown() {
     const values = Array.from(knownIds);
-    await gmSet(knownKey(), values.slice(Math.max(0, values.length - MAX_KNOWN_IDS)));
+    await storageSet(knownKey(), values.slice(Math.max(0, values.length - MAX_KNOWN_IDS)));
   }
 
   async function scanVisible() {
@@ -251,8 +246,17 @@
       return;
     }
     const json = JSON.stringify(payload(), null, 2);
-    if (typeof GM_setClipboard === 'function') GM_setClipboard(json, 'text');
-    else await navigator.clipboard.writeText(json);
+    try {
+      await navigator.clipboard.writeText(json);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = json;
+      textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
     lastReason = `Copied ${session.size} new post${session.size === 1 ? '' : 's'} as JSON`;
     updateUi();
   }
@@ -281,7 +285,7 @@
     session.clear();
     knownIds.clear();
     initialKnownIds.clear();
-    if (typeof GM_deleteValue === 'function') await Promise.resolve(GM_deleteValue(knownKey()));
+    await storageRemove(knownKey());
     updateUi();
   }
 
@@ -387,11 +391,42 @@
     updateUi();
   }
 
-  if (typeof GM_registerMenuCommand === 'function') {
-    GM_registerMenuCommand('Show / reopen ICT Collector panel', () => showPanel('Panel reopened from Tampermonkey'));
-    GM_registerMenuCommand('Start manual collection', async () => { await showPanel('Starting manual collection'); await start(false); });
-    GM_registerMenuCommand('Start assisted auto-scroll', async () => { await showPanel('Starting assisted scrolling'); await start(true); });
+  function collectorStatus() {
+    return {
+      ok: true,
+      version: '1.0.0',
+      handle: targetHandle,
+      collecting,
+      autoScrolling,
+      captured: session.size,
+      scrollCount,
+      known: initialKnownIds.size,
+      reason: lastReason,
+      panelVisible: Boolean(document.getElementById(PANEL_ID))
+    };
   }
+
+  globalThis.__DAGGEROK_X_COLLECTOR_EXTENSION_API__ = { showPanel, start, stop, copyJson, downloadJson, status: collectorStatus };
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!message || message.source !== 'daggerok-x-collector-popup') return false;
+    (async () => {
+      if (message.command === 'show') await showPanel('Panel opened from extension');
+      else if (message.command === 'start-manual') { await showPanel('Starting manual collection'); await start(false); }
+      else if (message.command === 'start-auto') { await showPanel('Starting assisted scrolling'); await start(true); }
+      else if (message.command === 'pause') stop('Paused from extension');
+      else if (message.command === 'copy') await copyJson();
+      else if (message.command === 'get-json') {
+        const status = collectorStatus();
+        status.json = session.size ? JSON.stringify(payload(), null, 2) : '';
+        if (!status.json) status.error = 'No newly captured posts are available to copy yet.';
+        sendResponse(status);
+        return;
+      }
+      sendResponse(collectorStatus());
+    })().catch(error => sendResponse({ ok: false, error: error?.message || String(error) }));
+    return true;
+  });
 
   // Mount the UI first so a storage permission/error cannot make the collector fail invisibly.
   createPanel();

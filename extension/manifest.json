@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "daggerok X Timeline Collector",
+  "version": "1.0.0",
+  "description": "Collect tweet cards rendered in your logged-in X profile timeline and export JSON to daggerok/twitter.",
+  "minimum_chrome_version": "102",
+  "permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*"
+  ],
+  "action": {
+    "default_title": "X Timeline Collector",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
