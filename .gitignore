@@ -1,4 +1,9 @@
 .idea/
+.parcel-cache/
+dist/
+node_modules/
 .DS_Store
-google.json
-twitter-feed-tracking-application.zip
+
+# local only: captured X responses with real data, screenshots, scratch scripts
+.claude/
+captures/

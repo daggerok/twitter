@@ -1,0 +1,179 @@
+{
+  "data": {
+    "user": {
+      "result": {
+        "__typename": "User",
+        "timeline_v2": {
+          "timeline": {
+            "instructions": [
+              { "type": "TimelineClearCache" },
+              {
+                "type": "TimelinePinEntry",
+                "entry": {
+                  "entryId": "tweet-1800000000000000001",
+                  "content": {
+                    "entryType": "TimelineTimelineItem",
+                    "itemContent": {
+                      "itemType": "TimelineTweet",
+                      "tweet_results": {
+                        "result": {
+                          "__typename": "Tweet",
+                          "rest_id": "1800000000000000001",
+                          "core": { "user_results": { "result": { "__typename": "User", "rest_id": "44196397", "core": { "name": "Fixture Account", "screen_name": "FixtureAcc" }, "legacy": { "followers_count": 12345 } } } },
+                          "views": { "count": "500" },
+                          "legacy": {
+                            "created_at": "Mon Jan 06 12:00:00 +0000 2025",
+                            "full_text": "Pinned post with a link https://t.co/abc and a photo https://t.co/pic",
+                            "lang": "en",
+                            "conversation_id_str": "1800000000000000001",
+                            "favorite_count": 10, "retweet_count": 2, "reply_count": 3, "quote_count": 1, "bookmark_count": 4,
+                            "is_quote_status": false,
+                            "entities": { "urls": [ { "url": "https://t.co/abc", "expanded_url": "https://example.com/article", "display_url": "example.com/article" } ] },
+                            "extended_entities": { "media": [ { "type": "photo", "url": "https://t.co/pic", "media_url_https": "https://pbs.twimg.com/media/pic.jpg" } ] }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "TimelineAddEntries",
+                "entries": [
+                  {
+                    "entryId": "tweet-1900000000000000009",
+                    "content": {
+                      "entryType": "TimelineTimelineItem",
+                      "itemContent": {
+                        "itemType": "TimelineTweet",
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "1900000000000000009",
+                            "core": { "user_results": { "result": { "rest_id": "44196397", "legacy": { "name": "Fixture Account", "screen_name": "fixtureacc", "followers_count": 12345 } } } },
+                            "views": { "count": "99" },
+                            "note_tweet": { "note_tweet_results": { "result": { "text": "A long post that goes past 280 characters and is stored as a note tweet https://t.co/long", "entity_set": { "urls": [ { "url": "https://t.co/long", "expanded_url": "https://long.example.com/x" } ] } } } },
+                            "legacy": {
+                              "created_at": "Fri Oct 03 08:30:00 +0000 2025",
+                              "full_text": "A long post that goes past 280 characters and is stored as a note tweet https://t.co/long…",
+                              "lang": "en",
+                              "conversation_id_str": "1900000000000000009",
+                              "favorite_count": 1, "retweet_count": 0, "reply_count": 0, "quote_count": 0, "bookmark_count": 0,
+                              "entities": { "urls": [] }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-1900000000000000008",
+                    "content": {
+                      "entryType": "TimelineTimelineItem",
+                      "itemContent": {
+                        "itemType": "TimelineTweet",
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "1900000000000000008",
+                            "core": { "user_results": { "result": { "rest_id": "44196397", "core": { "name": "Fixture Account", "screen_name": "FixtureAcc" }, "legacy": { "followers_count": 12345 } } } },
+                            "legacy": {
+                              "created_at": "Thu Oct 02 08:30:00 +0000 2025",
+                              "full_text": "RT @other: the original text that gets cut at one hundred and forty characters in the retweet legacy text so the parser must take the orig…",
+                              "lang": "en",
+                              "conversation_id_str": "1900000000000000008",
+                              "favorite_count": 0, "retweet_count": 0, "reply_count": 0, "quote_count": 0,
+                              "retweeted_status_result": {
+                                "result": {
+                                  "__typename": "Tweet",
+                                  "rest_id": "1850000000000000005",
+                                  "core": { "user_results": { "result": { "rest_id": "1", "legacy": { "name": "Other", "screen_name": "Other" } } } },
+                                  "views": { "count": "7" },
+                                  "legacy": {
+                                    "created_at": "Wed Oct 01 08:30:00 +0000 2025",
+                                    "full_text": "the original text that gets cut at one hundred and forty characters in the retweet legacy text so the parser must take the original https://t.co/vid",
+                                    "lang": "en",
+                                    "entities": { "urls": [] },
+                                    "extended_entities": { "media": [ { "type": "video", "url": "https://t.co/vid", "media_url_https": "https://pbs.twimg.com/thumb.jpg", "video_info": { "variants": [ { "content_type": "application/x-mpegURL", "url": "https://video.twimg.com/pl.m3u8" }, { "content_type": "video/mp4", "bitrate": 256000, "url": "https://video.twimg.com/low.mp4" }, { "content_type": "video/mp4", "bitrate": 2176000, "url": "https://video.twimg.com/high.mp4" } ] } } ] }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "tweet-1900000000000000007",
+                    "content": {
+                      "entryType": "TimelineTimelineItem",
+                      "itemContent": {
+                        "itemType": "TimelineTweet",
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "TweetWithVisibilityResults",
+                            "tweet": {
+                              "rest_id": "1900000000000000007",
+                              "core": { "user_results": { "result": { "rest_id": "44196397", "core": { "name": "Fixture Account", "screen_name": "FixtureAcc" } } } },
+                              "quoted_status_result": { "result": { "__typename": "Tweet", "rest_id": "1850000000000000006", "core": { "user_results": { "result": { "rest_id": "2", "legacy": { "screen_name": "quoted" } } } }, "legacy": { "full_text": "quoted text" } } },
+                              "legacy": {
+                                "created_at": "Wed Oct 01 09:00:00 +0000 2025",
+                                "full_text": "My take on this https://t.co/q",
+                                "lang": "en",
+                                "is_quote_status": true,
+                                "quoted_status_id_str": "1850000000000000006",
+                                "conversation_id_str": "1900000000000000007",
+                                "favorite_count": 5,
+                                "entities": { "urls": [ { "url": "https://t.co/q", "expanded_url": "https://x.com/quoted/status/1850000000000000006" } ] }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "promoted-tweet-1900000000000000006",
+                    "content": {
+                      "entryType": "TimelineTimelineItem",
+                      "itemContent": {
+                        "itemType": "TimelineTweet",
+                        "promotedMetadata": { "advertiser_results": {} },
+                        "tweet_results": { "result": { "__typename": "Tweet", "rest_id": "1900000000000000006", "core": { "user_results": { "result": { "rest_id": "44196397", "core": { "screen_name": "FixtureAcc" } } } }, "legacy": { "full_text": "ad", "created_at": "Wed Oct 01 09:00:00 +0000 2025" } } }
+                      }
+                    }
+                  },
+                  {
+                    "entryId": "profile-conversation-1900000000000000004",
+                    "content": {
+                      "entryType": "TimelineTimelineModule",
+                      "items": [
+                        { "entryId": "profile-conversation-1900000000000000004-tweet-1900000000000000003", "item": { "itemContent": { "itemType": "TimelineTweet", "tweet_results": { "result": { "__typename": "Tweet", "rest_id": "1900000000000000003", "core": { "user_results": { "result": { "rest_id": "3", "legacy": { "screen_name": "someoneelse", "name": "Someone Else" } } } }, "legacy": { "full_text": "a question", "created_at": "Tue Sep 30 10:00:00 +0000 2025", "conversation_id_str": "1900000000000000003" } } } } } },
+                        { "entryId": "profile-conversation-1900000000000000004-tweet-1900000000000000004", "item": { "itemContent": { "itemType": "TimelineTweet", "tweet_results": { "result": { "__typename": "Tweet", "rest_id": "1900000000000000004", "core": { "user_results": { "result": { "rest_id": "44196397", "core": { "name": "Fixture Account", "screen_name": "FixtureAcc" } } } }, "views": { "count": "12" }, "legacy": { "full_text": "@someoneelse an answer", "created_at": "Tue Sep 30 10:05:00 +0000 2025", "lang": "en", "conversation_id_str": "1900000000000000003", "in_reply_to_status_id_str": "1900000000000000003", "in_reply_to_screen_name": "SomeoneElse", "favorite_count": 2 } } } } } }
+                      ]
+                    }
+                  },
+                  {
+                    "entryId": "tweet-1900000000000000002",
+                    "content": { "entryType": "TimelineTimelineItem", "itemContent": { "itemType": "TimelineTweet", "tweet_results": { "result": { "__typename": "TweetTombstone", "tombstone": { "text": { "text": "This Post is unavailable." } } } } } }
+                  },
+                  {
+                    "entryId": "tweet-1900000000000000001",
+                    "content": { "entryType": "TimelineTimelineItem", "itemContent": { "itemType": "TimelineTweet", "tweet_results": {} } }
+                  },
+                  {
+                    "entryId": "who-to-follow-1",
+                    "content": { "entryType": "TimelineTimelineModule", "items": [ { "entryId": "who-to-follow-1-user-9", "item": { "itemContent": { "itemType": "TimelineUser", "user_results": { "result": { "rest_id": "9" } } } } } ] }
+                  },
+                  { "entryId": "cursor-top-1", "content": { "entryType": "TimelineTimelineCursor", "value": "DAABCgABtop", "cursorType": "Top" } },
+                  { "entryId": "cursor-bottom-1", "content": { "entryType": "TimelineTimelineCursor", "value": "DAABCgABbottom", "cursorType": "Bottom" } }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

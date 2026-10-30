@@ -1,84 +1,74 @@
-# X / Twitter Timeline Dashboard
+# X Feed Sheets (daggerok/twitter)
 
-A mobile-first, browser-only tracker for public X timelines, styled and structured like [`daggerok/youtube`](https://github.com/daggerok/youtube).
+Follow X (Twitter) accounts into your own Google Sheet and read them in a viewer on GitHub Pages. A Tampermonkey userscript collects the posts of a profile while it scrolls in your logged-in browser; the viewer stores them in Google Sheets (one tab per account) and shows them with filters, search and export. No X API, no server, no secrets in code, $0
 
-Live dashboard: <https://daggerok.github.io/twitter/>
+Live: https://daggerok.github.io/twitter/
 
-## How the free collector works
+Userscript: https://daggerok.github.io/twitter/x-sync.user.js
 
-X's free embedded timeline is unreliable and frequently returns HTTP 429. X's official data API is pay-per-use. This project therefore provides an optional logged-in-browser collector:
+The first version (a DOM scraper with copy and paste into a dashboard) is kept on the branch `backup/v1-2026-08-16` and the tag `v1-backup`
 
-1. Install [Tampermonkey](https://www.tampermonkey.net/).
-2. **Allow Chrome to execute userscripts:**
-   - Right-click Tampermonkey → **Manage extension**.
-   - Turn on **Allow User Scripts**. Chrome 138+ requires this even when Tampermonkey and the script both appear enabled.
-   - If the toggle is unavailable, enable **Developer mode** at `chrome://extensions`.
-   - Set Tampermonkey site access to **On all sites**, or at least allow `x.com`.
-   - See [Tampermonkey FAQ Q209](https://www.tampermonkey.net/faq.php?locale=en#Q209).
-3. Install or update [`collector.user.js`](https://daggerok.github.io/twitter/collector.user.js). Confirm version **1.1.0**.
-4. Log into X normally and open [`@I_Am_The_ICT` Posts & replies](https://x.com/I_Am_The_ICT/with_replies).
-5. Hard-reload the X tab after installation: **Ctrl+Shift+R** on Windows/Linux or **Cmd+Shift+R** on macOS.
-6. Confirm that the floating **𝕏 ICT Collector** panel appears at the bottom-right:
-   - **Start Manual** records rendered tweet cards while you scroll.
-   - **Start + Auto** performs slow, capped assisted scrolling.
-   - **Pause** stops immediately.
-7. Choose **Copy New JSON** or **Download JSON**.
-8. Return to the dashboard and use **📋 Paste** or the **📄 JSON import** dialog.
+## How it works
 
-No X password, session cookie, authorization token, or private browser storage is copied to the dashboard. The collector observes only tweet cards rendered in the current X page.
+```
+x.com (logged in)                       daggerok.github.io/twitter (viewer)          Google
++---------------------------+           +---------------------------------+          +---------------+
+| userscript x-sync.user.js |  GM store | the same userscript: bridge     | Sheets   | your          |
+| fetch/XHR interceptor ->  | --------> | postMessage -> page             | API v4   | spreadsheet   |
+| GraphQL parser -> posts   |  outbox   | viewer: merge, write, ack       | -------> | X-<handle>    |
+| auto-scroll + badge       | <-------- | meta: newest stored id          | GIS OAuth| tabs          |
++---------------------------+  meta     +---------------------------------+          +---------------+
+```
 
-## If the panel is missing
+- A static site cannot read x.com (same origin policy, X blocks frames), so collection runs in a Tampermonkey userscript on x.com. It wraps `fetch` and `XMLHttpRequest` of the page at `document-start` and parses the GraphQL timeline responses X itself loads (`UserTweets`, `UserTweetsAndReplies`, `UserMedia`), matching the operation name only, never a query id. When no response was seen for 10 s it falls back to the rendered `article[data-testid="tweet"]` cards (fewer fields)
+- The userscript also runs on the viewer origin. Tampermonkey storage is shared between both pages of one script, so the posts captured on x.com reach the viewer with no server: `GM_setValue` outbox on x.com, `postMessage` bridge on the viewer, ack when stored. The viewer sends back the newest stored id per account, which is where an incremental run stops
+- Storage is the daggerok/youtube way: Google Identity Services in the browser, only the public OAuth Client ID and the spreadsheet id in localStorage, the token in memory (silent renewal, one retry on a 401), the Sheets API called directly. One tab `X-<handle>` per account, header row frozen, one row per post, newest first. Writes overwrite rows 2..n+1 in one PUT and then clear the tail, so a failed write leaves the old rows in place
+- Without the userscript on the viewer's browser (another machine), the badge on x.com has a JSON button and the viewer an Import JSON button
 
-Check these in order:
+## Setup (once)
 
-1. Tampermonkey's global status is **Enabled**.
-2. The `daggerok X Timeline Collector` toggle is green.
-3. Chrome's Tampermonkey extension details have **Allow User Scripts** enabled.
-4. Tampermonkey site access allows `https://x.com/*`.
-5. The installed collector version is **1.1.0**.
-6. Hard-reload the X tab after installing or updating the script.
-7. Open Tampermonkey on the X tab and run **Show / reopen ICT Collector panel**.
-8. In DevTools Console, successful execution logs:
-   ```text
-   [daggerok X Collector] userscript v1.1.0 loaded
-   ```
+1. Google Cloud: at https://console.cloud.google.com/ create or pick a project, enable the Google Sheets API, set up the OAuth consent screen (External, your email under Test users) and create an OAuth 2.0 Client ID of type Web application with the authorized JavaScript origins `https://daggerok.github.io` (and `http://localhost:1234` for `bun run serve`). No redirect uri, no client secret
+2. Open the viewer, paste the Client ID in Settings, press Connect Google, then Create spreadsheet (or paste the url of one you made)
+3. Install Tampermonkey. Chrome 138+: open the extension details and turn on Allow User Scripts (or Developer mode at chrome://extensions). Site access must include x.com
+4. Install the userscript from the link above (or the Install userscript button). Reload the viewer: the header badge shows `script v2.x`
+5. Add a handle and press Sync new. The profile opens on x.com with `#xsync=incremental`, the corner badge scrolls the timeline and shows posts seen, elapsed time and a Stop button. When it stops, go back to the viewer: the posts are merged into the sheet and the feed shows them
 
-The collector now mounts its panel before loading Tampermonkey storage, so a storage error is displayed in the panel rather than causing an invisible startup failure.
+Settings of a run (badge ⚙ or the Tampermonkey menu): max posts (2000), max minutes (15), delay between scrolls (1.5 to 4 s), a rest every 20 scrolls (5 to 12 s), stop after 8 scrolls without new posts, replies too (the viewer then opens `/with_replies`)
 
-## Dashboard features
+## Viewer
 
-- Defaults to `@I_Am_The_ICT`, but supports other public profile handles.
-- Heuristically classifies captured cards as new posts, self-thread follow-ups, replies, reposts, or quotes.
-- Merges and deduplicates captures by post ID.
-- Caches records, statuses, notes, filters, and preferences in dashboard `localStorage`.
-- Optionally syncs records to Google Sheets using one `TW-@handle` tab per profile.
-- Preserves visible metrics, media URLs, capture time, and rendered reply/repost context.
-- Supports filters, statuses, notes, CSV export, and responsive desktop/mobile views.
+- Accounts: Sync new (incremental, stops at the newest stored post), Full sync (the whole visible timeline again, counts refreshed), Reload (read the tab), Remove (the list only), Delete tab (the spreadsheet too), Find accounts in the sheet (every `X-<handle>` tab)
+- Feed: filter by account (click the handle), type (post, reply, repost, quote), has media, date range, text search (every word must match text, author, handle or links), sort by date, likes, views, reposts or replies; 50 cards at a time; CSV and JSON of the filtered view
+- Import JSON: the file the badge's JSON button downloads on x.com
+- Light and dark theme, mobile layout; the config, the account list and a copy of the posts stay in localStorage (every access in try/catch), the Google token only in memory
 
-## Collector safety controls
+## Sheet columns
 
-Assisted scrolling is deliberately conservative:
+`id, handle, author_name, created_at, type, text, lang, url, in_reply_to_id, in_reply_to_handle, conversation_id, quoted_id, reposted_id, reposted_handle, media, links, likes, reposts, replies, quotes, bookmarks, views, is_pinned, first_seen_at, last_seen_at`
 
-- explicit user start and pause controls
-- configurable 1.8–6 second delay
-- configurable scroll cap, defaulting to 80
-- stops after repeated scans with no new rendered posts
-- stops after reaching posts seen in an earlier collector run
-- stores only post IDs in Tampermonkey storage to recognize previous captures
+Ids are written as text (`valueInputOption=RAW`) because they exceed the safe integer range; `media` and `links` are JSON arrays; a long post takes its `note_tweet` text; `t.co` links are expanded; a repost carries the original author and text; cells are cut at 50,000 characters with `…[truncated]`
 
-## Important limitations and Terms
+## Development
 
-- Collection is limited to cards X actually renders for the logged-in user.
-- X virtualizes its timeline, changes its DOM frequently, and may omit or reorder posts.
-- Reply/thread/quote classification is heuristic because the rendered DOM exposes less metadata than the API.
-- Assisted scrolling may trigger X anti-automation protections or account rate limits.
-- X's current Terms state that scraping without express written permission is prohibited. Review [X's Terms of Service](https://x.com/en/tos) and use this collector only if you accept the account and Terms risk.
+```bash
+bun install -E
+bun test                 # parser (fixture of a UserTweets payload), sheet rows, filters, settings, header
+bun run build            # viewer to dist/ and the userscript to dist/x-sync.user.js
+bun run serve            # http://localhost:1234 (add it to the OAuth origins for a local test)
+bun run userscript       # the userscript alone
+```
 
-## Google Sheets
+Layout: `src/` the viewer (React 19, Parcel, Tailwind 4, no tsconfig), `userscript/src/` the Tampermonkey script bundled by `scripts/build-userscript.ts` with `Bun.build` (header in `userscript/header.ts`), `shared/post.ts` the record and sheet row layout both use
 
-Open **⚙️ Settings** in the dashboard and expand **📋 Google Sheets Setup (per-channel tabs)**. The Google OAuth access token remains in memory; the public OAuth Client ID and Spreadsheet ID are stored in dashboard `localStorage`.
+Manual end to end check: install the script, set the Client ID and spreadsheet, Full sync of a small account, rows appear in the tab; run Sync new again, zero new rows and `last_seen_at` refreshed; the feed filters and exports them
 
-## Files
+## Known limits
 
-- [`index.html`](./index.html) — dashboard, cache, classification, filtering, CSV, and Google Sheets sync
-- [`collector.user.js`](./collector.user.js) — Tampermonkey companion that observes rendered X tweet cards
+- X exposes a limited depth of a profile timeline (often a few hundred to about 3,200 posts); older posts are out of reach
+- X changes its internal API; when `UserTweets` stops being recognised the DOM fallback keeps ids, dates, text and media and the parser needs an update (fixture in `userscript/src/fixtures/`)
+- Automated collection is against X's Terms of Service. Use it moderately on a few accounts you follow, with the slow default pacing, at your own risk
+- Replies of other users under a post (`TweetDetail`), media files to Drive and runs without your browser open are out of scope
+
+## License
+
+MIT
