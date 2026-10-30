@@ -1,0 +1,24 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pull-request-${{ github.ref }}
+  cancel-in-progress: true
+
+# Pull requests only: main is built and deployed by github-pages.yml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install -E
+      - run: bun test
+      - run: bun run build-github-pages
