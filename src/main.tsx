@@ -16,7 +16,7 @@
 // =========================================================================
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createRoot } from 'react-dom/client';
-import { byNewest, mergePosts, type Post, type PostType, POST_TYPES } from '../shared/post';
+import { byNewest, mergePosts, type Media, type Post, type PostType, POST_TYPES } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
 import { applyFilters, EMPTY_FILTERS, formatCount, linkify, postsFromJson, toCsv, type Filters, type SortKey } from './filters';
 import { fetchEmail, GoogleSession } from './gis';
@@ -32,6 +32,7 @@ const CONFIG_KEY = `${PREFIX}-gs-config`;
 const FILTERS_KEY = `${PREFIX}-filters`;
 const CURRENT_KEY = `${PREFIX}-current`;
 const SCALE_KEY = `${PREFIX}-scale`;
+const MEDIA_KEY = `${PREFIX}-media`;
 const DEFAULT_SCALE_SLIDER = 50;
 const sliderToScale = (v: number): number => 0.7 + (v / 100) * 0.8;
 const postsKey = (handle: string) => `${PREFIX}-posts-${handle}`;
@@ -101,6 +102,7 @@ function App() {
   const [shown, setShown] = useState(PAGE_SIZE);
   const [scaleSlider, setScaleSlider] = useState(() => { const n = Number(lsGet(SCALE_KEY)); return Number.isFinite(n) && lsGet(SCALE_KEY) !== null ? Math.min(100, Math.max(0, n)) : DEFAULT_SCALE_SLIDER; });
   const scale = sliderToScale(scaleSlider);
+  const [showMedia, setShowMedia] = useState(() => lsGet(MEDIA_KEY) === 'on'); // text only by default; on: photos, videos and gifs inline
   const [email, setEmail] = useState('');
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState('');
@@ -129,6 +131,7 @@ function App() {
   useEffect(() => { lsSet(CONFIG_KEY, JSON.stringify(cfg)); }, [cfg]);
   useEffect(() => { lsSet(CURRENT_KEY, current); }, [current]);
   useEffect(() => { lsSet(SCALE_KEY, String(scaleSlider)); }, [scaleSlider]);
+  useEffect(() => { lsSet(MEDIA_KEY, showMedia ? 'on' : 'off'); }, [showMedia]);
   useEffect(() => { lsSet(FILTERS_KEY, JSON.stringify(filters)); setShown(PAGE_SIZE); }, [filters]);
 
   const sid = spreadsheetId(cfg.spreadsheetId);
@@ -530,6 +533,7 @@ function App() {
               <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
               <input type="range" min="0" max="100" value={scaleSlider} onChange={(e) => setScaleSlider(Number(e.target.value))} className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`} />
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">A</span>
+              <button className={`btn sm ${showMedia ? 'active' : ''}`} title={showMedia ? 'Showing photos, videos and gifs inline; press for text only' : 'Text only; press to show photos, videos and gifs inline. Posts without text are dimmed meanwhile'} onClick={() => setShowMedia((m) => !m)} data-media={showMedia ? 'on' : 'off'}>🖼 media</button>
               <button className="btn sm" onClick={exportCsv} disabled={!feed.length}>CSV</button>
               <button className="btn sm" onClick={exportJson} disabled={!feed.length}>JSON</button>
               <button className="btn sm" onClick={() => setFilters({ ...EMPTY_FILTERS })} disabled={!filtersOn}>Clear filters</button>
@@ -568,7 +572,7 @@ function App() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
                   {visible.map((p, i) => (
-                    <PostRow key={p.id} post={p} scale={scale} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
+                    <PostRow key={p.id} post={p} scale={scale} showMedia={showMedia} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
                   ))}
                 </tbody>
               </table>
@@ -686,10 +690,40 @@ function Settings(p: SettingsProps) {
 // ---- 4. Post card ------------------------------------------------------------------------------------
 
 const MEDIA_ICON: Record<string, string> = { photo: '📷', video: '🎬', gif: 'GIF' };
+const PREVIEW_DELAY_MS = 1000;
+
+/** Inline photos, videos and gifs of a post (the media column when 🖼 media is on, and the hover preview). */
+function MediaInline({ media, scale, className }: { media: Media[]; scale: number; className: string }) {
+  return (
+    <div className={`flex flex-wrap gap-2 ${className}`}>
+      {media.map((m, i) => (m.type === 'photo'
+        ? <a key={i} href={m.url} target="_blank" rel="noreferrer"><img src={m.url} alt="" loading="lazy" className="rounded-lg border border-slate-200 dark:border-slate-700 object-cover" style={{ maxHeight: `${Math.round(220 * scale)}px` }} /></a>
+        : <video key={i} src={m.url} controls={m.type === 'video'} autoPlay={m.type === 'gif'} loop={m.type === 'gif'} muted={m.type === 'gif'} playsInline preload={m.type === 'gif' ? 'auto' : 'metadata'} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-black" style={{ maxHeight: `${Math.round(260 * scale)}px`, maxWidth: '100%' }} />))}
+    </div>
+  );
+}
+
+/**
+ * Hover preview while 🖼 media is off: the mouse rests a second on the media badge (or the "media only" note) and a
+ * floating box shows the photos, videos and gifs of that post; it goes when the mouse leaves.
+ */
+function useHoverPreview() {
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const timer = useRef(0);
+  const enter = (e: { clientX: number; clientY: number }) => {
+    const x = e.clientX; const y = e.clientY;
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setAt({ x, y }), PREVIEW_DELAY_MS);
+  };
+  const leave = () => { window.clearTimeout(timer.current); setAt(null); };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return { at, enter, leave };
+}
 
 /** One post as a table row, the youtube inventory look: date, type, text, stats, Open, the crossed eye. */
-function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; scale: number; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
+function PostRow({ post: p, scale, showMedia, onToggleHidden, sentinel }: { post: Post; scale: number; showMedia: boolean; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
   const parts = useMemo(() => linkify(p.text), [p.text]);
+  const preview = useHoverPreview();
   const py = `${Math.round(10 * scale)}px`;
   const small = `${Math.round(11 * scale)}px`;
   const t = Date.parse(p.created_at);
@@ -698,9 +732,12 @@ function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; sca
   const time = d ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
   const media = new Map<string, number>();
   p.media.forEach((m) => media.set(m.type, (media.get(m.type) || 0) + 1));
+  // media off and nothing to read: the row is dimmed like a hidden one, the media badge says what is there
+  const mediaOnly = !p.text && p.media.length > 0;
+  const dim = p.hidden || (mediaOnly && !showMedia);
   const context = p.type === 'repost' && p.reposted_handle ? `↻ repost of @${p.reposted_handle}` : p.type === 'reply' && p.in_reply_to_handle ? `↩ to @${p.in_reply_to_handle}` : p.type === 'quote' && p.quoted_id ? '❝ quotes a post' : '';
   return (
-    <tr ref={sentinel} className={`post transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/20 group ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
+    <tr ref={sentinel} className={`post transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/20 group ${dim ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-dim={dim ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
       <td className="px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap align-top" style={{ paddingTop: py, paddingBottom: py }} title={p.created_at}>
         <span className="hidden 2xl:inline">{date}, {time}</span>
         <span className="block 2xl:hidden leading-tight"><span className="block">{date}</span><span className="block">{time}</span></span>
@@ -709,7 +746,7 @@ function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; sca
         <span className={`badge ${p.type}`}>{p.type}</span>
         {p.is_pinned && <span className="badge pinned ml-1">pinned</span>}
         {media.size > 0 && (
-          <span className="media-badge block mt-1 text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>
+          <span className="media-badge block mt-1 text-slate-500 dark:text-slate-400 cursor-help" style={{ fontSize: small }} onMouseEnter={showMedia ? undefined : preview.enter} onMouseLeave={preview.leave} title={showMedia ? undefined : 'Rest the mouse here a second for a preview'}>
             {Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')}
           </span>
         )}
@@ -718,11 +755,12 @@ function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; sca
         {(context || p.type === 'repost') && <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>{context}{p.type === 'repost' && p.author_name ? ` · ${p.author_name}` : ''}</div>}
         <div className="post-text leading-snug">
           {parts.map((x, i) => (x.kind === 'link' ? <a key={i} href={x.value} target="_blank" rel="noreferrer">{x.value}</a> : <span key={i}>{x.value}</span>))}
-          {!p.text && <span className="text-slate-400">(no text)</span>}
+          {!p.text && <span className="text-slate-400 cursor-help" onMouseEnter={mediaOnly && !showMedia ? preview.enter : undefined} onMouseLeave={preview.leave}>{mediaOnly ? `(media only: ${Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')})` : '(no text)'}</span>}
         </div>
-        {p.media.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-x-3 text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>
-            {p.media.map((m, i) => <a key={i} className="underline decoration-dotted" href={m.url} target="_blank" rel="noreferrer">{MEDIA_ICON[m.type] || m.type} {m.type} {i + 1}</a>)}
+        {showMedia && p.media.length > 0 && <MediaInline media={p.media} scale={scale} className="mt-2 media-inline" />}
+        {preview.at && !showMedia && p.media.length > 0 && (
+          <div className="media-preview fixed z-[2147483000] card p-2 shadow-2xl" style={{ left: Math.min(preview.at.x + 16, window.innerWidth - 380), top: Math.min(preview.at.y + 16, window.innerHeight - 300), width: 360, maxWidth: 'calc(100vw - 32px)' }} onMouseLeave={preview.leave}>
+            <MediaInline media={p.media} scale={Math.min(scale, 1)} className="" />
           </div>
         )}
       </td>
