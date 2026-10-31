@@ -581,10 +581,10 @@ function App() {
                           ) : <span className="font-semibold uppercase tracking-wider">{label}</span>}
                           {col && (
                             <div className="mt-1.5 flex items-center gap-1">
-                              <input className="filter-inp" placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />
+                              {col !== 'media' && <input className="filter-inp" placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />}
                               {col === 'media' && (
-                                <details ref={ddRef} className="setup inline-block ml-1 align-middle" data-media-dd onToggle={(e) => { const el = e.currentTarget; if (el.open) { const r = el.getBoundingClientRect(); setDdAt({ x: r.left, y: r.bottom + 4 }); } else setDdAt(null); }}>
-                                  <summary className={`ib dd normal-case tracking-normal font-normal ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick what the post must have (Photo, Video, GIF, Media = any) or must not have (the ! twins); nothing ticked = every post">🖼{table.media.length ? ` ` : ''} ▾</summary>
+                                <details ref={ddRef} className="setup block w-full" data-media-dd onToggle={(e) => { const el = e.currentTarget; if (el.open) { const r = el.getBoundingClientRect(); setDdAt({ x: r.left, y: r.bottom + 4 }); } else setDdAt(null); }}>
+                                  <summary className={`filter-inp dd-sum ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick what the post must have (Photo, Video, GIF, Media = any) or must not have (the ! twins); nothing ticked = every post">{table.media.length ? table.media.join(' ') : 'Filter…'} <span className="float-right">▾</span></summary>
                                   <div className="fixed z-50 card p-2 shadow-xl min-w-52 space-y-1 normal-case tracking-normal font-normal" style={{ left: ddAt?.x ?? 0, top: ddAt?.y ?? 0, fontSize: `${Math.round(12 * scale)}px` }}>
                                     {MEDIA_KINDS.map((m) => (
                                       <label key={m.key} className="flex items-center gap-2 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={table.media.includes(m.key)} onChange={() => toggleMedia(m.key)} data-media-kind={m.key} /> {m.label}</label>
