@@ -36,17 +36,19 @@ jq -r '."Google Sheets Spreadsheet full URL"' google.json | pbcopy # Settings ->
 
 1. Google Cloud: at https://console.cloud.google.com/ create or pick a project, enable the Google Sheets API, set up the OAuth consent screen (External, your email under Test users) and create an OAuth 2.0 Client ID of type Web application with the authorized JavaScript origins `https://daggerok.github.io` (and `http://localhost:1234` for `bun run serve`). No redirect uri, no client secret
 2. Open the viewer, paste the Client ID in Settings, press Connect Google, then Create spreadsheet (or paste the url of one you made)
-3. Install Tampermonkey. Chrome 138+: open the extension details and turn on Allow User Scripts (or Developer mode at chrome://extensions). Site access must include x.com
-4. Install the userscript from the link above (or the Install userscript button). Reload the viewer: the header badge shows `script v2.x`
-5. Add a handle and press Sync new. The profile opens on x.com with `#xsync=incremental`, the corner badge scrolls the timeline and shows posts seen, elapsed time and a Stop button. When it stops, go back to the viewer: the posts are merged into the sheet and the feed shows them
+3. Install Tampermonkey. Chrome 138+: open the extension details and turn on Allow User Scripts (or Developer mode at chrome://extensions). Site access must include both `https://x.com/*` and `https://daggerok.github.io/*` (the script runs on the viewer too, that is how the posts get from x.com to the sheet)
+4. Open the userscript link above: a `.user.js` url is intercepted by Tampermonkey, which shows its install page with the script name, its grants and an Install button. Press Install (if the raw code opened instead: Tampermonkey icon, Dashboard, Utilities, Install from URL). Reload the viewer: the first dot on the toolbar turns green
+5. Type a handle in the top field, press Enter, then ⬇ Sync new in the Accounts list. The profile opens on x.com with `#xsync=incremental`, the corner badge scrolls the timeline and shows posts seen, elapsed time and a Stop button. When it stops, go back to the viewer: the posts are merged into the sheet and the feed shows them
 
 Settings of a run (badge ⚙ or the Tampermonkey menu): max posts (2000), max minutes (15), delay between scrolls (1.5 to 4 s), a rest every 20 scrolls (5 to 12 s), stop after 8 scrolls without new posts, replies too (the viewer then opens `/with_replies`)
 
 ## Viewer
 
-- Accounts: Sync new (incremental, stops at the newest stored post), Full sync (the whole visible timeline again, counts refreshed), Reload (read the tab), Remove (the list only), Delete tab (the spreadsheet too), Find accounts in the sheet (every `X-<handle>` tab)
+The shell is the daggerok/youtube one: a sticky toolbar with the 𝕏 mark, the handle field (Enter or ➕ adds the account) and borderless icon buttons: ⚙️ Setup (slides open and closed), two status dots (green = userscript installed in this browser, blue = Google connected; the button opens the log), ☁️ Connect Google or 🔌 Disconnect, ↻ find the `X-<handle>` tabs of the sheet and reload every account, 📥 CSV of the filtered feed, 📄 Import JSON, 🌙 or ☀ theme. Client ID, spreadsheet url and the connected email are masked with dots, 👁 shows and 📋 copies them
+
+- Accounts: ⬇ Sync new (incremental, stops at the newest stored post), 🔄 Full sync (the whole visible timeline again, counts refreshed), ↻ Reload (read the tab), ↗ Open on X, ✕ Remove (the list only), 🗑 Delete tab (the spreadsheet too)
 - Feed: filter by account (click the handle), type (post, reply, repost, quote), has media, date range, text search (every word must match text, author, handle or links), sort by date, likes, views, reposts or replies; 50 cards at a time; CSV and JSON of the filtered view
-- Import JSON: the file the badge's JSON button downloads on x.com
+- 📄 Import JSON: the file the badge's JSON button downloads on x.com
 - Light and dark theme, mobile layout; the config, the account list and a copy of the posts stay in localStorage (every access in try/catch), the Google token only in memory
 
 ## Sheet columns
