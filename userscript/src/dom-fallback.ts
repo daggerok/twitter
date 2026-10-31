@@ -55,7 +55,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     .map((a) => a.href).filter((h) => !/^https?:\/\/(x|twitter)\.com\//i.test(h));
   const replyTo = Array.from(article.querySelectorAll('a[href^="/"]')).map((a) => a.getAttribute('href') || '')
     .find((h) => !!h && !h.includes('/status/') && /^\/[A-Za-z0-9_]{1,15}$/.test(h) && article.textContent?.includes('Replying to'));
-  const type: PostType = isRepost ? 'repost' : replyTo && !isPinned ? 'reply' : article.querySelector('[data-testid="quoteTweet"], [role="link"] time') ? 'quote' : 'post';
+  const type: PostType = isRepost ? 'repost' : replyTo && !isPinned ? 'reply' : article.querySelector('[data-testid="quoteTweet"], div[role="link"] time') ? 'quote' : 'post'; // a quoted post is a nested div[role=link] card with its own time; the post's own timestamp is an a[role=link], never a quote
   const owner = handle.toLowerCase() || author;
   return {
     id,
