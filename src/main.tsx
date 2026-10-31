@@ -576,6 +576,7 @@ function Settings(p: SettingsProps) {
       </div>
       <div className="p-4 space-y-4">
         <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div><strong className="text-slate-700 dark:text-slate-200">What this is:</strong> x.com lets nobody read a timeline from outside, the posts exist only in your own logged-in browser. <b>Tampermonkey</b> is a Chrome extension that runs small programs (<b>userscripts</b>, one .user.js file each) on the sites you allow it. Our file x-sync.user.js scrolls a profile on x.com and remembers the posts; the same file, running on this page, hands them to this viewer, which writes them to your Google Sheet. Tampermonkey must therefore be allowed on <b>both</b> x.com and {location.hostname}: with x.com only, the install link shows raw code instead of the install page and the posts never reach the sheet.</div>
           <div><strong className="text-emerald-600 dark:text-emerald-400">Auto-load + cross-device:</strong> localStorage + your Google Sheet. Connect Google on any device and the same accounts and posts are there.</div>
           <div><strong className="text-blue-600 dark:text-blue-400">Per-account tabs:</strong> every X account gets its own tab (e.g. X-handle) inside one spreadsheet. The YT-… tabs of youtube can live in the same file.</div>
         </div>
