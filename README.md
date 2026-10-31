@@ -27,6 +27,13 @@ x.com (logged in)                       daggerok.github.io/twitter (viewer)     
 
 ## Setup (once)
 
+Prerequisites, when the ids are already in a local `google.json` (never committed, see .gitignore; the same file daggerok/youtube uses):
+
+```bash
+jq -r '."Google OAuth Web Client ID"' google.json | pbcopy        # Settings -> Google OAuth Client ID
+jq -r '."Google Sheets Spreadsheet full URL"' google.json | pbcopy # Settings -> Spreadsheet url or id
+```
+
 1. Google Cloud: at https://console.cloud.google.com/ create or pick a project, enable the Google Sheets API, set up the OAuth consent screen (External, your email under Test users) and create an OAuth 2.0 Client ID of type Web application with the authorized JavaScript origins `https://daggerok.github.io` (and `http://localhost:1234` for `bun run serve`). No redirect uri, no client secret
 2. Open the viewer, paste the Client ID in Settings, press Connect Google, then Create spreadsheet (or paste the url of one you made)
 3. Install Tampermonkey. Chrome 138+: open the extension details and turn on Allow User Scripts (or Developer mode at chrome://extensions). Site access must include x.com
