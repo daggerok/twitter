@@ -31,6 +31,9 @@ const THEME_KEY = `${PREFIX}-theme`;
 const CONFIG_KEY = `${PREFIX}-gs-config`;
 const FILTERS_KEY = `${PREFIX}-filters`;
 const CURRENT_KEY = `${PREFIX}-current`;
+const SCALE_KEY = `${PREFIX}-scale`;
+const DEFAULT_SCALE_SLIDER = 50;
+const sliderToScale = (v: number): number => 0.7 + (v / 100) * 0.8;
 const postsKey = (handle: string) => `${PREFIX}-posts-${handle}`;
 const PAGE_SIZE = 50;
 const USERSCRIPT_URL = './x-sync.user.js';
@@ -96,6 +99,8 @@ function App() {
   const [fromSheet, setFromSheet] = useState(false);
   const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...lsJson<Partial<Filters>>(FILTERS_KEY, {}), handles: [] }));
   const [shown, setShown] = useState(PAGE_SIZE);
+  const [scaleSlider, setScaleSlider] = useState(() => { const n = Number(lsGet(SCALE_KEY)); return Number.isFinite(n) && lsGet(SCALE_KEY) !== null ? Math.min(100, Math.max(0, n)) : DEFAULT_SCALE_SLIDER; });
+  const scale = sliderToScale(scaleSlider);
   const [email, setEmail] = useState('');
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState('');
@@ -123,6 +128,7 @@ function App() {
   useEffect(() => { lsSet(THEME_KEY, dark ? 'dark' : 'light'); document.documentElement.classList.toggle('dark', dark); document.documentElement.style.backgroundColor = dark ? '#020617' : '#f8fafc'; }, [dark]);
   useEffect(() => { lsSet(CONFIG_KEY, JSON.stringify(cfg)); }, [cfg]);
   useEffect(() => { lsSet(CURRENT_KEY, current); }, [current]);
+  useEffect(() => { lsSet(SCALE_KEY, String(scaleSlider)); }, [scaleSlider]);
   useEffect(() => { lsSet(FILTERS_KEY, JSON.stringify(filters)); setShown(PAGE_SIZE); }, [filters]);
 
   const sid = spreadsheetId(cfg.spreadsheetId);
@@ -408,7 +414,7 @@ function App() {
     <div className="flex min-h-screen flex-col">
       {/* toolbar, the youtube one: field, settings, status dots, update, full refresh, cloud, attach, export, theme */}
       <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
-        <div className="px-4 sm:px-8">
+        <div className="px-4">
           <div className="flex flex-col md:flex-row md:items-center gap-2 py-3">
             <div className="flex items-center gap-2 w-full md:flex-1 min-w-0">
               <form className="flex-1 min-w-0" onSubmit={(e) => { e.preventDefault(); void load(); }}>
@@ -465,7 +471,7 @@ function App() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 sm:px-8 pt-1 space-y-3">
+      <div className="flex-1 px-4 pt-1 space-y-4">
         {error && (
           <div className="card status-bad px-3 py-2 text-sm flex justify-between gap-2 animate-fade-in">
             <span className="break-words">{error}</span>
@@ -508,18 +514,28 @@ function App() {
         )}
 
         {/* feed of the current account */}
-        <section className="card p-3 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">
-              {handle ? <a className="text-emerald-600 dark:text-emerald-400" href={`https://x.com/${handle}`} target="_blank" rel="noreferrer">@{handle}</a> : 'Feed'}
-              <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">{feed.length} of {posts.length}{handle && !fromSheet && posts.length ? ' (local copy)' : ''}{lastRun ? ` · last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')}` : ''}</span>
-            </h2>
-            <div className="flex gap-1">
+        <section className="card overflow-hidden shadow-lg feed">
+          <div className="panel-head">
+            <div className="min-w-0">
+              <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(16 * scale)}px` }}>
+                {handle ? <a href={`https://x.com/${handle}`} target="_blank" rel="noreferrer">@{handle}</a> : 'Feed'} <span className="font-normal">{feed.length} / {posts.length}</span>
+              </h3>
+              {handle && (
+                <div className="text-[10px] mt-0.5 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  {fromSheet ? <>☁️ Synced to Google Sheets • tab: <span className="font-mono">{tabOf(handle)}</span></> : posts.length ? '💾 local copy' : '—'}{lastRun ? ` • last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')}` : ''}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
+              <input type="range" min="0" max="100" value={scaleSlider} onChange={(e) => setScaleSlider(Number(e.target.value))} className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`} />
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">A</span>
               <button className="btn sm" onClick={exportCsv} disabled={!feed.length}>CSV</button>
               <button className="btn sm" onClick={exportJson} disabled={!feed.length}>JSON</button>
               <button className="btn sm" onClick={() => setFilters({ ...EMPTY_FILTERS })} disabled={!filtersOn}>Clear filters</button>
             </div>
           </div>
+          <div className="p-4 space-y-4">
           <div className="flex flex-wrap gap-2 items-center">
             <input className="inp max-w-xs" placeholder="Search text, author, link" value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} />
             {POST_TYPES.map((t: PostType) => (
@@ -540,12 +556,13 @@ function App() {
               {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : filters.showHidden ? 'No hidden posts.' : posts.length ? 'Nothing to show with these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
             </p>
           )}
-          <ul className="space-y-2">
+          <ul className="space-y-3" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
             {visible.map((p, i) => (
               <PostCard key={p.id} post={p} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
             ))}
           </ul>
           {feed.length > shown && <div className="text-center text-xs text-slate-400 py-2" data-more={feed.length - shown}>{feed.length - shown} more below…</div>}
+          </div>
         </section>
       </div>
 
@@ -661,29 +678,29 @@ function PostCard({ post: p, onToggleHidden, sentinel }: { post: Post; onToggleH
     ? <>@{p.handle} reposted <a className="underline" href={`https://x.com/${p.reposted_handle}`} target="_blank" rel="noreferrer">@{p.reposted_handle}</a></>
     : <><span className="font-medium">{p.author_name || `@${p.handle}`}</span> <span className="text-slate-500 dark:text-slate-400">@{p.handle}</span></>;
   return (
-    <li ref={sentinel} className={`card p-3 space-y-2 animate-fade-in ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+    <li ref={sentinel} className={`card p-[1em] space-y-[.6em] animate-fade-in ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
+      <div className="flex flex-wrap items-center gap-[.6em] text-[.8em]">
         <button type="button" className="ib" title={p.hidden ? 'Show this post again' : 'Hide this post (noise, not important)'} onClick={onToggleHidden}>{p.hidden ? '👁' : '🙈'}</button>
         <span className={`badge ${p.type}`}>{p.type}</span>
         {p.is_pinned && <span className="badge pinned">pinned</span>}
-        <span className="text-sm">{who}</span>
+        <span className="text-[1.1em]">{who}</span>
         {p.type === 'reply' && p.in_reply_to_handle && <span className="text-slate-500 dark:text-slate-400">replying to @{p.in_reply_to_handle}</span>}
         <a className="ml-auto text-slate-500 dark:text-slate-400 underline" href={p.url} target="_blank" rel="noreferrer" title={p.created_at}>{fmtDate(p.created_at)}</a>
       </div>
       {p.text && (
-        <p className="post-text text-sm">
+        <p className="post-text text-[1em] leading-snug">
           {parts.map((x, i) => (x.kind === 'link' ? <a key={i} href={x.value} target="_blank" rel="noreferrer">{x.value}</a> : <span key={i}>{x.value}</span>))}
         </p>
       )}
       {p.media.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {p.media.map((m, i) => (m.type === 'photo'
-            ? <a key={i} href={m.url} target="_blank" rel="noreferrer"><img src={m.url} alt="" loading="lazy" className="h-24 w-24 object-cover rounded-lg border border-slate-200 dark:border-slate-700" /></a>
+            ? <a key={i} href={m.url} target="_blank" rel="noreferrer"><img src={m.url} alt="" loading="lazy" className="thumb object-cover rounded-lg border border-slate-200 dark:border-slate-700" /></a>
             : <a key={i} href={m.url} target="_blank" rel="noreferrer" className="btn sm">▶ {m.type}</a>))}
         </div>
       )}
-      {p.quoted_id && <a className="text-xs underline text-slate-500 dark:text-slate-400" href={`https://x.com/i/status/${p.quoted_id}`} target="_blank" rel="noreferrer">quoted post</a>}
-      <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
+      {p.quoted_id && <a className="text-[.8em] underline text-slate-500 dark:text-slate-400" href={`https://x.com/i/status/${p.quoted_id}`} target="_blank" rel="noreferrer">quoted post</a>}
+      <div className="flex flex-wrap gap-[.8em] text-[.8em] text-slate-500 dark:text-slate-400">
         <span title="replies">💬 {formatCount(p.replies)}</span>
         <span title="reposts">🔁 {formatCount(p.reposts)}</span>
         <span title="likes">❤ {formatCount(p.likes)}</span>
