@@ -21,7 +21,7 @@ export function userscriptHeader(version: string): string {
     '// @include      http://localhost:*/*',
     '// @include      http://127.0.0.1:*/*',
     '// @run-at       document-start',
-    '// @sandbox      JavaScript',
+    '// @sandbox      raw',
     '// @noframes',
     '// @grant        GM_getValue',
     '// @grant        GM_setValue',
