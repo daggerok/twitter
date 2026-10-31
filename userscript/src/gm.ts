@@ -138,3 +138,22 @@ export function gmRequest(method: string, url: string, headers: Record<string, s
 }
 
 export const GOOGLE_KEY = 'xsync.google';
+
+// ---- a script element in the page (GM_addElement goes through the page's CSP; a plain element is the fallback) ----
+declare function GM_addElement(tag: string, attributes: Record<string, string>): HTMLElement;
+
+/** Put JavaScript into the page itself. Returns false when no element could be added. */
+export function gmAddScript(code: string): boolean {
+  try {
+    if (typeof gm('GM_addElement') === 'function') { GM_addElement('script', { textContent: code }); return true; }
+  } catch { /* fall through */ }
+  try {
+    const s = document.createElement('script');
+    s.textContent = code;
+    (document.head || document.documentElement).appendChild(s);
+    s.remove();
+    return true;
+  } catch {
+    return false;
+  }
+}

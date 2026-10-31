@@ -9,7 +9,7 @@
 import { handleFromPath, sameHandle, type Post } from '../../shared/post';
 import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
-import { gmMenu, hasGM, newId, pageWindow, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
+import { gmMenu, hasGM, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
 import { installInterceptor } from './intercept';
 import { parseTimeline, parseUser, type AccountInfo } from './parse';
 import { runSync, TimelineFeed } from './scroll';
@@ -32,7 +32,7 @@ function onX(): void {
   const feed = new TimelineFeed();
   let currentHandle = '';
   let account: AccountInfo | null = null;
-  const intercepted = installInterceptor(pageWindow(), (op, json) => {
+  const intercepted = installInterceptor((op, json) => {
     if (op === 'UserByScreenName') { account = parseUser(json) || account; return; }
     const handle = handleFromPath(location.pathname) || '';
     const r = parseTimeline(json, handle);

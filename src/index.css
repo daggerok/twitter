@@ -99,6 +99,12 @@ input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-r
 .ib.dd{width:auto;height:auto;padding:.15rem .45rem;white-space:nowrap;gap:.25rem;font-size:.7rem;cursor:pointer;list-style:none}
 .ib.dd::-webkit-details-marker{display:none}
 .feed table td,.feed table th{vertical-align:top}
+/* the youtube column filter input: px-2 py-1 text-[10px] rounded border, emerald focus */
+.filter-inp{display:block;width:100%;min-width:0;padding:.25rem .5rem;font-size:10px;line-height:1.4;font-weight:400;text-transform:none;letter-spacing:normal;border-radius:.25rem;border:1px solid #cbd5e1;background:#fff;color:#1e293b;transition:border-color .15s}
+.filter-inp:focus{outline:none;border-color:#10b981}
+.filter-inp::placeholder{color:#94a3b8;font-weight:600}
+.dark .filter-inp{background:#0f172a;border-color:#334155;color:#e2e8f0}
+.ib.dd{height:1.6rem}
 .post-text{white-space:pre-wrap;overflow-wrap:anywhere}
 .post-text a{color:#047857;text-decoration:underline}
 .dark .post-text a{color:#34d399}

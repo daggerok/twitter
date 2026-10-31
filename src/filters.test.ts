@@ -44,8 +44,11 @@ describe('applyTable', () => {
     const list = [...posts, samplePost({ id: '4', media: [{ type: 'video', url: 'v' }, { type: 'gif', url: 'g' }] })];
     expect(applyTable(list, { ...EMPTY_TABLE, media: ['photo'] }, fmt).map((p) => p.id)).toEqual(['2']);
     expect(applyTable(list, { ...EMPTY_TABLE, media: ['video'] }, fmt).map((p) => p.id)).toEqual(['4']);
-    expect(applyTable(list, { ...EMPTY_TABLE, media: ['none'] }, fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['!media'] }, fmt).map((p) => p.id)).toEqual(['3', '1']);
     expect(applyTable(list, { ...EMPTY_TABLE, media: ['photo', 'gif'] }, fmt).map((p) => p.id)).toEqual(['4', '2']);
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['media', '!photo'] }, fmt).map((p) => p.id)).toEqual(['4']);
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['!video'] }, fmt).map((p) => p.id)).toEqual(['3', '2', '1']);
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['video', '!gif'] }, fmt).map((p) => p.id)).toEqual([]);
     expect(hasFilters({ ...EMPTY_TABLE, media: ['gif'] })).toBe(true);
   });
   test('sorting by column and direction', () => {

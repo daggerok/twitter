@@ -401,6 +401,17 @@ function App() {
   // ---- feed (column filters and sorting, the youtube table) ----
   const feed = useMemo(() => applyTable(posts, table, fmtDate), [posts, table]);
   const setFilter = (c: ColKey, v: string) => setTable((t) => ({ ...t, filters: { ...t.filters, [c]: v } }));
+  const [ddAt, setDdAt] = useState<{ x: number; y: number } | null>(null); // the media dropdown is fixed-positioned: the table wrapper would clip it
+  const ddRef = useRef<HTMLDetailsElement>(null);
+  // a click anywhere else, or Escape, closes the media dropdown
+  useEffect(() => {
+    if (!ddAt) return undefined;
+    const away = (e: MouseEvent) => { const el = ddRef.current; if (el && e.target instanceof Node && !el.contains(e.target)) el.open = false; };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && ddRef.current) ddRef.current.open = false; };
+    document.addEventListener('mousedown', away, true);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', away, true); document.removeEventListener('keydown', esc); };
+  }, [ddAt]);
   const toggleMedia = (k: MediaKind) => setTable((t) => ({ ...t, media: t.media.includes(k) ? t.media.filter((x) => x !== k) : [...t.media, k] }));
   const sortBy = (c: ColKey) => setTable((t) => ({ ...t, sort: { key: c, dir: t.sort.key === c && t.sort.dir === 'desc' ? 'asc' : 'desc' } }));
   const visible = feed.slice(0, shown);
@@ -547,7 +558,7 @@ function App() {
           </div>
           <div className="p-4 space-y-4">
           {hasFilters(table) && <div className="text-right"><button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [] }))}>Clear filters</button></div>}
-          {visible.length === 0 && (
+          {visible.length === 0 && posts.length === 0 && (
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : posts.length ? 'Nothing matches these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
             </p>
@@ -557,7 +568,7 @@ function App() {
               <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
                 <thead>
                   <tr className="text-slate-500 dark:text-slate-400">
-                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-32', 'post|reply, photo, video, gif, media, text only, pinned'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', ''], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
+                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-44', 'post|reply, photo, video, gif, media, text only, pinned'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', ''], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
                       const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
                       const active = col && table.sort.key === col;
                       return (
@@ -567,19 +578,21 @@ function App() {
                               {label} <span className="text-[10px]">{active ? (table.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>
                             </button>
                           ) : <span className="font-semibold uppercase tracking-wider">{label}</span>}
-                          {col === 'type' && (
-                            <details className="setup relative inline-block ml-1 align-middle" data-media-dd>
-                              <summary className={`ib dd normal-case tracking-normal font-normal ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick the kinds to show, none ticked = every post">🖼 {table.media.length ? MEDIA_KINDS.filter((m) => table.media.includes(m.key)).map((m) => m.label.split(' ')[0]).join(' ') : 'all'} ▾</summary>
-                              <div className="absolute left-0 z-40 mt-1 card p-2 shadow-xl min-w-44 space-y-1 normal-case tracking-normal font-normal" style={{ fontSize: `${Math.round(12 * scale)}px` }}>
-                                {MEDIA_KINDS.map((m) => (
-                                  <label key={m.key} className="flex items-center gap-2 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={table.media.includes(m.key)} onChange={() => toggleMedia(m.key)} data-media-kind={m.key} /> {m.label}</label>
-                                ))}
-                                <button type="button" className="btn sm w-full justify-center" onClick={() => setTable((t) => ({ ...t, media: [] }))} disabled={!table.media.length}>All</button>
-                              </div>
-                            </details>
-                          )}
                           {col && (
-                            <input className="inp mt-1 px-2 py-1 text-[10px] font-normal normal-case tracking-normal min-h-0" style={{ fontSize: `${Math.round(10 * scale)}px` }} placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />
+                            <div className="mt-1 flex items-center gap-1">
+                              <input className="filter-inp" style={{ fontSize: `${Math.round(10 * scale)}px` }} placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />
+                              {col === 'type' && (
+                                <details ref={ddRef} className="setup inline-block ml-1 align-middle" data-media-dd onToggle={(e) => { const el = e.currentTarget; if (el.open) { const r = el.getBoundingClientRect(); setDdAt({ x: r.left, y: r.bottom + 4 }); } else setDdAt(null); }}>
+                                  <summary className={`ib dd normal-case tracking-normal font-normal ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick what the post must have (Photo, Video, GIF, Media = any) or must not have (the ! twins); nothing ticked = every post">🖼{table.media.length ? ` ` : ''} ▾</summary>
+                                  <div className="fixed z-50 card p-2 shadow-xl min-w-52 space-y-1 normal-case tracking-normal font-normal" style={{ left: ddAt?.x ?? 0, top: ddAt?.y ?? 0, fontSize: `${Math.round(12 * scale)}px` }}>
+                                    {MEDIA_KINDS.map((m) => (
+                                      <label key={m.key} className="flex items-center gap-2 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={table.media.includes(m.key)} onChange={() => toggleMedia(m.key)} data-media-kind={m.key} /> {m.label}</label>
+                                    ))}
+                                    <button type="button" className="btn sm w-full justify-center" onClick={() => setTable((t) => ({ ...t, media: [] }))} disabled={!table.media.length}>All</button>
+                                  </div>
+                                </details>
+                              )}
+                            </div>
                           )}
                         </th>
                       );
@@ -587,6 +600,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
+                  {visible.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400" data-empty>Nothing matches these filters.</td></tr>}
                   {visible.map((p, i) => (
                     <PostRow key={p.id} post={p} scale={scale} showMedia={showMedia} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
                   ))}

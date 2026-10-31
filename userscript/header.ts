@@ -30,6 +30,7 @@ export function userscriptHeader(version: string): string {
     '// @grant        GM_registerMenuCommand',
     '// @grant        unsafeWindow',
     '// @grant        GM_xmlhttpRequest',
+    '// @grant        GM_addElement',
     '// @connect      sheets.googleapis.com',
     '// ==/UserScript==',
     '',

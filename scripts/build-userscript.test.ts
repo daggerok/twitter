@@ -8,7 +8,7 @@ describe('userscript header', () => {
   test('is a Tampermonkey block with the grants and hosts the code relies on', () => {
     expect(h.startsWith('// ==UserScript==\n')).toBe(true);
     expect(h.trim().endsWith('// ==/UserScript==')).toBe(true);
-    ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_addValueChangeListener', 'GM_registerMenuCommand', 'unsafeWindow']
+    ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_addValueChangeListener', 'GM_registerMenuCommand', 'unsafeWindow', 'GM_xmlhttpRequest', 'GM_addElement']
       .forEach((g) => expect(h).toContain(`// @grant        ${g}`));
     expect(h).toContain('// @match        https://x.com/*');
     expect(h).toContain('// @match        https://daggerok.github.io/twitter/*');
