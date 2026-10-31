@@ -1,43 +1,84 @@
 /// <reference lib="esnext" />
-// Pure helpers of the viewer: feed filters, sorting, CSV export and the JSON import of the userscript.
-import { byNewest, isPostType, POST_HEADERS, toRow, type Post, type PostType } from '../shared/post';
+// Pure helpers of the viewer: the column filters and sorting of the table (the youtube syntax), CSV export, the JSON
+// import of the userscript, link splitting.
+import { byNewest, isPostType, POST_HEADERS, toRow, type Post } from '../shared/post';
 
-export type SortKey = 'date' | 'likes' | 'views' | 'reposts' | 'replies';
+export type ColKey = 'datetime' | 'type' | 'post' | 'stats' | 'hidden';
+export const COLS: ColKey[] = ['datetime', 'type', 'post', 'stats', 'hidden'];
+export type SortDir = 'asc' | 'desc';
+export type MediaKind = 'photo' | 'video' | 'gif' | 'none';
+export const MEDIA_KINDS: { key: MediaKind; label: string }[] = [{ key: 'photo', label: '📷 Photo' }, { key: 'video', label: '🎬 Video' }, { key: 'gif', label: 'GIF' }, { key: 'none', label: 'No media (text only)' }];
+/** media: the ticked kinds of the dropdown, [] = every post; a post matches when it has one of the ticked kinds (none = no media at all) */
+export type TableState = { filters: Record<ColKey, string>; sort: { key: ColKey; dir: SortDir }; media: MediaKind[] };
+export const EMPTY_TABLE: TableState = { filters: { datetime: '', type: '', post: '', stats: '', hidden: '' }, sort: { key: 'datetime', dir: 'desc' }, media: [] };
 
-export type Filters = {
-  handles: string[];          // [] = every account
-  types: PostType[];          // [] = every type
-  from: string;               // YYYY-MM-DD or ''
-  to: string;                 // YYYY-MM-DD or ''
-  hasMedia: boolean;
-  search: string;             // case-insensitive, every word must be in text, author or handle
-  sort: SortKey;
-  showHidden: boolean;        // false: the feed without the hidden posts; true: only the hidden ones (to bring them back)
-};
+export function matchMedia(p: Post, kinds: MediaKind[]): boolean {
+  if (!kinds.length) return true;
+  if (!p.media.length) return kinds.includes('none');
+  return p.media.some((m) => (kinds as string[]).includes(m.type));
+}
 
-export const EMPTY_FILTERS: Filters = { handles: [], types: [], from: '', to: '', hasMedia: false, search: '', sort: 'date', showHidden: false };
+const MEDIA_WORD: Record<string, string> = { photo: '📷 photo', video: '🎬 video', gif: 'gif' };
 
-export function applyFilters(posts: Post[], f: Filters): Post[] {
-  const words = f.search.toLowerCase().split(/\s+/).filter(Boolean);
-  const from = f.from ? `${f.from}T00:00:00.000Z` : '';
-  const to = f.to ? `${f.to}T23:59:59.999Z` : '';
-  const out = posts.filter((p) => {
-    if (!!p.hidden !== f.showHidden) return false;
-    if (f.handles.length && !f.handles.includes(p.handle)) return false;
-    if (f.types.length && !f.types.includes(p.type)) return false;
-    if (from && p.created_at < from) return false;
-    if (to && p.created_at > to) return false;
-    if (f.hasMedia && !p.media.length) return false;
-    if (words.length) {
-      const hay = `${p.text}\n${p.author_name}\n@${p.handle}\n${p.links.join(' ')}`.toLowerCase();
-      if (!words.every((w) => hay.includes(w))) return false;
+/** What each column's filter sees for a post, lower case (the text a filter is matched against). */
+export function columnText(p: Post, col: ColKey, fmtDate: (iso: string) => string): string {
+  switch (col) {
+    case 'datetime': return fmtDate(p.created_at).toLowerCase();
+    case 'type': return [p.type, p.is_pinned ? 'pinned' : '', ...p.media.map((m) => MEDIA_WORD[m.type] || m.type), p.media.length ? 'media' : 'text only'].filter(Boolean).join(' ').toLowerCase();
+    case 'post': return [p.text, p.type === 'repost' ? `repost of @${p.reposted_handle}` : '', p.type === 'reply' ? `to @${p.in_reply_to_handle}` : '', p.author_name, `@${p.handle}`, p.links.join(' ')].filter(Boolean).join(' ').toLowerCase();
+    case 'stats': return `replies ${p.replies} reposts ${p.reposts} likes ${p.likes} views ${p.views} bookmarks ${p.bookmarks}`;
+    case 'hidden': return p.hidden ? 'hidden' : 'visible';
+    default: return '';
+  }
+}
+
+/**
+ * The youtube filter syntax, case-insensitive: `a*b` or `a&b` = a then b in order (any text between, no overlap),
+ * `a|b` = either, AND binds tighter than OR, spaces are literal, empty operands are ignored, an empty or
+ * operators-only query matches everything.
+ */
+export function matchFilter(text: string, query: string): boolean {
+  const q = query.toLowerCase();
+  const alternatives = q.split('|').map((alt) => alt.split(/[*&]/).filter((t) => t.length > 0)).filter((terms) => terms.length > 0);
+  if (!alternatives.length) return true;
+  const hay = text.toLowerCase();
+  return alternatives.some((terms) => {
+    let from = 0;
+    for (const term of terms) {
+      const i = hay.indexOf(term, from);
+      if (i === -1) return false;
+      from = i + term.length;
     }
     return true;
   });
-  if (f.sort === 'date') return out.sort(byNewest);
-  const key = f.sort;
-  return out.sort((a, b) => b[key] - a[key] || byNewest(a, b));
 }
+
+const sortValue = (p: Post, key: ColKey, fmtDate: (iso: string) => string): string | number => {
+  switch (key) {
+    case 'datetime': return p.created_at;
+    case 'type': return `${p.type} ${p.is_pinned ? '0' : '1'}`;
+    case 'post': return p.text.toLowerCase();
+    case 'stats': return p.likes;
+    case 'hidden': return p.hidden ? 1 : 0;
+    default: return fmtDate(p.created_at);
+  }
+};
+
+/** Filter every column, then sort (ties by newest). */
+export function applyTable(posts: Post[], s: TableState, fmtDate: (iso: string) => string): Post[] {
+  const active = COLS.filter((c) => s.filters[c].trim() !== '');
+  const out = posts.filter((p) => matchMedia(p, s.media) && active.every((c) => matchFilter(columnText(p, c, fmtDate), s.filters[c])));
+  const dir = s.sort.dir === 'asc' ? 1 : -1;
+  return out.sort((a, b) => {
+    const x = sortValue(a, s.sort.key, fmtDate);
+    const y = sortValue(b, s.sort.key, fmtDate);
+    if (x < y) return -dir;
+    if (x > y) return dir;
+    return byNewest(a, b);
+  });
+}
+
+export const hasFilters = (s: TableState): boolean => s.media.length > 0 || COLS.some((c) => s.filters[c].trim() !== '');
 
 const csvCell = (v: string): string => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 

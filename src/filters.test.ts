@@ -2,32 +2,61 @@
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
 import { samplePost } from '../shared/post.test';
-import { applyFilters, EMPTY_FILTERS, formatCount, linkify, postsFromJson, toCsv } from './filters';
+import { applyTable, columnText, EMPTY_TABLE, formatCount, hasFilters, linkify, matchFilter, postsFromJson, toCsv } from './filters';
 
+const fmt = (iso: string) => iso.slice(0, 16).replace('T', ', ');
 const posts = [
   samplePost({ id: '3', handle: 'a', text: 'Hello world', created_at: '2026-03-01T00:00:00.000Z', likes: 5, type: 'post' }),
-  samplePost({ id: '2', handle: 'b', text: 'Reply to you', created_at: '2026-02-01T00:00:00.000Z', likes: 50, type: 'reply', media: [{ type: 'photo', url: 'u' }] }),
-  samplePost({ id: '1', handle: 'a', text: 'old quote', created_at: '2026-01-01T00:00:00.000Z', likes: 500, views: 9, type: 'quote' }),
+  samplePost({ id: '2', handle: 'b', text: 'Reply to you', created_at: '2026-02-01T00:00:00.000Z', likes: 50, type: 'reply', in_reply_to_handle: 'someone', media: [{ type: 'photo', url: 'u' }] }),
+  samplePost({ id: '1', handle: 'a', text: 'old quote', created_at: '2026-01-01T00:00:00.000Z', likes: 500, views: 9, type: 'quote', hidden: true }),
 ];
+const withFilter = (col: keyof typeof EMPTY_TABLE.filters, q: string) => ({ ...EMPTY_TABLE, filters: { ...EMPTY_TABLE.filters, [col]: q } });
 
-describe('applyFilters', () => {
-  test('no filter: newest first', () => {
-    expect(applyFilters(posts, EMPTY_FILTERS).map((p) => p.id)).toEqual(['3', '2', '1']);
+describe('matchFilter (the youtube syntax)', () => {
+  test('and in order, or, precedence, literal spaces, empty operands', () => {
+    expect(matchFilter('2022 ICT Mentorship Live', '2022*Mentorship')).toBe(true);
+    expect(matchFilter('2022 ICT Mentorship Live', 'Mentorship*2022')).toBe(false);
+    expect(matchFilter('2022 ICT Mentorship Live', '2022&mentorship&live')).toBe(true);
+    expect(matchFilter('2016 Mentorship', '2022 Mentorship|2016 Mentorship')).toBe(true);
+    expect(matchFilter('2022 Mentorship Live', '2022*Mentorship&Live|2016*Mentorship')).toBe(true);
+    expect(matchFilter('aaa', 'a*a*a*a')).toBe(false);
+    expect(matchFilter('anything', '')).toBe(true);
+    expect(matchFilter('anything', '|*&')).toBe(true);
+    expect(matchFilter('anything', ' ')).toBe(false);
   });
-  test('hidden posts are out of the feed and listed alone with showHidden', () => {
-    const list = [...posts, samplePost({ id: '0', hidden: true, text: 'noise' })];
-    expect(applyFilters(list, EMPTY_FILTERS).map((p) => p.id)).toEqual(['3', '2', '1']);
-    expect(applyFilters(list, { ...EMPTY_FILTERS, showHidden: true }).map((p) => p.id)).toEqual(['0']);
+});
+
+describe('applyTable', () => {
+  test('default: newest first, hidden rows included', () => {
+    expect(applyTable(posts, EMPTY_TABLE, fmt).map((p) => p.id)).toEqual(['3', '2', '1']);
   });
-  test('handles, types, dates, media, search words, sort', () => {
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, handles: ['a'] }).map((p) => p.id)).toEqual(['3', '1']);
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, types: ['reply', 'quote'] }).map((p) => p.id)).toEqual(['2', '1']);
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, from: '2026-02-01', to: '2026-02-28' }).map((p) => p.id)).toEqual(['2']);
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, hasMedia: true }).map((p) => p.id)).toEqual(['2']);
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, search: 'WORLD hello' }).map((p) => p.id)).toEqual(['3']);
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, search: '@b' }).map((p) => p.id)).toEqual(['2']);
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, sort: 'likes' }).map((p) => p.id)).toEqual(['1', '2', '3']);
-    expect(applyFilters(posts, { ...EMPTY_FILTERS, sort: 'views' }).map((p) => p.id)).toEqual(['1', '3', '2']);
+  test('column filters: type, media words, post text, hidden, datetime', () => {
+    expect(applyTable(posts, withFilter('type', 'reply|quote'), fmt).map((p) => p.id)).toEqual(['2', '1']);
+    expect(applyTable(posts, withFilter('type', 'photo'), fmt).map((p) => p.id)).toEqual(['2']);
+    expect(applyTable(posts, withFilter('type', 'text only'), fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable(posts, withFilter('post', 'hello*world'), fmt).map((p) => p.id)).toEqual(['3']);
+    expect(applyTable(posts, withFilter('post', '@someone'), fmt).map((p) => p.id)).toEqual(['2']);
+    expect(applyTable(posts, withFilter('hidden', 'hidden'), fmt).map((p) => p.id)).toEqual(['1']);
+    expect(applyTable(posts, withFilter('hidden', 'visible'), fmt).map((p) => p.id)).toEqual(['3', '2']);
+    expect(applyTable(posts, withFilter('datetime', '2026-02'), fmt).map((p) => p.id)).toEqual(['2']);
+  });
+  test('media dropdown: ticked kinds, none = text only, any mix', () => {
+    const list = [...posts, samplePost({ id: '4', media: [{ type: 'video', url: 'v' }, { type: 'gif', url: 'g' }] })];
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['photo'] }, fmt).map((p) => p.id)).toEqual(['2']);
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['video'] }, fmt).map((p) => p.id)).toEqual(['4']);
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['none'] }, fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable(list, { ...EMPTY_TABLE, media: ['photo', 'gif'] }, fmt).map((p) => p.id)).toEqual(['2', '4']);
+    expect(hasFilters({ ...EMPTY_TABLE, media: ['gif'] })).toBe(true);
+  });
+  test('sorting by column and direction', () => {
+    expect(applyTable(posts, { ...EMPTY_TABLE, sort: { key: 'datetime', dir: 'asc' } }, fmt).map((p) => p.id)).toEqual(['1', '2', '3']);
+    expect(applyTable(posts, { ...EMPTY_TABLE, sort: { key: 'stats', dir: 'desc' } }, fmt).map((p) => p.id)).toEqual(['1', '2', '3']);
+    expect(applyTable(posts, { ...EMPTY_TABLE, sort: { key: 'type', dir: 'asc' } }, fmt).map((p) => p.id)).toEqual(['3', '1', '2']);
+    expect(hasFilters(EMPTY_TABLE)).toBe(false);
+    expect(hasFilters(withFilter('post', 'x'))).toBe(true);
+  });
+  test('columnText of the type column names pinned and the media', () => {
+    expect(columnText(samplePost({ is_pinned: true, media: [{ type: 'video', url: 'v' }, { type: 'gif', url: 'g' }] }), 'type', fmt)).toBe('post pinned 🎬 video gif media');
   });
 });
 

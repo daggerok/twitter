@@ -96,6 +96,8 @@ input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-r
 .dark input[type=range].scale-slider::-moz-range-thumb{background:#10b981}
 .feed .badge{font-size:.75em;padding:.2em .55em;border-radius:.375rem;font-weight:700}
 .feed .ib{width:1.9em;height:1.9em;font-size:.8em}
+.ib.dd{width:auto;height:auto;padding:.15rem .45rem;white-space:nowrap;gap:.25rem;font-size:.7rem;cursor:pointer;list-style:none}
+.ib.dd::-webkit-details-marker{display:none}
 .feed table td,.feed table th{vertical-align:top}
 .post-text{white-space:pre-wrap;overflow-wrap:anywhere}
 .post-text a{color:#047857;text-decoration:underline}
