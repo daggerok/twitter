@@ -21,13 +21,13 @@ export function spreadsheetId(v: string): string {
 export const spreadsheetUrl = (id: string): string => `https://docs.google.com/spreadsheets/d/${id}/edit`;
 
 
-type Meta = { sheets?: { properties?: { title?: string; sheetId?: number } }[]; properties?: { title?: string } };
+type Meta = { sheets?: { properties?: { title?: string; sheetId?: number; gridProperties?: { rowCount?: number } } }[]; properties?: { title?: string } };
 
-export type TabInfo = { title: string; sheetId: number };
+export type TabInfo = { title: string; sheetId: number; rows: number };
 
 export async function listTabs(token: string, id: string): Promise<{ title: string; tabs: TabInfo[] }> {
-  const m = await googleFetch<Meta>(`${API}/spreadsheets/${id}?fields=properties.title,sheets.properties(title,sheetId)`, token);
-  const tabs = (m.sheets || []).map((s) => ({ title: s.properties?.title || '', sheetId: s.properties?.sheetId ?? -1 })).filter((t) => t.title);
+  const m = await googleFetch<Meta>(`${API}/spreadsheets/${id}?fields=properties.title,sheets.properties(title,sheetId,gridProperties.rowCount)`, token);
+  const tabs = (m.sheets || []).map((s) => ({ title: s.properties?.title || '', sheetId: s.properties?.sheetId ?? -1, rows: s.properties?.gridProperties?.rowCount ?? 0 })).filter((t) => t.title);
   return { title: m.properties?.title || '', tabs };
 }
 
@@ -61,7 +61,10 @@ export async function readPosts(token: string, id: string, tab: string): Promise
   return out;
 }
 
-/** Overwrite rows 2..n+1 in one PUT (RAW keeps the ids as text), then clear only what is past the end. */
+/**
+ * Overwrite rows 2..n+1 in one PUT (RAW keeps the ids as text, the grid grows as needed), then clear only the rows that
+ * exist past the end: a clear range beyond the grid is a 400 "exceeds grid limits" (seen with 1,866 posts on a 1,624 row tab).
+ */
 export async function writePosts(token: string, id: string, tab: string, posts: Post[]): Promise<void> {
   const rows = posts.map(toRow);
   if (rows.length) {
@@ -71,7 +74,11 @@ export async function writePosts(token: string, id: string, tab: string, posts: 
       body: JSON.stringify({ range: `${quoteTab(tab)}!${cells}`, majorDimension: 'ROWS', values: rows }),
     });
   }
-  await googleFetch(`${API}/spreadsheets/${id}/values/${range(tab, `A${rows.length + 2}:${LAST_COL}`)}:clear`, token, { method: 'POST', body: '{}' });
+  const { tabs } = await listTabs(token, id);
+  const gridRows = tabs.find((t) => t.title === tab)?.rows ?? 0;
+  if (gridRows > rows.length + 1) {
+    await googleFetch(`${API}/spreadsheets/${id}/values/${range(tab, `A${rows.length + 2}:${LAST_COL}${gridRows}`)}:clear`, token, { method: 'POST', body: '{}' });
+  }
 }
 
 /** One post changed in the viewer (hidden): rewrite only its row, found by the id column, or append it. Other rows stay. */
