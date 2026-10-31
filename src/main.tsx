@@ -33,7 +33,6 @@ const CONFIG_KEY = `${PREFIX}-gs-config`;
 const FILTERS_KEY = `${PREFIX}-filters`;
 const CURRENT_KEY = `${PREFIX}-current`;
 const SCALE_KEY = `${PREFIX}-scale`;
-const MEDIA_KEY = `${PREFIX}-media`;
 const DEFAULT_SCALE_SLIDER = 50;
 const sliderToScale = (v: number): number => 0.7 + (v / 100) * 0.8;
 const postsKey = (handle: string) => `${PREFIX}-posts-${handle.toLowerCase()}`;
@@ -112,7 +111,6 @@ function App() {
   const [shown, setShown] = useState(PAGE_SIZE);
   const [scaleSlider, setScaleSlider] = useState(() => { const n = Number(lsGet(SCALE_KEY)); return Number.isFinite(n) && lsGet(SCALE_KEY) !== null ? Math.min(100, Math.max(0, n)) : DEFAULT_SCALE_SLIDER; });
   const scale = sliderToScale(scaleSlider);
-  const [showMedia, setShowMedia] = useState(() => lsGet(MEDIA_KEY) === 'on'); // text only by default; on: photos, videos and gifs inline
   const [email, setEmail] = useState('');
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState('');
@@ -144,7 +142,6 @@ function App() {
   useEffect(() => { lsSet(CONFIG_KEY, JSON.stringify(cfg)); }, [cfg]);
   useEffect(() => { lsSet(CURRENT_KEY, current); }, [current]);
   useEffect(() => { lsSet(SCALE_KEY, String(scaleSlider)); }, [scaleSlider]);
-  useEffect(() => { lsSet(MEDIA_KEY, showMedia ? 'on' : 'off'); }, [showMedia]);
   useEffect(() => { lsSet(FILTERS_KEY, JSON.stringify(table)); setShown(PAGE_SIZE); }, [table]);
 
   const sid = spreadsheetId(cfg.spreadsheetId);
@@ -547,7 +544,7 @@ function App() {
           <div className="panel-head">
             <div className="min-w-0 flex flex-wrap items-baseline gap-x-2">
               <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(16 * scale)}px` }}>
-                {handle ? <a href={`https://x.com/${handle}`} target="_blank" rel="noreferrer">@{handle}</a> : 'Feed'} <span className="font-normal">{feed.length} / {posts.length}</span>
+                {feed.length} / {posts.length}
               </h3>
               {busy && <span className="text-[10px] text-slate-500 dark:text-slate-400 animate-pulse" data-busy>⏳ {busy}</span>}
               {handle && (
@@ -557,7 +554,6 @@ function App() {
               )}
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <button className={`btn sm ${showMedia ? 'active' : ''}`} title={showMedia ? 'Showing photos, videos and gifs inline; press for text only' : 'Text only; press to show photos, videos and gifs inline. Posts without text are dimmed meanwhile'} onClick={() => setShowMedia((m) => !m)} data-media={showMedia ? 'on' : 'off'}>🖼 media</button>
               <span className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
                 <input type="range" min="0" max="100" value={scaleSlider} onChange={(e) => setScaleSlider(Number(e.target.value))} className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`} />
@@ -576,7 +572,7 @@ function App() {
                       const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
                       const active = col && table.sort.key === col;
                       return (
-                        <th key={key} className={`px-4 align-top sticky top-0 z-20 bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(6 * scale)}px` }}>
+                        <th key={key} className={`px-4 align-top sticky top-0 ${key === 'type' && ddAt ? 'z-30' : 'z-20'} bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(6 * scale)}px` }}>
                           {col ? (
                             <button type="button" className={`flex items-center gap-1 font-semibold uppercase tracking-wider text-left transition-colors hover:text-emerald-500 ${active ? 'text-emerald-500' : ''}`} onClick={() => sortBy(col)} title={`Sort by ${label}`} data-sort={active ? table.sort.dir : 'none'}>
                               {label} <span className="text-[10px]">{active ? (table.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>
@@ -610,7 +606,7 @@ function App() {
                     </td></tr>
                   )}
                   {visible.map((p, i) => (
-                    <PostRow key={p.id} post={p} scale={scale} showMedia={showMedia} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
+                    <PostRow key={p.id} post={p} scale={scale} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
                   ))}
                 </tbody>
               </table>
@@ -759,7 +755,7 @@ function useHoverPreview() {
 }
 
 /** One post as a table row, the youtube inventory look: date, type, text, stats, Open, the crossed eye. */
-function PostRow({ post: p, scale, showMedia, onToggleHidden, sentinel }: { post: Post; scale: number; showMedia: boolean; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
+function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; scale: number; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
   const parts = useMemo(() => linkify(p.text), [p.text]);
   const preview = useHoverPreview();
   const py = `${Math.round(10 * scale)}px`;
@@ -770,9 +766,9 @@ function PostRow({ post: p, scale, showMedia, onToggleHidden, sentinel }: { post
   const time = d ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
   const media = new Map<string, number>();
   p.media.forEach((m) => media.set(m.type, (media.get(m.type) || 0) + 1));
-  // media off and nothing to read: the row is dimmed like a hidden one, the media badge says what is there
+  // nothing to read (media only): the row is dimmed like a hidden one, the media badge says what is there, a second on it previews
   const mediaOnly = !p.text && p.media.length > 0;
-  const dim = p.hidden || (mediaOnly && !showMedia);
+  const dim = p.hidden || mediaOnly;
   const rowClass = p.hidden ? 'opacity-40' : dim ? 'opacity-60' : '';
   const context = p.type === 'repost' && p.reposted_handle ? `↻ repost of @${p.reposted_handle}` : p.type === 'reply' && p.in_reply_to_handle ? `↩ to @${p.in_reply_to_handle}` : p.type === 'quote' && p.quoted_id ? '❝ quotes a post' : '';
   return (
@@ -785,7 +781,7 @@ function PostRow({ post: p, scale, showMedia, onToggleHidden, sentinel }: { post
         <span className={`badge ${p.type}`}>{p.type}</span>
         {p.is_pinned && <span className="badge pinned ml-1">pinned</span>}
         {media.size > 0 && (
-          <span className="media-badge block mt-1 text-slate-500 dark:text-slate-400 cursor-help" style={{ fontSize: small }} onMouseEnter={showMedia ? undefined : preview.enter} onMouseLeave={preview.leave} title={showMedia ? undefined : 'Rest the mouse here a second for a preview'}>
+          <span className="media-badge block mt-1 text-slate-500 dark:text-slate-400 cursor-help" style={{ fontSize: small }} onMouseEnter={preview.enter} onMouseLeave={preview.leave} title="Rest the mouse here a second for a preview">
             {Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')}
           </span>
         )}
@@ -794,10 +790,9 @@ function PostRow({ post: p, scale, showMedia, onToggleHidden, sentinel }: { post
         {(context || p.type === 'repost') && <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>{context}{p.type === 'repost' && p.author_name ? ` · ${p.author_name}` : ''}</div>}
         <div className="post-text leading-snug">
           {parts.map((x, i) => (x.kind === 'link' ? <a key={i} href={x.value} target="_blank" rel="noreferrer">{x.value}</a> : <span key={i}>{x.value}</span>))}
-          {!p.text && <span className="text-slate-400 cursor-help" onMouseEnter={mediaOnly && !showMedia ? preview.enter : undefined} onMouseLeave={preview.leave}>{mediaOnly ? `(media only: ${Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')})` : '(no text)'}</span>}
+          {!p.text && <span className="text-slate-400 cursor-help" onMouseEnter={mediaOnly ? preview.enter : undefined} onMouseLeave={preview.leave}>{mediaOnly ? `(media only: ${Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')})` : '(no text)'}</span>}
         </div>
-        {showMedia && p.media.length > 0 && <MediaInline media={p.media} scale={scale} className="mt-2 media-inline" />}
-        {preview.at && !showMedia && p.media.length > 0 && (
+        {preview.at && p.media.length > 0 && (
           <div className="media-preview fixed z-[2147483000] card p-2 shadow-2xl" style={{ left: Math.min(preview.at.x + 16, window.innerWidth - 380), top: Math.min(preview.at.y + 16, window.innerHeight - 300), width: 360, maxWidth: 'calc(100vw - 32px)' }} onMouseLeave={preview.leave}>
             <MediaInline media={p.media} scale={Math.min(scale, 1)} className="" />
           </div>
