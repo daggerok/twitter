@@ -14,7 +14,7 @@
 // - Feed: filters (account, type, dates, media, search, sort), cards, CSV and JSON export of the filtered view
 // Same look as credit-cards-reports (Tailwind 4, slate palette); every localStorage access in try/catch.
 // =========================================================================
-import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createRoot } from 'react-dom/client';
 import { byNewest, mergePosts, type Post, type PostType, POST_TYPES } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
@@ -114,6 +114,7 @@ function App() {
   const session = useRef(new GoogleSession(() => cfgRef.current.clientId));
   const storing = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const sentinel = useRef<HTMLLIElement>(null);
 
   const say = useCallback((msg: string) => {
     setLog((l) => [{ ts: new Date().toLocaleTimeString(), msg }, ...l].slice(0, 200));
@@ -386,6 +387,17 @@ function App() {
   const hiddenCount = useMemo(() => posts.filter((p) => p.hidden).length, [posts]);
   const feed = useMemo(() => applyFilters(posts, filters), [posts, filters]);
   const visible = feed.slice(0, shown);
+  // infinite scroll: the next 50 cards mount when the middle of the last page comes near the viewport, so the end is never reached
+  const sentinelAt = Math.max(0, visible.length - Math.ceil(PAGE_SIZE / 2)) - 1;
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || feed.length <= shown) return undefined;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setShown((s) => Math.min(s + PAGE_SIZE, feed.length));
+    }, { rootMargin: '600px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [feed.length, shown]);
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
   const lastRun = runs.filter((r) => r.handle === handle).sort((a, b) => (a.finished_at < b.finished_at ? 1 : -1))[0];
   const exportCsv = () => download(`x-${handle || 'feed'}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(feed), 'text/csv');
@@ -529,9 +541,11 @@ function App() {
             </p>
           )}
           <ul className="space-y-2">
-            {visible.map((p) => <PostCard key={p.id} post={p} onToggleHidden={() => { void toggleHidden(p); }} />)}
+            {visible.map((p, i) => (
+              <PostCard key={p.id} post={p} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
+            ))}
           </ul>
-          {feed.length > shown && <button className="btn w-full justify-center" onClick={() => setShown((s) => s + PAGE_SIZE)}>Show {Math.min(PAGE_SIZE, feed.length - shown)} more of {feed.length - shown}</button>}
+          {feed.length > shown && <div className="text-center text-xs text-slate-400 py-2" data-more={feed.length - shown}>{feed.length - shown} more below…</div>}
         </section>
       </div>
 
@@ -641,13 +655,13 @@ function Settings(p: SettingsProps) {
 
 // ---- 4. Post card ------------------------------------------------------------------------------------
 
-function PostCard({ post: p, onToggleHidden }: { post: Post; onToggleHidden: () => void }) {
+function PostCard({ post: p, onToggleHidden, sentinel }: { post: Post; onToggleHidden: () => void; sentinel?: RefObject<HTMLLIElement | null> }) {
   const parts = useMemo(() => linkify(p.text), [p.text]);
   const who: ReactNode = p.type === 'repost' && p.reposted_handle
     ? <>@{p.handle} reposted <a className="underline" href={`https://x.com/${p.reposted_handle}`} target="_blank" rel="noreferrer">@{p.reposted_handle}</a></>
     : <><span className="font-medium">{p.author_name || `@${p.handle}`}</span> <span className="text-slate-500 dark:text-slate-400">@{p.handle}</span></>;
   return (
-    <li className={`card p-3 space-y-2 animate-fade-in ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'}>
+    <li ref={sentinel} className={`card p-3 space-y-2 animate-fade-in ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <button type="button" className="ib" title={p.hidden ? 'Show this post again' : 'Hide this post (noise, not important)'} onClick={onToggleHidden}>{p.hidden ? '👁' : '🙈'}</button>
         <span className={`badge ${p.type}`}>{p.type}</span>
