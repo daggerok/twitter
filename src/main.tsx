@@ -354,7 +354,6 @@ function App() {
         <div className="px-4 sm:px-8">
           <div className="flex flex-col md:flex-row md:items-center gap-2 py-3">
             <div className="flex items-center gap-2 w-full md:flex-1 min-w-0">
-              <span className="text-xl font-bold select-none" title="X Feed Sheets">𝕏</span>
               <form className="flex-1 min-w-0" onSubmit={(e) => { e.preventDefault(); void load(); }}>
                 <input className="inp mono" title="X profile link or @handle, Enter loads its stored posts" placeholder="X profile link or @handle (https://x.com/elonmusk)…" value={current} onChange={(e) => setCurrent(e.target.value)} />
               </form>
@@ -417,6 +416,11 @@ function App() {
           </div>
         )}
         {busy && <div className="text-xs text-slate-500 dark:text-slate-400 animate-pulse">{busy}</div>}
+        {!scriptVersion && (
+          <div className="card status-warn px-3 py-2 text-sm animate-fade-in" data-hint="no-script">
+            <b>The userscript is not running on this page</b> (first dot red), so posts collected on x.com cannot reach the sheet. Chrome: chrome://extensions, Tampermonkey, Details, Site access: add <code className="px-1">https://daggerok.github.io/*</code> next to x.com; then install <a className="underline" href={USERSCRIPT_URL}>x-sync.user.js</a> if not yet, and reload this page. The dot turns green when it works.
+          </div>
+        )}
 
         {/* settings, slides open */}
         <div id="settings-wrap" className={`slide-wrap ${showSettings ? 'open' : ''}`}>
