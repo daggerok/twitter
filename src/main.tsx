@@ -554,6 +554,7 @@ function App() {
               )}
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
+              {hasFilters(table) && <button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [] }))} data-clear-filters>Clear filters</button>}
               <span className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
                 <input type="range" min="0" max="100" value={scaleSlider} onChange={(e) => setScaleSlider(Number(e.target.value))} className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`} />
@@ -562,7 +563,6 @@ function App() {
             </div>
           </div>
           <div className="flex-1 min-h-0 flex flex-col p-4 space-y-4">
-          {hasFilters(table) && <div className="text-right"><button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [] }))}>Clear filters</button></div>}
           {(
             <div className="flex-1 min-h-0 overflow-auto themed-scroll -mx-4">
               <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
@@ -572,15 +572,15 @@ function App() {
                       const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
                       const active = col && table.sort.key === col;
                       return (
-                        <th key={key} className={`px-4 align-top sticky top-0 ${key === 'type' && ddAt ? 'z-30' : 'z-20'} bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(6 * scale)}px` }}>
+                        <th key={key} className={`px-4 align-top sticky top-0 ${key === 'type' && ddAt ? 'z-30' : 'z-20'} bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(10 * scale)}px` }}>
                           {col ? (
                             <button type="button" className={`flex items-center gap-1 font-semibold uppercase tracking-wider text-left transition-colors hover:text-emerald-500 ${active ? 'text-emerald-500' : ''}`} onClick={() => sortBy(col)} title={`Sort by ${label}`} data-sort={active ? table.sort.dir : 'none'}>
                               {label} <span className="text-[10px]">{active ? (table.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>
                             </button>
                           ) : <span className="font-semibold uppercase tracking-wider">{label}</span>}
                           {col && (
-                            <div className="mt-1 flex items-center gap-1">
-                              <input className="filter-inp" style={{ fontSize: `${Math.round(10 * scale)}px` }} placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />
+                            <div className="mt-1.5 flex items-center gap-1">
+                              <input className="filter-inp" placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />
                               {col === 'type' && (
                                 <details ref={ddRef} className="setup inline-block ml-1 align-middle" data-media-dd onToggle={(e) => { const el = e.currentTarget; if (el.open) { const r = el.getBoundingClientRect(); setDdAt({ x: r.left, y: r.bottom + 4 }); } else setDdAt(null); }}>
                                   <summary className={`ib dd normal-case tracking-normal font-normal ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick what the post must have (Photo, Video, GIF, Media = any) or must not have (the ! twins); nothing ticked = every post">🖼{table.media.length ? ` ` : ''} ▾</summary>
@@ -781,7 +781,7 @@ function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; sca
         <span className={`badge ${p.type}`}>{p.type}</span>
         {p.is_pinned && <span className="badge pinned ml-1">pinned</span>}
         {media.size > 0 && (
-          <span className="media-badge block mt-1 text-slate-500 dark:text-slate-400 cursor-help" style={{ fontSize: small }} onMouseEnter={preview.enter} onMouseLeave={preview.leave} title="Rest the mouse here a second for a preview">
+          <span className="media-badge ml-1 text-slate-500 dark:text-slate-400 cursor-help" style={{ fontSize: small }} onMouseEnter={preview.enter} onMouseLeave={preview.leave} title="Rest the mouse here a second for a preview">
             {Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')}
           </span>
         )}
