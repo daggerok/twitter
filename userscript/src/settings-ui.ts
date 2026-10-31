@@ -3,8 +3,8 @@
 import { DEFAULTS, loadSettings, normalize, saveSettings, type Settings } from './settings';
 
 const FIELDS: { key: keyof Settings; label: string }[] = [
-  { key: 'maxPosts', label: 'Max posts per run' },
-  { key: 'maxMinutes', label: 'Max minutes per run' },
+  { key: 'maxPosts', label: 'Max posts per run (0 = no limit)' },
+  { key: 'maxMinutes', label: 'Max minutes per run (0 = no limit)' },
   { key: 'delayMinMs', label: 'Delay between scrolls, min ms' },
   { key: 'delayMaxMs', label: 'Delay between scrolls, max ms' },
   { key: 'restEvery', label: 'Rest every N scrolls' },

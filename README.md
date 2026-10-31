@@ -44,7 +44,7 @@ jq -r '."Google Sheets Spreadsheet full URL"' google.json | pbcopy # Settings ->
 4. Open the userscript link above: a `.user.js` url is intercepted by Tampermonkey, which shows its install page with the script name, its grants and an Install button. Press Install (if the raw code opened instead: Tampermonkey icon, Dashboard, Utilities, Install from URL). Reload the viewer: the first dot on the toolbar turns green
 5. Type a handle in the top field, press Enter, then ⬇ Sync new in the Accounts list. The profile opens on x.com with `#xsync=incremental`, the corner badge scrolls the timeline and shows posts seen, elapsed time and a Stop button. When it stops, go back to the viewer: the posts are merged into the sheet and the feed shows them
 
-Settings of a run (badge ⚙ or the Tampermonkey menu): max posts (2000), max minutes (15), delay between scrolls (1.5 to 4 s), a rest every 20 scrolls (5 to 12 s), stop after 8 scrolls without new posts, replies too (the viewer then opens `/with_replies`)
+Settings of a run (badge ⚙ or the Tampermonkey menu): max posts and max minutes (0 = no limit, the default: a run goes on until the timeline ends, X rate limits it or you press Stop), delay between scrolls (1.5 to 4 s), a rest every 20 scrolls (5 to 12 s), stop after 8 scrolls without new posts, replies too (the viewer then opens `/with_replies`)
 
 ## Viewer
 

@@ -4,7 +4,8 @@
 // the sink. The interceptor (installed at document-start by main.ts) calls `onTimeline` for each
 // GraphQL response; when none arrived for 10 s the DOM fallback reads the rendered cards instead.
 // Stop reasons: stopped (the Stop button), caught_up (incremental: an id <= the newest stored one),
-// end_of_timeline (idleScrolls scrolls without a new post), max_posts, max_minutes, rate_limited
+// end_of_timeline (idleScrolls scrolls without a new post), max_posts and max_minutes (only when set, off by
+// default: the owner wants a run to go on until the timeline ends or Stop is pressed), rate_limited
 // (HTTP 429 or the "Something went wrong" card after one Retry), left_profile (the url changed).
 // =========================================================================
 import { compareIds, handleFromPath, type Post } from '../../shared/post';
@@ -100,7 +101,7 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
       const old = posts.find((p) => !p.is_pinned && compareIds(p.id, o.newestId) <= 0);
       if (old) return 'caught_up';
     }
-    if (sink.posts.size >= s.maxPosts) return 'max_posts';
+    if (s.maxPosts > 0 && sink.posts.size >= s.maxPosts) return 'max_posts';
     return fresh > 0 ? null : null;
   };
   let stop = ingest(initial.length ? initial : firstDom, initial.length > 0);
@@ -109,7 +110,7 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
   while (true) {
     if (o.isStopped()) return result('stopped');
     if (handleFromPath(location.pathname) !== o.handle) return result('left_profile');
-    if (Date.now() - startedAt > s.maxMinutes * 60_000) return result('max_minutes');
+    if (s.maxMinutes > 0 && Date.now() - startedAt > s.maxMinutes * 60_000) return result('max_minutes');
     await whileVisible();
 
     const before = sink.posts.size;
