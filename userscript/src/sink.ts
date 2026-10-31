@@ -1,12 +1,15 @@
 /// <reference lib="esnext" />
 // =========================================================================
-// Sink: dedupes the posts of one run and hands them to the viewer through Tampermonkey storage.
-// The same userscript runs on the viewer page (bridge.ts): there it reads `xsync.outbox` and posts the
-// batches into the page, which writes them to Google Sheets and acks them. Nothing leaves the browser
-// except the viewer's own Sheets API calls.
+// Sink: dedupes the posts of one run and stores them. Two ways out:
+// - direct: when the viewer shared a fresh Google token (Tampermonkey storage, see bridge.ts and sheets-gm.ts)
+//   each batch goes straight to the account's tab from x.com (append new rows, rewrite known ones)
+// - outbox: otherwise, or when a direct write fails, the batch waits in `xsync.outbox`; the same userscript on
+//   the viewer page hands it over (bridge.ts), the viewer writes it to Google Sheets and acks it
+// Nothing leaves the browser except the Sheets API calls.
 // =========================================================================
 import { compareIds, type Post } from '../../shared/post';
 import { gmGet, gmSet, KEYS, MAX_RUNS, newId, type Batch, type Run, type Status } from './gm';
+import type { DirectWriter } from './sheets-gm';
 
 export const FLUSH_EVERY_POSTS = 50;
 export const FLUSH_EVERY_MS = 20_000;
@@ -18,8 +21,15 @@ export class Sink {
   private lastFlush = Date.now();
   newestId = '';
   oldestId = '';
+  /** Set when the viewer shared a fresh Google token: batches go straight to the sheet, the outbox only on failure. */
+  writer: DirectWriter | null = null;
+  onWritten: (inserted: number, updated: number, error: string) => void = () => { /* badge */ };
+  /** Writes run one after another; `done()` resolves when the last one has finished. */
+  private chain: Promise<void> = Promise.resolve();
 
   constructor(readonly handle: string, readonly runId: string) {}
+
+  done(): Promise<void> { return this.chain; }
 
   /** Add posts; returns how many ids were new to this run. */
   add(posts: Post[]): number {
@@ -37,7 +47,7 @@ export class Sink {
     return fresh;
   }
 
-  /** Move the pending posts to the outbox (one batch); a post captured twice keeps the last copy. */
+  /** Move the pending posts out: to the sheet when a writer is ready (the outbox on failure), else to the outbox. */
   flush(): void {
     this.lastFlush = Date.now();
     if (!this.pending.length) return;
@@ -45,6 +55,21 @@ export class Sink {
     this.pending.forEach((p) => byId.set(p.id, p));
     this.pending = [];
     const batch: Batch = { id: newId('b'), handle: this.handle, run_id: this.runId, posts: Array.from(byId.values()), created_at: new Date().toISOString() };
+    const w = this.writer;
+    if (w && w.ready) {
+      this.chain = this.chain.then(() => w.write(batch.posts)).then(
+        (r) => this.onWritten(r.inserted, r.updated, ''),
+        (e: unknown) => {
+          this.onWritten(0, 0, e instanceof Error ? e.message : String(e));
+          this.toOutbox(batch);
+        },
+      );
+      return;
+    }
+    this.toOutbox(batch);
+  }
+
+  private toOutbox(batch: Batch): void {
     const outbox = gmGet<Batch[]>(KEYS.outbox, []);
     outbox.push(batch);
     let total = outbox.reduce((n, b) => n + b.posts.length, 0);

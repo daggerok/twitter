@@ -20,6 +20,7 @@ import { byNewest, mergePosts, type Post, type PostType, POST_TYPES } from '../s
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
 import { applyFilters, EMPTY_FILTERS, formatCount, linkify, postsFromJson, toCsv, type Filters, type SortKey } from './filters';
 import { fetchEmail, GoogleSession } from './gis';
+import type { GoogleCreds } from '../shared/post';
 import { maskEmail, maskId, maskSpreadsheetUrl } from './mask';
 import { createSpreadsheet, deleteTab, ensureTab, handleOfTab, listTabs, readPosts, spreadsheetId, spreadsheetUrl, tabOf, writePosts } from './sheets';
 
@@ -125,6 +126,21 @@ function App() {
 
   const sid = spreadsheetId(cfg.spreadsheetId);
   const isBusy = !!busy;
+
+  // the Google token, its expiry and the spreadsheet id go to the userscript through a DOM attribute of this page
+  // (the script polls it and keeps it in Tampermonkey storage, so the x.com side writes the sheet directly)
+  useEffect(() => {
+    const share = () => {
+      const t = session.current.peek();
+      const id = spreadsheetId(cfgRef.current.spreadsheetId);
+      const creds: GoogleCreds | null = t && id ? { token: t.value, expiresAt: t.expiresAt, spreadsheetId: id, email: cfgRef.current.lastAccountEmail } : null;
+      const next = creds ? JSON.stringify(creds) : '';
+      if (document.documentElement.dataset.xsyncGoogle !== next) document.documentElement.dataset.xsyncGoogle = next;
+    };
+    share();
+    const timer = window.setInterval(share, 3000);
+    return () => window.clearInterval(timer);
+  }, [connected, cfg.spreadsheetId]);
 
   // ---- Google ----
   const connect = useCallback(async (interactive: boolean) => {
@@ -275,6 +291,15 @@ function App() {
       storing.current = false;
     }
   }, [outbox, storePosts]);
+
+  const seenRun = useRef('');
+  useEffect(() => {
+    const last = runs.filter((r) => r.handle === handleRef.current && r.finished_at).sort((a, b) => (a.finished_at < b.finished_at ? 1 : -1))[0];
+    if (!last || last.run_id === seenRun.current) return;
+    seenRun.current = last.run_id;
+    if (connected && sid && last.stored_in_sheet) void loadFromSheet(handleRef.current, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runs]);
 
   const outboxCount = outbox.reduce((n, b) => n + b.posts.length, 0);
   const canStore = connected && !!sid && !session.current.disabled;

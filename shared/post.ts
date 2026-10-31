@@ -200,3 +200,25 @@ const RESERVED = new Set([
   'signup', 'tos', 'privacy', 'about', 'jobs', 'hashtag', 'intent', 'share', 'account', 'bookmarks', 'lists',
   'communities', 'premium', 'verified', 'download', 'help', 'who_to_follow', 'connect_people', 'grok',
 ]);
+
+// ---- the sheet tab of an account (used by the viewer and by the userscript's direct writes) ----
+
+export const TAB_PREFIX = 'X-';
+export const tabOf = (handle: string): string => `${TAB_PREFIX}${handle.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 80)}`;
+export const handleOfTab = (title: string): string | null => (title.startsWith(TAB_PREFIX) ? title.slice(TAB_PREFIX.length) : null);
+export const quoteTab = (name: string): string => (/^[A-Za-z0-9_]+$/.test(name) ? name : `'${name.replace(/'/g, "''")}'`);
+/** `A1` range of a tab, url encoded for the values endpoints. */
+export const rangeOf = (tab: string, cells: string): string => encodeURIComponent(`${quoteTab(tab)}!${cells}`);
+
+/** The first row number of an `updatedRange` like `'X-abc'!A1400:Y1402` (what `values:append` answers), 0 when unreadable. */
+export function firstRowOfRange(range: string): number {
+  const m = /!([A-Z]+)(\d+)(?::|$)/.exec(range || '');
+  return m ? Number(m[2]) : 0;
+}
+
+/** Google credentials the viewer shares with the userscript through Tampermonkey storage. */
+export type GoogleCreds = { token: string; expiresAt: number; spreadsheetId: string; email: string };
+
+export function isCredsFresh(c: GoogleCreds | null | undefined, now = Date.now()): c is GoogleCreds {
+  return !!c && typeof c.token === 'string' && !!c.token && typeof c.spreadsheetId === 'string' && !!c.spreadsheetId && typeof c.expiresAt === 'number' && c.expiresAt - now > 60_000;
+}

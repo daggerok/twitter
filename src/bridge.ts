@@ -5,7 +5,7 @@ import type { Post } from '../shared/post';
 export type Batch = { id: string; handle: string; run_id: string; posts: Post[]; created_at: string };
 export type Run = {
   run_id: string; handle: string; started_at: string; finished_at: string; mode: string;
-  posts_seen: number; posts_new: number; stop_reason: string; userscript_version: string; source: string;
+  posts_seen: number; posts_new: number; stop_reason: string; userscript_version: string; source: string; stored_in_sheet?: number;
 };
 export type Status = { state: string; handle: string; mode: string; seen: number; fresh: number; started_at: string; message: string; stop_reason: string } | null;
 

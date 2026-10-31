@@ -15,6 +15,7 @@ import { parseTimeline, parseUser, type AccountInfo } from './parse';
 import { runSync, TimelineFeed } from './scroll';
 import { loadSettings } from './settings';
 import { openSettings } from './settings-ui';
+import { DirectWriter, loadCreds } from './sheets-gm';
 import { knownNewestId, recordRun, rememberNewestId, setStatus, Sink } from './sink';
 
 const VERSION = scriptVersion();
@@ -74,16 +75,31 @@ function onX(): void {
     const startedAt = new Date().toISOString();
     const t0 = Date.now();
     const newestId = mode === 'incremental' ? knownNewestId(handle) : '';
+    // direct writes when the viewer shared a fresh Google token (Tampermonkey storage), else the outbox
+    let stored = 0;
+    let writeError = '';
+    const creds = loadCreds();
+    if (creds) {
+      const w = new DirectWriter(creds, handle);
+      try {
+        await w.prepare();
+        sink.writer = w;
+        sink.onWritten = (ins, upd, err) => { stored += ins + upd; if (err) writeError = err; };
+      } catch (e) {
+        writeError = e instanceof Error ? e.message : String(e);
+      }
+    }
     const effectiveMode: RunMode = mode === 'incremental' && !newestId ? 'full' : mode;
     badge.setRunning(true);
     badge.setJsonAvailable(false);
     const status = (state: 'running' | 'paused' | 'done', message: string, stop: StopReason | '' = '') =>
       setStatus({ state, handle, mode: effectiveMode, seen: sink.posts.size, fresh: sink.posts.size, started_at: startedAt, message, stop_reason: stop });
     let note = effectiveMode === 'full' && mode === 'incremental' ? 'nothing stored yet: full run' : '';
+    const where = () => (sink.writer ? `${stored} in the sheet${writeError ? ' · write error, rest waits for the viewer' : ''}` : creds ? `sheet unreachable: ${writeError.slice(0, 60)}` : 'no Google token yet: open the viewer once, then the sheet is written from here');
     const paint = () => {
       const secs = Math.round((Date.now() - t0) / 1000);
       const hidden = document.visibilityState === 'hidden';
-      badge.set(`@${handle} · ${effectiveMode}${hidden ? ' · paused (tab hidden)' : ''}\n${sink.posts.size} posts · ${Math.floor(secs / 60)}m ${secs % 60}s${note ? `\n${note}` : ''}`);
+      badge.set(`@${handle} · ${effectiveMode}${hidden ? ' · paused (tab hidden)' : ''}\n${sink.posts.size} posts · ${Math.floor(secs / 60)}m ${secs % 60}s · ${where()}${note ? `\n${note}` : ''}`);
     };
     elapsedTimer = window.setInterval(paint, 1000);
     status('running', note);
@@ -100,18 +116,20 @@ function onX(): void {
     }
     window.clearInterval(elapsedTimer);
     sink.flush();
+    await sink.done();
     rememberNewestId(handle, sink.newestId);
     lastRunPosts = Array.from(sink.posts.values());
     const run: Run = {
       run_id: runId, handle, started_at: startedAt, finished_at: new Date().toISOString(), mode: effectiveMode,
       posts_seen: sink.posts.size, posts_new: sink.posts.size, stop_reason: result.stop, userscript_version: VERSION, source: result.source,
+      stored_in_sheet: sink.writer ? stored : 0,
     };
     recordRun(run);
     status('done', note, result.stop);
     running = false;
     badge.setRunning(false);
     badge.setJsonAvailable(lastRunPosts.length > 0);
-    badge.set(`@${handle} · done: ${result.stop.replace(/_/g, ' ')}\n${sink.posts.size} posts (${result.source})${note ? `\n${note}` : ''}\nopen the viewer to store them`);
+    badge.set(`@${handle} · done: ${result.stop.replace(/_/g, ' ')}\n${sink.posts.size} posts (${result.source}) · ${where()}${note ? `\n${note}` : ''}\n${sink.writer && !writeError ? 'open the viewer to see them' : 'open the viewer to store them'}`);
   }
 
   const boot = () => {

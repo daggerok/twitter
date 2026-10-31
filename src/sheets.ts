@@ -4,10 +4,10 @@
 // One tab per account: `X-<handle>`, header row = POST_HEADERS, one row per post, newest first.
 // Writes are "overwrite rows 2..n+1, then clear the tail" so a failed PUT leaves the old rows in place.
 // =========================================================================
-import { fromRow, LAST_COL, POST_HEADERS, toRow, type Post } from '../shared/post';
+import { fromRow, LAST_COL, POST_HEADERS, quoteTab, rangeOf as range, toRow, type Post } from '../shared/post';
 import { googleFetch } from './gis';
 
-export const TAB_PREFIX = 'X-';
+export { handleOfTab, tabOf, TAB_PREFIX } from '../shared/post';
 const API = 'https://sheets.googleapis.com/v4';
 
 /** Spreadsheet id from a pasted url or a bare id. */
@@ -20,11 +20,6 @@ export function spreadsheetId(v: string): string {
 
 export const spreadsheetUrl = (id: string): string => `https://docs.google.com/spreadsheets/d/${id}/edit`;
 
-const quoteTab = (name: string): string => (/^[A-Za-z0-9_]+$/.test(name) ? name : `'${name.replace(/'/g, "''")}'`);
-const range = (tab: string, cells: string): string => encodeURIComponent(`${quoteTab(tab)}!${cells}`);
-
-export const tabOf = (handle: string): string => `${TAB_PREFIX}${handle.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 80)}`;
-export const handleOfTab = (title: string): string | null => (title.startsWith(TAB_PREFIX) ? title.slice(TAB_PREFIX.length) : null);
 
 type Meta = { sheets?: { properties?: { title?: string; sheetId?: number } }[]; properties?: { title?: string } };
 
