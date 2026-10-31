@@ -617,8 +617,8 @@ function App() {
         </section>
       </div>
 
-      <footer className="flex h-4 shrink-0 items-center justify-center px-4 text-[10px] leading-none text-slate-400 dark:text-slate-600">
-        <a className="underline decoration-dotted" href={REPO_URL} target="_blank" rel="noreferrer">daggerok</a> (c) {new Date().getFullYear()}
+      <footer className="flex h-4 shrink-0 items-center justify-center px-4 text-[10px] leading-none text-slate-500 dark:text-slate-400">
+        <a className="transition-colors hover:text-slate-600 dark:hover:text-slate-200" href={REPO_URL} target="_blank" rel="noreferrer">daggerok &copy; {new Date().getFullYear()}</a>
       </footer>
     </div>
   );
