@@ -105,6 +105,9 @@ input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-r
 .filter-inp::placeholder{color:#94a3b8;font-weight:600}
 .dark .filter-inp{background:#0f172a;border-color:#334155;color:#e2e8f0}
 .ib.dd{height:1.6rem}
+.dd-sum{cursor:pointer;list-style:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#94a3b8}
+.dd-sum::-webkit-details-marker{display:none}
+.dark .dd-sum{color:#94a3b8}
 /* lightbox: a click on a media badge opens the item full size, zooming in from the middle; Esc, ✕ or the backdrop close it */
 .lb{position:fixed;inset:0;z-index:2147483100;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,.82);animation:lbFade .18s ease-out;padding:16px}
 .lb.out{animation:lbFadeOut .18s ease-in forwards}
