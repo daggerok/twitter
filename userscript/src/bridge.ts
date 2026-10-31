@@ -20,6 +20,10 @@ const send = (msg: Record<string, unknown>): void => {
 };
 
 export function installViewerBridge(version: string): void {
+  // a DOM stamp the page can read from any world, even when postMessage never arrives: tells "script runs" from "script absent"
+  const stamp = () => { try { document.documentElement.dataset.xsync = version; } catch { /* ignore */ } };
+  stamp();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', stamp);
   const pushOutbox = () => send({ type: 'outbox', batches: gmGet<Batch[]>(KEYS.outbox, []) });
   const pushRuns = () => send({ type: 'runs', runs: gmGet<Run[]>(KEYS.runs, []) });
   const pushStatus = () => send({ type: 'status', status: gmGet<Status | null>(KEYS.status, null) });
