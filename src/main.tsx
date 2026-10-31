@@ -101,6 +101,7 @@ function App() {
   const [error, setError] = useState('');
   const [log, setLog] = useState<LogLine[]>([]);
   const [scriptVersion, setScriptVersion] = useState('');
+  const [stamp, setStamp] = useState(''); // the DOM mark the userscript leaves even when its messages do not arrive
   const [outbox, setOutbox] = useState<Batch[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [runStatus, setRunStatus] = useState<Status>(null);
@@ -236,6 +237,13 @@ function App() {
     say(`☁️ @${h}: ${r.inserted} new, ${r.updated} updated, ${r.posts.length} in tab ${tabOf(h)}`);
     return true;
   }, [withSheet, publish, say]);
+
+  useEffect(() => {
+    const read = () => setStamp(document.documentElement.dataset.xsync || '');
+    read();
+    const t = window.setInterval(read, 1000);
+    return () => window.clearInterval(t);
+  }, []);
 
   // ---- userscript bridge ----
   useEffect(() => connectBridge({
@@ -416,9 +424,14 @@ function App() {
           </div>
         )}
         {busy && <div className="text-xs text-slate-500 dark:text-slate-400 animate-pulse">{busy}</div>}
-        {!scriptVersion && (
+        {!scriptVersion && !stamp && (
           <div className="card status-warn px-3 py-2 text-sm animate-fade-in" data-hint="no-script">
-            <b>The userscript is not running on this page</b> (first dot red), so posts collected on x.com cannot reach the sheet. Chrome: chrome://extensions, Tampermonkey, Details, Site access: add <code className="px-1">https://daggerok.github.io/*</code> next to x.com; then install <a className="underline" href={USERSCRIPT_URL}>x-sync.user.js</a> if not yet, and reload this page. The dot turns green when it works.
+            <b>The userscript is not running on this page</b> (first dot red), so posts collected on x.com cannot reach the sheet. Check: click the Tampermonkey icon in the Chrome toolbar while on this page; it must list "X -&gt; Google Sheets sync" as running here. If it does not: chrome://extensions, Tampermonkey, Details, Site access, add <code className="px-1">https://daggerok.github.io/*</code> next to x.com; then install <a className="underline" href={USERSCRIPT_URL}>x-sync.user.js</a> if not yet, and reload this page. The dot turns green when it works.
+          </div>
+        )}
+        {!scriptVersion && stamp && (
+          <div className="card status-bad px-3 py-2 text-sm animate-fade-in" data-hint="bridge">
+            <b>The userscript v{stamp} runs on this page but its messages do not arrive</b> (first dot red). Reload the page once; if it stays red, open the browser console (F12, Console) on this page and send its lines to the repo issues.
           </div>
         )}
 
