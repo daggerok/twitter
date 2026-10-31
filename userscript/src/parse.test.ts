@@ -20,7 +20,7 @@ describe('parseTimeline', () => {
     expect(r.skipped).toBe(3);
     expect(r.errors).toBe(0);
     expect(r.cursorBottom).toBe('DAABCgABbottom');
-    expect(r.account).toEqual({ handle: 'fixtureacc', user_id: '44196397', display_name: 'Fixture Account', followers: 12345 });
+    expect(r.account).toEqual({ handle: 'fixtureacc', display_handle: 'FixtureAcc', user_id: '44196397', display_name: 'Fixture Account', followers: 12345 });
   });
 
   test('pinned post: flag, expanded link, photo media, media t.co removed from the text, counts and views', () => {
@@ -96,7 +96,7 @@ describe('parseTimeline', () => {
 describe('parseUser and urls', () => {
   test('UserByScreenName in both schemas', () => {
     expect(parseUser({ data: { user: { result: { rest_id: '7', core: { screen_name: 'Abc', name: 'A B C' }, legacy: { followers_count: 3 } } } } }))
-      .toEqual({ handle: 'abc', user_id: '7', display_name: 'A B C', followers: 3 });
+      .toEqual({ handle: 'abc', display_handle: 'Abc', user_id: '7', display_name: 'A B C', followers: 3 });
     expect(parseUser({ data: { user: { result: { rest_id: '7', legacy: { screen_name: 'Abc', name: 'A B C', followers_count: 3 } } } } })?.handle).toBe('abc');
     expect(parseUser({})).toBeNull();
   });

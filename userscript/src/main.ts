@@ -6,7 +6,7 @@
 //   hash `#xsync=full` / `#xsync=incremental` that the viewer opens the profile with
 // - the viewer (GitHub Pages or localhost): the postMessage bridge to Tampermonkey storage (bridge.ts)
 // =========================================================================
-import { handleFromPath, type Post } from '../../shared/post';
+import { handleFromPath, sameHandle, type Post } from '../../shared/post';
 import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
 import { gmMenu, hasGM, newId, pageWindow, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
@@ -54,7 +54,7 @@ function onX(): void {
   const mountIfProfile = () => {
     const h = handleFromPath(location.pathname);
     if (h) {
-      if (h !== currentHandle) { currentHandle = h; if (!running) account = null; }
+      if (!sameHandle(h, currentHandle)) { currentHandle = h; if (!running) account = null; }
       badge.mount();
       if (!running) badge.set(`profile @${h}${hasGM() ? '' : '\nTampermonkey storage unavailable'}${intercepted ? '' : '\nno api access: DOM fallback only'}`);
     } else if (!running) {
@@ -64,8 +64,10 @@ function onX(): void {
   };
 
   async function start(mode: RunMode): Promise<void> {
-    const handle = handleFromPath(location.pathname);
-    if (!handle || running) return;
+    const path = handleFromPath(location.pathname);
+    if (!path || running) return;
+    // the tab is named with the case X shows (screen_name of the UserByScreenName answer), else the url's
+    const handle = account && sameHandle(account.handle, path) ? account.display_handle : path;
     running = true;
     stopRequested = false;
     currentHandle = handle;

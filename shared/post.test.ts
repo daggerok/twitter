@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
-import { byNewest, compareIds, firstRowOfRange, fromRow, handleFromPath, handleOfTab, isCredsFresh, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, tabOf, toRow, type Post } from './post';
+import { byNewest, compareIds, findTab, firstRowOfRange, fromRow, handleFromPath, handleOfTab, isCredsFresh, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, sameHandle, tabOf, toRow, type Post } from './post';
 
 export const samplePost = (over: Partial<Post> = {}): Post => ({
   id: '1700000000000000001',
@@ -111,9 +111,11 @@ describe('x dates and profile paths', () => {
     expect(isoFromXDate('')).toBe('');
   });
 
-  test('handleFromPath accepts profile tabs and rejects app pages', () => {
-    expect(handleFromPath('/ElonMusk')).toBe('elonmusk');
+  test('handleFromPath keeps the case, accepts profile tabs and rejects app pages', () => {
+    expect(handleFromPath('/ElonMusk')).toBe('ElonMusk');
     expect(handleFromPath('/elonmusk/with_replies')).toBe('elonmusk');
+    expect(handleFromPath('/Home')).toBeNull();
+    expect(sameHandle('I_Am_The_ICT', 'i_am_the_ict')).toBe(true);
     expect(handleFromPath('/elonmusk/media/')).toBe('elonmusk');
     expect(handleFromPath('/home')).toBeNull();
     expect(handleFromPath('/i/flow/login')).toBeNull();
@@ -124,7 +126,9 @@ describe('x dates and profile paths', () => {
 
 describe('sheet tab helpers', () => {
   test('tabOf, handleOfTab, quoteTab, rangeOf', () => {
-    expect(tabOf('Elon_Musk')).toBe('X-elon_musk');
+    expect(tabOf('Elon_Musk')).toBe('X-Elon_Musk');
+    expect(findTab(['YT-x', 'X-i_am_the_ict'], 'X-I_Am_The_ICT')).toBe('X-i_am_the_ict');
+    expect(findTab(['YT-x'], 'X-abc')).toBeUndefined();
     expect(handleOfTab('X-abc')).toBe('abc');
     expect(handleOfTab('YT-abc')).toBeNull();
     expect(quoteTab('X-abc')).toBe("'X-abc'");

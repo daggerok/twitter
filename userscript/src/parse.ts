@@ -17,7 +17,7 @@ export type ParseResult = {
   account: AccountInfo | null;
 };
 
-export type AccountInfo = { handle: string; user_id: string; display_name: string; followers: number };
+export type AccountInfo = { handle: string; display_handle: string; user_id: string; display_name: string; followers: number };
 
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null;
 const str = (v: unknown): string => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
@@ -95,7 +95,7 @@ export function unwrapTweet(result: unknown): Obj | null {
   return result;
 }
 
-type UserInfo = { handle: string; name: string; id: string; followers: number };
+type UserInfo = { handle: string; screen: string; name: string; id: string; followers: number };
 
 export function userOf(tweet: Obj): UserInfo {
   const u = get(tweet, 'core', 'user_results', 'result');
@@ -104,6 +104,7 @@ export function userOf(tweet: Obj): UserInfo {
   const name = str(get(u, 'core', 'name')) || str(get(u, 'legacy', 'name'));
   return {
     handle: handle.toLowerCase(),
+    screen: handle,
     name,
     id: str(get(u, 'rest_id')),
     followers: int(get(u, 'legacy', 'followers_count')),
@@ -251,7 +252,7 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
       if (!account && p.handle) {
         const t = unwrapTweet(result);
         const u = t ? userOf(t) : null;
-        if (u && u.id) account = { handle: u.handle, user_id: u.id, display_name: u.name, followers: u.followers };
+        if (u && u.id) account = { handle: u.handle, display_handle: u.screen, user_id: u.id, display_name: u.name, followers: u.followers };
       }
     } catch {
       errors += 1;
@@ -264,10 +265,11 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
 export function parseUser(json: unknown): AccountInfo | null {
   const u = get(json, 'data', 'user', 'result');
   if (!isObj(u)) return null;
-  const handle = (str(get(u, 'core', 'screen_name')) || str(get(u, 'legacy', 'screen_name'))).toLowerCase();
-  if (!handle) return null;
+  const screen = str(get(u, 'core', 'screen_name')) || str(get(u, 'legacy', 'screen_name'));
+  if (!screen) return null;
   return {
-    handle,
+    handle: screen.toLowerCase(),
+    display_handle: screen,
     user_id: str(u.rest_id),
     display_name: str(get(u, 'core', 'name')) || str(get(u, 'legacy', 'name')),
     followers: int(get(u, 'legacy', 'followers_count')),

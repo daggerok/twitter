@@ -189,14 +189,16 @@ export function isoFromXDate(s: string): string {
   return Number.isFinite(t) ? new Date(t).toISOString() : s;
 }
 
-/** The handle of a profile url path: `/elonmusk`, `/elonmusk/with_replies`, `/elonmusk/media`; null elsewhere. */
+/** The handle of a profile url path, case kept: `/ElonMusk`, `/elonmusk/with_replies`, `/elonmusk/media`; null elsewhere. */
 export function handleFromPath(pathname: string): string | null {
   const m = /^\/([A-Za-z0-9_]{1,15})(?:\/(?:with_replies|media|highlights|likes|articles))?\/?$/.exec(pathname);
   if (!m) return null;
-  const h = m[1].toLowerCase();
-  if (RESERVED.has(h)) return null;
-  return h;
+  if (RESERVED.has(m[1].toLowerCase())) return null;
+  return m[1];
 }
+
+/** X handles are case-insensitive: `I_Am_The_ICT` and `i_am_the_ict` are one account. */
+export const sameHandle = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
 const RESERVED = new Set([
   'home', 'explore', 'notifications', 'messages', 'i', 'search', 'settings', 'compose', 'login', 'logout',
@@ -207,7 +209,10 @@ const RESERVED = new Set([
 // ---- the sheet tab of an account (used by the viewer and by the userscript's direct writes) ----
 
 export const TAB_PREFIX = 'X-';
-export const tabOf = (handle: string): string => `${TAB_PREFIX}${handle.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 80)}`;
+/** The tab name keeps the handle's case as X shows it (`X-I_Am_The_ICT`); tabs are looked up case-insensitively (findTab). */
+export const tabOf = (handle: string): string => `${TAB_PREFIX}${handle.replace(/[^A-Za-z0-9_]/g, '_').slice(0, 80)}`;
+/** The existing tab for a wanted name, whatever its case; undefined when there is none. */
+export const findTab = (titles: string[], wanted: string): string | undefined => titles.find((t) => t.toLowerCase() === wanted.toLowerCase());
 export const handleOfTab = (title: string): string | null => (title.startsWith(TAB_PREFIX) ? title.slice(TAB_PREFIX.length) : null);
 export const quoteTab = (name: string): string => (/^[A-Za-z0-9_]+$/.test(name) ? name : `'${name.replace(/'/g, "''")}'`);
 /** `A1` range of a tab, url encoded for the values endpoints. */
