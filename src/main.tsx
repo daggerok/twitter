@@ -1,17 +1,18 @@
 /// <reference lib="esnext" />
 // =========================================================================
-// X Feed Sheets: the viewer of daggerok/twitter (GitHub Pages, no backend).
+// X Feed Sheets: the viewer of daggerok/twitter (GitHub Pages, no backend), the daggerok/youtube shell.
 //
-// - Settings: Google OAuth Client ID and the spreadsheet, Connect Google (Google Identity Services,
-//   token in memory, same rules as daggerok/youtube), Install userscript
-// - Accounts: one Google Sheet tab `X-<handle>` per account; Sync new / Full sync open the profile on
-//   x.com with `#xsync=incremental|full`, the userscript scrolls it and leaves the posts in Tampermonkey
-//   storage; the same userscript on this page hands them over (src/bridge.ts) and they are merged into
-//   the tab (mergePosts: no duplicates, counts and last_seen_at refreshed) - zero clicks when connected
-// - Feed: filters (account, type, dates, media, search, sort), cards, CSV and JSON export
-// - Fallback without the userscript on this browser: Import JSON (the badge's JSON button on x.com)
-// Same page as credit-cards-reports (Stocks look, Tailwind 4); localStorage keeps the config, the
-// account list and a copy of the posts for an instant first paint, all reads and writes in try/catch.
+// - Sticky toolbar: the 𝕏 mark, the handle input (Enter or ➕ adds an account), borderless icon buttons:
+//   ⚙️ settings (slides open), status dots (userscript, Google) that toggle the log, ☁️ connect / 🔌 disconnect,
+//   ↻ reload every account from the sheet, 📥 CSV, 📄 Import JSON, 🌙 / ☀ theme
+// - Settings: Google OAuth Client ID and the spreadsheet (masked with dots, eye and copy buttons like youtube),
+//   Connected as d••••k@gmail.com, Create spreadsheet, Find accounts in the sheet, Install userscript, setup steps.
+//   Client ID and spreadsheet id stay in localStorage, the Google token only in memory (src/gis.ts)
+// - Accounts: one Google Sheet tab `X-<handle>` per account; ⬇ Sync new / 🔄 Full sync open the profile on x.com
+//   with `#xsync=incremental|full`, the userscript scrolls it and leaves the posts in Tampermonkey storage; the same
+//   userscript on this page hands them over (src/bridge.ts) and they are merged into the tab (mergePosts)
+// - Feed: filters (account, type, dates, media, search, sort), cards, CSV and JSON export of the filtered view
+// Same look as credit-cards-reports (Tailwind 4, slate palette); every localStorage access in try/catch.
 // =========================================================================
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -19,6 +20,7 @@ import { byNewest, mergePosts, type Post, type PostType, POST_TYPES } from '../s
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
 import { applyFilters, EMPTY_FILTERS, formatCount, linkify, postsFromJson, toCsv, type Filters, type SortKey } from './filters';
 import { fetchEmail, GoogleSession } from './gis';
+import { maskEmail, maskId, maskSpreadsheetUrl } from './mask';
 import { createSpreadsheet, deleteTab, ensureTab, handleOfTab, listTabs, readPosts, spreadsheetId, spreadsheetUrl, tabOf, writePosts } from './sheets';
 
 // ---- 1. Storage (config, accounts, a copy of the posts; the view) -------------------------------------
@@ -61,7 +63,6 @@ const fmtDate = (iso: string): string => {
   const t = Date.parse(iso);
   return Number.isFinite(t) ? new Date(t).toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : iso || '—';
 };
-const mask = (s: string): string => (s.length > 10 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s ? '••••' : '');
 const newestIdOf = (posts: Post[]): string => {
   const p = posts.filter((x) => !x.is_pinned).sort(byNewest)[0];
   return p ? p.id : '';
@@ -76,14 +77,20 @@ function download(name: string, text: string, type: string): void {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+}
+
 // ---- 2. App ------------------------------------------------------------------------------------------
 
 type AccountState = { posts: Post[]; loadedFromSheet: boolean };
+type LogLine = { ts: string; msg: string };
 
 function App() {
   const [dark, setDark] = useState(() => lsGet(THEME_KEY) === 'dark');
   const [cfg, setCfg] = useState<Config>(loadConfig);
   const [showSettings, setShowSettings] = useState(() => !loadConfig().clientId);
+  const [showLog, setShowLog] = useState(false);
   const [accounts, setAccounts] = useState<string[]>(loadAccounts);
   const [data, setData] = useState<Record<string, AccountState>>(() => {
     const out: Record<string, AccountState> = {};
@@ -96,13 +103,12 @@ function App() {
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [log, setLog] = useState<string[]>([]);
+  const [log, setLog] = useState<LogLine[]>([]);
   const [scriptVersion, setScriptVersion] = useState('');
   const [outbox, setOutbox] = useState<Batch[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [runStatus, setRunStatus] = useState<Status>(null);
   const [newHandle, setNewHandle] = useState('');
-  const [showClientId, setShowClientId] = useState(false);
   const [sheetTitle, setSheetTitle] = useState('');
   const cfgRef = useRef(cfg);
   cfgRef.current = cfg;
@@ -110,8 +116,8 @@ function App() {
   const storing = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const say = useCallback((line: string) => {
-    setLog((l) => [`${new Date().toLocaleTimeString()} ${line}`, ...l].slice(0, 200));
+  const say = useCallback((msg: string) => {
+    setLog((l) => [{ ts: new Date().toLocaleTimeString(), msg }, ...l].slice(0, 200));
   }, []);
 
   useEffect(() => { lsSet(THEME_KEY, dark ? 'dark' : 'light'); document.documentElement.classList.toggle('dark', dark); document.documentElement.style.backgroundColor = dark ? '#020617' : '#f8fafc'; }, [dark]);
@@ -297,6 +303,13 @@ function App() {
     say(`📄 "${r.title}": ${r.tabs.length} tabs, ${found.length} accounts${fresh.length ? `, ${fresh.length} added` : ''}`);
   }, [withSheet, accounts, loadAccount, say]);
 
+  const reloadAll = useCallback(async () => {
+    await discoverTabs();
+    const list = loadAccounts();
+    for (let i = 0; i < list.length; i += 1) await loadAccount(list[i], true);
+    say(`↻ Reloaded ${list.length} accounts from the sheet`);
+  }, [discoverTabs, loadAccount, say]);
+
   const createSheet = useCallback(async () => {
     try {
       setBusy('Creating the spreadsheet…');
@@ -331,7 +344,6 @@ function App() {
         const [handle, list] = entries[i];
         if (canStore) await storePosts(handle, list);
         else {
-          // not connected: keep them locally, they are written at the next connect through the cache merge
           const merged = mergePosts(data[handle]?.posts || [], list);
           setAccounts((a) => (a.includes(handle) ? a : [...a, handle]));
           setAccountPosts(handle, merged.posts, false);
@@ -353,188 +365,265 @@ function App() {
   const exportCsv = () => download(`x-feed-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(feed), 'text/csv');
   const exportJson = () => download(`x-feed-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ posts: feed }, null, 2), 'application/json');
 
-  const connectedLabel = connected ? `Connected${email ? ` as ${email}` : ''}` : cfg.lastAccountEmail ? `Not connected (last: ${cfg.lastAccountEmail})` : 'Not connected';
+  const isBusy = !!busy;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-4 space-y-4">
-      {/* header */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">𝕏 Feed Sheets</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">X profiles you follow, stored in your own Google Sheet. Collected by a userscript in your logged-in browser, no X API.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`badge ${connected ? 'status-ok' : 'status-warn'}`} title={connectedLabel}>{connected ? '● Google' : '○ Google'}</span>
-          <span className={`badge ${scriptVersion ? 'status-ok' : 'status-bad'}`} title={scriptVersion ? `userscript v${scriptVersion} is installed in this browser` : 'the userscript is not installed in this browser: posts arrive by JSON import only'}>{scriptVersion ? `● script v${scriptVersion}` : '○ no script'}</span>
-          <button className={`btn sm ${showSettings ? 'active' : ''}`} onClick={() => setShowSettings((s) => !s)}>⚙ Settings</button>
-          <button className="btn sm" onClick={() => setDark((d) => !d)} title="Theme">{dark ? '☀' : '☾'}</button>
-        </div>
-      </header>
-
-      {error && (
-        <div className="card status-bad px-3 py-2 text-sm flex justify-between gap-2 animate-fade-in">
-          <span className="break-words">{error}</span>
-          <button className="font-bold" onClick={() => setError('')} aria-label="Dismiss">×</button>
-        </div>
-      )}
-      {busy && <div className="text-xs text-slate-500 dark:text-slate-400 animate-pulse">{busy}</div>}
-
-      {showSettings && (
-        <Settings
-          cfg={cfg} setCfg={setCfg} connected={connected} connectedLabel={connectedLabel} busy={!!busy}
-          showClientId={showClientId} setShowClientId={setShowClientId} sheetTitle={sheetTitle}
-          onConnect={() => { void connect(true); }} onDisconnect={disconnect} onCreate={() => { void createSheet(); }} onDiscover={() => { void discoverTabs(); }}
-        />
-      )}
-
-      {/* inbox from the userscript */}
-      {(outboxCount > 0 || runStatus?.state === 'running') && (
-        <section className="card px-3 py-2 text-sm flex flex-wrap items-center justify-between gap-2 animate-fade-in">
-          <div>
-            {runStatus?.state === 'running' && <div>⏳ Syncing @{runStatus.handle} ({runStatus.mode}): {runStatus.seen} posts so far{runStatus.message ? ` · ${runStatus.message}` : ''}</div>}
-            {outboxCount > 0 && <div>📥 {outboxCount} captured posts waiting{canStore ? ', storing…' : ' (connect Google and set the spreadsheet to store them)'}</div>}
+    <div className="flex min-h-screen flex-col">
+      {/* toolbar, sticky like youtube */}
+      <div className="sticky top-0 z-50 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md">
+        <div className="px-4 sm:px-8">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 py-3">
+            <div className="flex items-center gap-2 w-full md:flex-1 min-w-0">
+              <span className="text-xl font-bold select-none" title="X Feed Sheets">𝕏</span>
+              <form className="flex-1 min-w-0" onSubmit={(e) => { e.preventDefault(); void addAccount(); }}>
+                <input className="inp mono" title="Profile link or @handle, Enter adds the account" placeholder="X profile link or @handle, Enter to add…" value={newHandle} onChange={(e) => setNewHandle(e.target.value)} />
+              </form>
+            </div>
+            <div className="grid grid-flow-col auto-cols-fr justify-items-center gap-1.5 w-full md:flex md:w-auto">
+              <button className={`tb ${showSettings ? 'on' : ''}`} title="Settings" onClick={() => setShowSettings((s) => !s)}>⚙️</button>
+              <button className={`tb ${showLog ? 'on' : ''}`} title={`Log (${log.length}). Dots: userscript ${scriptVersion ? `v${scriptVersion} installed` : 'not installed in this browser'}, Google ${connected ? `connected${email ? ` as ${maskEmail(email)}` : ''}` : 'not connected'}`} onClick={() => setShowLog((s) => !s)}>
+                <span className="flex items-center gap-1">
+                  <span className={`dot ${scriptVersion ? 'bg-emerald-500' : 'bg-red-500'}`} data-script={scriptVersion || 'none'} />
+                  <span className={`dot ${connected ? 'bg-blue-500' : 'bg-slate-400'}`} data-google={connected ? 'on' : 'off'} />
+                </span>
+              </button>
+              <button className="tb blue" title="Add the account" onClick={() => { void addAccount(); }} disabled={!newHandle.trim()}>➕</button>
+              {cfg.clientId && (connected
+                ? <button className="tb rose" title="Disconnect Google" onClick={disconnect} disabled={isBusy}>🔌</button>
+                : <button className="tb blue" title="Connect Google" onClick={() => { void connect(true); }} disabled={isBusy}>☁️</button>)}
+              {connected && sid && <button className="tb green" title="Find accounts in the sheet and reload every tab" onClick={() => { void reloadAll(); }} disabled={isBusy}>↻</button>}
+              <button className="tb green" title="Export CSV of the filtered feed" onClick={exportCsv} disabled={!feed.length}>📥</button>
+              <button className="tb" title="Import a JSON file downloaded from the badge on x.com" onClick={() => fileInput.current?.click()}>📄</button>
+              <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = ''; }} />
+              <button className="tb" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((d) => !d)}>{dark ? '☀' : '🌙'}</button>
+            </div>
           </div>
-          {outboxCount > 0 && !canStore && <button className="btn sm primary" onClick={() => { void connect(true); }}>Connect Google</button>}
-        </section>
-      )}
 
-      {/* accounts */}
-      <section className="card p-3 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold">Accounts</h2>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* log console, slides open */}
+          <div id="log-wrap" className={`slide-wrap ${showLog ? 'open' : ''}`}>
+            <div className="slide-inner">
+              <div className="pb-2">
+                <div className="card overflow-hidden text-xs">
+                  <div className="panel-head text-[11px]">
+                    <div className="font-semibold text-blue-700 dark:text-blue-300">🐛 Log <span className="font-normal text-slate-400">({log.length})</span></div>
+                    <button className="btn sm" onClick={() => setLog([])}>Clear</button>
+                  </div>
+                  {log.length ? (
+                    <div className="max-h-44 overflow-auto themed-scroll p-1">
+                      <table className="w-full font-mono text-[11px]">
+                        <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/40">
+                          {log.map((l, i) => (
+                            <tr key={i}>
+                              <td className="px-2 py-1 text-slate-400 tabular-nums w-8">{log.length - i}</td>
+                              <td className={`px-2 py-1 ${l.msg.startsWith('❌') ? 'text-rose-500' : l.msg.startsWith('✅') || l.msg.startsWith('☁️') ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>{l.msg}</td>
+                              <td className="px-2 py-1 text-right text-[10px] text-slate-400 tabular-nums w-24">{l.ts}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : <div className="px-3 py-2 text-slate-400">Nothing yet</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 px-4 sm:px-8 pt-1 space-y-3">
+        {error && (
+          <div className="card status-bad px-3 py-2 text-sm flex justify-between gap-2 animate-fade-in">
+            <span className="break-words">{error}</span>
+            <button className="font-bold" onClick={() => setError('')} aria-label="Dismiss">×</button>
+          </div>
+        )}
+        {busy && <div className="text-xs text-slate-500 dark:text-slate-400 animate-pulse">{busy}</div>}
+
+        {/* settings, slides open */}
+        <div id="settings-wrap" className={`slide-wrap ${showSettings ? 'open' : ''}`}>
+          <div className="slide-inner">
+            <Settings
+              cfg={cfg} setCfg={setCfg} connected={connected} email={email || cfg.lastAccountEmail} busy={isBusy} sheetTitle={sheetTitle}
+              onClose={() => setShowSettings(false)} onConnect={() => { void connect(true); }} onDisconnect={disconnect}
+              onCreate={() => { void createSheet(); }} onDiscover={() => { void discoverTabs(); }}
+            />
+          </div>
+        </div>
+
+        {/* inbox from the userscript */}
+        {(outboxCount > 0 || runStatus?.state === 'running') && (
+          <section className="card px-3 py-2 text-sm flex flex-wrap items-center justify-between gap-2 animate-fade-in">
+            <div>
+              {runStatus?.state === 'running' && <div>⏳ Syncing @{runStatus.handle} ({runStatus.mode}): {runStatus.seen} posts so far{runStatus.message ? ` · ${runStatus.message}` : ''}</div>}
+              {outboxCount > 0 && <div>📥 {outboxCount} captured posts waiting{canStore ? ', storing…' : ' (connect Google and set the spreadsheet to store them)'}</div>}
+            </div>
+            {outboxCount > 0 && !canStore && <button className="btn sm primary" onClick={() => { void connect(true); }}>Connect Google</button>}
+          </section>
+        )}
+
+        {/* accounts */}
+        <section className="card p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Accounts <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{accounts.length}</span></h2>
             <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400"><input type="checkbox" checked={cfg.withReplies} onChange={(e) => setCfg((c) => ({ ...c, withReplies: e.target.checked }))} /> sync replies too</label>
-            <button className="btn sm" onClick={() => fileInput.current?.click()} title="A JSON file downloaded from the badge on x.com">Import JSON</button>
-            <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = ''; }} />
           </div>
-        </div>
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void addAccount(); }}>
-          <input className="inp" placeholder="@handle or https://x.com/handle" value={newHandle} onChange={(e) => setNewHandle(e.target.value)} />
-          <button className="btn primary" type="submit" disabled={!newHandle.trim()}>Add</button>
-        </form>
-        {accounts.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No accounts yet. Add a handle, then press Sync new: the profile opens on x.com and the userscript collects its posts.</p>}
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-          {accounts.map((h) => {
-            const st = data[h] || { posts: [], loadedFromSheet: false };
-            const run = lastRunOf(h);
-            const selected = filters.handles.includes(h);
-            return (
-              <li key={h} className="py-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <button className={`font-medium ${selected ? 'text-blue-600 dark:text-blue-400' : ''}`} onClick={() => setFilters((f) => ({ ...f, handles: toggleIn(f.handles, h) }))} title="Filter the feed by this account">
-                    @{h}
-                  </button>
-                  <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{st.posts.length} posts{st.loadedFromSheet ? '' : ' (local copy)'}{run ? ` · last run ${fmtDate(run.finished_at)}: ${run.posts_seen} seen, ${run.stop_reason.replace(/_/g, ' ')}` : ''}</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  <button className="btn sm primary" onClick={() => openSync(h, 'incremental')} title="Open the profile on x.com and collect the posts newer than the stored ones">Sync new</button>
-                  <button className="btn sm" onClick={() => openSync(h, 'full')} title="Collect the whole visible timeline again (counts are refreshed)">Full sync</button>
-                  <button className="btn sm" onClick={() => { void loadAccount(h); }} disabled={!connected || !sid} title="Read the tab again">Reload</button>
-                  <a className="btn sm" href={`https://x.com/${h}`} target="_blank" rel="noreferrer">Open on X</a>
-                  <button className="btn sm danger" onClick={() => { void removeAccount(h, false); }} title="Remove from this list only">Remove</button>
-                  {connected && sid && <button className="btn sm danger" onClick={() => { void removeAccount(h, true); }} title="Remove and delete the tab from the spreadsheet">Delete tab</button>}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+          {accounts.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No accounts yet. Type a handle in the top field and press Enter, then ⬇ Sync new: the profile opens on x.com and the userscript collects its posts.</p>}
+          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+            {accounts.map((h) => {
+              const st = data[h] || { posts: [], loadedFromSheet: false };
+              const run = lastRunOf(h);
+              const selected = filters.handles.includes(h);
+              return (
+                <li key={h} className="py-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <button className={`font-medium ${selected ? 'text-blue-600 dark:text-blue-400' : ''}`} onClick={() => setFilters((f) => ({ ...f, handles: toggleIn(f.handles, h) }))} title="Filter the feed by this account">
+                      @{h}
+                    </button>
+                    <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{st.posts.length} posts{st.loadedFromSheet ? '' : ' (local copy)'}{run ? ` · last run ${fmtDate(run.finished_at)}: ${run.posts_seen} seen, ${run.stop_reason.replace(/_/g, ' ')}` : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <button className="tb blue" onClick={() => openSync(h, 'incremental')} title="Sync new: open the profile on x.com and collect the posts newer than the stored ones">⬇</button>
+                    <button className="tb" onClick={() => openSync(h, 'full')} title="Full sync: the whole visible timeline again, counts refreshed">🔄</button>
+                    <button className="tb green" onClick={() => { void loadAccount(h); }} disabled={!connected || !sid} title="Reload the tab from the sheet">↻</button>
+                    <a className="tb" href={`https://x.com/${h}`} target="_blank" rel="noreferrer" title="Open on X">↗</a>
+                    <button className="tb rose" onClick={() => { void removeAccount(h, false); }} title="Remove from this list (the tab stays)">✕</button>
+                    {connected && sid && <button className="tb rose" onClick={() => { void removeAccount(h, true); }} title="Remove and delete the tab from the spreadsheet">🗑</button>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
-      {/* feed */}
-      <section className="card p-3 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold">Feed <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{feed.length} of {allPosts.length}</span></h2>
-          <div className="flex gap-1">
-            <button className="btn sm" onClick={exportCsv} disabled={!feed.length}>CSV</button>
-            <button className="btn sm" onClick={exportJson} disabled={!feed.length}>JSON</button>
-            <button className="btn sm" onClick={() => setFilters({ ...EMPTY_FILTERS })} disabled={JSON.stringify(filters) === JSON.stringify(EMPTY_FILTERS)}>Clear filters</button>
+        {/* feed */}
+        <section className="card p-3 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Feed <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{feed.length} of {allPosts.length}</span></h2>
+            <div className="flex gap-1">
+              <button className="btn sm" onClick={exportCsv} disabled={!feed.length}>CSV</button>
+              <button className="btn sm" onClick={exportJson} disabled={!feed.length}>JSON</button>
+              <button className="btn sm" onClick={() => setFilters({ ...EMPTY_FILTERS })} disabled={JSON.stringify(filters) === JSON.stringify(EMPTY_FILTERS)}>Clear filters</button>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <input className="inp max-w-xs" placeholder="Search text, author, link" value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} />
-          {POST_TYPES.map((t: PostType) => (
-            <button key={t} className={`btn sm ${filters.types.includes(t) ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, types: toggleIn(f.types, t) as PostType[] }))}>{t}</button>
-          ))}
-          <button className={`btn sm ${filters.hasMedia ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, hasMedia: !f.hasMedia }))}>has media</button>
-          <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">from <input className="inp" type="date" value={filters.from} onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} /></label>
-          <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">to <input className="inp" type="date" value={filters.to} onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} /></label>
-          <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">sort
-            <select className="inp" value={filters.sort} onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value as SortKey }))}>
-              <option value="date">date</option><option value="likes">likes</option><option value="views">views</option><option value="reposts">reposts</option><option value="replies">replies</option>
-            </select>
-          </label>
-        </div>
-        {visible.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nothing to show{allPosts.length ? ' with these filters' : ' yet'}.</p>}
-        <ul className="space-y-2">
-          {visible.map((p) => <PostCard key={`${p.handle}-${p.id}`} post={p} />)}
-        </ul>
-        {feed.length > shown && <button className="btn w-full justify-center" onClick={() => setShown((s) => s + PAGE_SIZE)}>Show {Math.min(PAGE_SIZE, feed.length - shown)} more of {feed.length - shown}</button>}
-      </section>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input className="inp max-w-xs" placeholder="Search text, author, link" value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} />
+            {POST_TYPES.map((t: PostType) => (
+              <button key={t} className={`btn sm ${filters.types.includes(t) ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, types: toggleIn(f.types, t) as PostType[] }))}>{t}</button>
+            ))}
+            <button className={`btn sm ${filters.hasMedia ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, hasMedia: !f.hasMedia }))}>has media</button>
+            <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">from <input className="inp" type="date" value={filters.from} onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} /></label>
+            <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">to <input className="inp" type="date" value={filters.to} onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} /></label>
+            <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">sort
+              <select className="inp" value={filters.sort} onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value as SortKey }))}>
+                <option value="date">date</option><option value="likes">likes</option><option value="views">views</option><option value="reposts">reposts</option><option value="replies">replies</option>
+              </select>
+            </label>
+          </div>
+          {visible.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nothing to show{allPosts.length ? ' with these filters' : ' yet'}.</p>}
+          <ul className="space-y-2">
+            {visible.map((p) => <PostCard key={`${p.handle}-${p.id}`} post={p} />)}
+          </ul>
+          {feed.length > shown && <button className="btn w-full justify-center" onClick={() => setShown((s) => s + PAGE_SIZE)}>Show {Math.min(PAGE_SIZE, feed.length - shown)} more of {feed.length - shown}</button>}
+        </section>
+      </div>
 
-      {log.length > 0 && (
-        <details className="card setup px-3 py-2 text-xs">
-          <summary className="text-slate-500 dark:text-slate-400"><span className="chev">▸</span> Log ({log.length})</summary>
-          <div className="log mt-2 max-h-48 overflow-auto themed-scroll">{log.join('\n')}</div>
-        </details>
-      )}
-
-      <footer className="text-center text-xs text-slate-400 dark:text-slate-600 py-2">
-        <a className="underline" href={REPO_URL} target="_blank" rel="noreferrer">daggerok</a> (c) {new Date().getFullYear()}
+      <footer className="text-center text-[10px] text-slate-400 dark:text-slate-600 px-4 sm:px-8 pb-[3.5px] sm:pb-[19.5px] pt-3">
+        <a className="underline decoration-dotted" href={REPO_URL} target="_blank" rel="noreferrer">daggerok</a> (c) {new Date().getFullYear()}
       </footer>
     </div>
   );
 }
 
-// ---- 3. Settings -------------------------------------------------------------------------------------
+// ---- 3. Settings (masked values with eye and copy, like youtube) -----------------------------------------
 
 type SettingsProps = {
-  cfg: Config; setCfg: (f: (c: Config) => Config) => void; connected: boolean; connectedLabel: string; busy: boolean;
-  showClientId: boolean; setShowClientId: (f: (v: boolean) => boolean) => void; sheetTitle: string;
-  onConnect: () => void; onDisconnect: () => void; onCreate: () => void; onDiscover: () => void;
+  cfg: Config; setCfg: (f: (c: Config) => Config) => void; connected: boolean; email: string; busy: boolean; sheetTitle: string;
+  onClose: () => void; onConnect: () => void; onDisconnect: () => void; onCreate: () => void; onDiscover: () => void;
 };
+
+function MaskedField(p: { label: string; value: string; mask: (v: string) => string; placeholder: string; onChange: (v: string) => void; hint?: string }) {
+  const [show, setShow] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => { if (await copyText(p.value)) { setCopied(true); setTimeout(() => setCopied(false), 1200); } };
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{p.label}</span>
+        <div className="flex items-center gap-1">
+          <button type="button" className="ib" title={show ? `Hide ${p.label}` : `Show ${p.label}`} onClick={() => setShow((s) => !s)}>{show ? '🙈' : '👁'}</button>
+          <button type="button" className="ib" title={`Copy ${p.label}`} onClick={() => { void copy(); }} disabled={!p.value}>{copied ? '✅' : '📋'}</button>
+        </div>
+      </div>
+      {show
+        ? <input className="inp mono text-xs" value={p.value} onChange={(e) => p.onChange(e.target.value)} placeholder={p.placeholder} autoComplete="off" spellCheck={false} />
+        : <input className="inp masked text-xs" value={p.value ? p.mask(p.value) : ''} onFocus={() => setShow(true)} onChange={() => { /* editing happens in the shown state */ }} placeholder={p.placeholder} readOnly />}
+      {p.hint && <div className="text-[10px] text-slate-400 mt-1">{p.hint}</div>}
+    </div>
+  );
+}
 
 function Settings(p: SettingsProps) {
   const id = spreadsheetId(p.cfg.spreadsheetId);
+  const [showEmail, setShowEmail] = useState(false);
+  const [showUrl, setShowUrl] = useState(false);
   const origin = location.origin;
+  const url = id ? spreadsheetUrl(id) : '';
   return (
-    <section className="card p-3 space-y-3 animate-fade-in text-sm">
-      <h2 className="font-semibold">Settings</h2>
-      <details className="setup">
-        <summary className="text-blue-700 dark:text-blue-300"><span className="chev">▸</span> Setup (once): Google Cloud OAuth Client ID, spreadsheet, Tampermonkey userscript</summary>
-        <ol className="list-decimal ml-5 mt-2 space-y-1 text-slate-700 dark:text-slate-300">
-          <li>Go to <a className="underline" href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">console.cloud.google.com</a>, create or pick a project, enable the <b>Google Sheets API</b></li>
-          <li>OAuth consent screen: External, add your email under <b>Test users</b> (a test app needs no verification)</li>
-          <li>Credentials, <b>Create OAuth 2.0 Client ID</b>, type Web application, Authorized JavaScript origins: <code className="bg-slate-100 dark:bg-slate-800 px-1">{origin}</code> and <code className="bg-slate-100 dark:bg-slate-800 px-1">http://localhost:1234</code> for local runs. No redirect uri, no secret is used</li>
-          <li>Paste the Client ID below, press <b>Connect Google</b>, then <b>Create spreadsheet</b> or paste the url of an existing one</li>
-          <li>Install <a className="underline" href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Tampermonkey</a>; in Chrome 138+ open its extension details and turn on <b>Allow User Scripts</b> (or Developer mode on chrome://extensions)</li>
-          <li>Install the userscript: <a className="underline font-medium" href={USERSCRIPT_URL}>x-sync.user.js</a>, then reload this page: the badge above turns green with its version</li>
-          <li>Add a handle, press <b>Sync new</b>: the profile opens on x.com (log in there first), the corner badge scrolls it; come back here and the posts are stored</li>
-        </ol>
-      </details>
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="block">
-          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Google OAuth Client ID (public, no secret)</span>
-          <div className="flex gap-1 mt-1">
-            <input className="inp" type={p.showClientId ? 'text' : 'password'} value={p.cfg.clientId} onChange={(e) => p.setCfg((c) => ({ ...c, clientId: e.target.value.trim() }))} placeholder="1234567890-abc.apps.googleusercontent.com" autoComplete="off" />
-            <button type="button" className="btn" onClick={() => p.setShowClientId((v) => !v)} title={p.showClientId ? 'Hide' : 'Show'}>{p.showClientId ? '🙈' : '👁'}</button>
+    <div className="card overflow-hidden text-sm mb-2 shadow-lg">
+      <div className="panel-head">
+        <h3 className="font-bold text-blue-700 dark:text-blue-300">📋 Setup</h3>
+        <button className="btn sm" onClick={p.onClose}>Close</button>
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div><strong className="text-emerald-600 dark:text-emerald-400">Auto-load + cross-device:</strong> localStorage + your Google Sheet. Connect Google on any device and the same accounts and posts are there.</div>
+          <div><strong className="text-blue-600 dark:text-blue-400">Per-account tabs:</strong> every X account gets its own tab (e.g. X-handle) inside one spreadsheet. The YT-… tabs of youtube can live in the same file.</div>
+        </div>
+        <details className="setup rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+          <summary className="px-4 py-3 text-sm font-semibold text-blue-900 dark:text-blue-200"><span className="chev">▸</span> Google Sheets and Tampermonkey setup (once)</summary>
+          <ol className="list-decimal ml-8 mr-4 mb-4 space-y-1 text-xs text-blue-800 dark:text-blue-300">
+            <li>Go to <a className="underline" href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">console.cloud.google.com</a>, enable the <b>Google Sheets API</b>, OAuth consent screen (External, your email under Test users), create an OAuth 2.0 Client ID of type Web application with the authorized JavaScript origins <code className="bg-blue-100 dark:bg-blue-800 px-1">{origin}</code> and <code className="bg-blue-100 dark:bg-blue-800 px-1">http://localhost:1234</code>. No secret is used</li>
+            <li>Paste the Client ID below, press <b>Connect Google</b>, then <b>Create spreadsheet</b> or paste the url of an existing one</li>
+            <li>Install <a className="underline" href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Tampermonkey</a>; in Chrome 138+ open its extension details, turn on <b>Allow User Scripts</b> and give it site access to <b>x.com</b> and <b>{location.hostname}</b></li>
+            <li>Open <a className="underline font-medium" href={USERSCRIPT_URL}>x-sync.user.js</a>: Tampermonkey shows its install page, press Install. Reload this page: the first dot in the toolbar turns green</li>
+            <li>Type a handle in the top field, Enter, then ⬇ Sync new: the profile opens on x.com (log in there first), the corner badge scrolls it; come back here and the posts are stored</li>
+          </ol>
+          <div className="px-4 pb-3 text-xs text-amber-700 dark:text-amber-300">Security: only the public Client ID and the spreadsheet id are stored in this browser, the Google token lives in memory. Posts go from your browser to your Google Sheet and nowhere else.</div>
+        </details>
+
+        <div className={`rounded-xl border p-3 ${p.connected ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div className="min-w-0">
+              <div className="font-medium flex items-center gap-2">
+                <span>{p.connected ? `Connected as ${showEmail ? p.email : maskEmail(p.email)}` : p.email ? `Not connected (last ${showEmail ? p.email : maskEmail(p.email)})` : 'Not connected to Google Sheets'}</span>
+                {p.email && <button type="button" className="ib" title={showEmail ? 'Hide email' : 'Show email'} onClick={() => setShowEmail((s) => !s)}>{showEmail ? '🙈' : '👁'}</button>}
+                {p.email && <button type="button" className="ib" title="Copy email" onClick={() => { void copyText(p.email); }}>📋</button>}
+              </div>
+              {url && (
+                <div className="flex items-center gap-2 mt-1">
+                  <a className="text-xs underline text-emerald-700 dark:text-emerald-400 break-all" href={url} target="_blank" rel="noreferrer">{showUrl ? url : maskSpreadsheetUrl(url)}</a>
+                  <button type="button" className="ib" title={showUrl ? 'Hide spreadsheet url' : 'Show spreadsheet url'} onClick={() => setShowUrl((s) => !s)}>{showUrl ? '🙈' : '👁'}</button>
+                  <button type="button" className="ib" title="Copy spreadsheet url" onClick={() => { void copyText(url); }}>📋</button>
+                </div>
+              )}
+              {p.sheetTitle && <div className="text-[10px] text-slate-400 mt-1">"{p.sheetTitle}"</div>}
+            </div>
+            {p.connected
+              ? <button className="btn sm danger" onClick={p.onDisconnect} disabled={p.busy}>Disconnect</button>
+              : <button className="btn sm primary" onClick={p.onConnect} disabled={p.busy || !p.cfg.clientId}>Connect Google</button>}
           </div>
-        </label>
-        <label className="block">
-          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Spreadsheet url or id</span>
-          <input className="inp mt-1" value={p.cfg.spreadsheetId} onChange={(e) => p.setCfg((c) => ({ ...c, spreadsheetId: e.target.value.trim() }))} placeholder="https://docs.google.com/spreadsheets/d/1abc…/edit" />
-          {id && <a className="text-xs underline text-emerald-700 dark:text-emerald-400 break-all" href={spreadsheetUrl(id)} target="_blank" rel="noreferrer">{p.sheetTitle ? `"${p.sheetTitle}" · ` : ''}{mask(id)}</a>}
-        </label>
+        </div>
+
+        <MaskedField label="Google OAuth Client ID" value={p.cfg.clientId} mask={maskId} placeholder="1234567890-abc.apps.googleusercontent.com" onChange={(v) => p.setCfg((c) => ({ ...c, clientId: v.trim() }))} hint="Public, no secret. Stored in this browser only." />
+        <MaskedField label="Spreadsheet ID or full URL" value={p.cfg.spreadsheetId} mask={(v) => (v.includes('/d/') ? maskSpreadsheetUrl(v) : maskId(v))} placeholder="https://docs.google.com/spreadsheets/d/1abc…/edit" onChange={(v) => p.setCfg((c) => ({ ...c, spreadsheetId: v.trim() }))} hint="One spreadsheet holds the tabs of ALL your accounts." />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn sm primary" onClick={p.onDiscover} disabled={p.busy || !p.connected || !id} title="Add every X-<handle> tab of the spreadsheet to the account list">Find accounts in the sheet</button>
+          <button className="btn sm" onClick={p.onCreate} disabled={p.busy || !p.cfg.clientId} title="A new spreadsheet in your Google Drive">Create spreadsheet</button>
+          <a className="btn sm" href={USERSCRIPT_URL}>Install userscript</a>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`badge ${p.connected ? 'status-ok' : 'status-warn'}`}>{p.connectedLabel}</span>
-        {!p.connected && <button className="btn sm primary" onClick={p.onConnect} disabled={p.busy || !p.cfg.clientId}>Connect Google</button>}
-        {p.connected && <button className="btn sm danger" onClick={p.onDisconnect} disabled={p.busy}>Disconnect</button>}
-        <button className="btn sm" onClick={p.onCreate} disabled={p.busy || !p.cfg.clientId} title="A new spreadsheet in your Google Drive">Create spreadsheet</button>
-        <button className="btn sm" onClick={p.onDiscover} disabled={p.busy || !p.connected || !id} title="Add every X-<handle> tab of the spreadsheet to the account list">Find accounts in the sheet</button>
-        <a className="btn sm" href={USERSCRIPT_URL}>Install userscript</a>
-      </div>
-      <p className="text-xs text-amber-700 dark:text-amber-300">Only the Client ID and the spreadsheet id are stored in this browser. The Google token lives in memory. X posts go from your browser to your Google Sheet and nowhere else.</p>
-    </section>
+    </div>
   );
 }
 
