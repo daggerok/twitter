@@ -6,7 +6,7 @@
 // their row rewritten (counts, last_seen_at; first_seen_at kept). The viewer's full sorted rewrite happens
 // on its next merge; here the order of the tab does not matter, the viewer sorts.
 // =========================================================================
-import { firstRowOfRange, fromRow, isCredsFresh, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, tabOf, toRow, type GoogleCreds, type Post } from '../../shared/post';
+import { findTab, firstRowOfRange, fromRow, isCredsFresh, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, tabOf, toRow, type GoogleCreds, type Post } from '../../shared/post';
 import { gmGet, gmRequest, GOOGLE_KEY, hasGmRequest } from './gm';
 
 const API = 'https://sheets.googleapis.com/v4';
@@ -49,12 +49,17 @@ export class DirectWriter {
     return hasGmRequest() && !!loadCreds();
   }
 
-  /** Create the tab when missing, write the header, read every row. */
+  /** Create the tab when missing (an existing one in another case is renamed to X's case), write the header, read every row. */
   async prepare(): Promise<void> {
     const id = this.creds.spreadsheetId;
-    const meta = await api<{ sheets?: { properties?: { title?: string } }[] }>(this.creds, 'GET', `/spreadsheets/${id}?fields=sheets.properties.title`);
-    const exists = (meta.sheets || []).some((s) => s.properties?.title === this.tab);
-    if (!exists) {
+    const meta = await api<{ sheets?: { properties?: { title?: string; sheetId?: number } }[] }>(this.creds, 'GET', `/spreadsheets/${id}?fields=sheets.properties(title,sheetId)`);
+    const sheets = meta.sheets || [];
+    const existing = findTab(sheets.map((s) => s.properties?.title || ''), this.tab);
+    if (existing && existing !== this.tab) {
+      const sheetId = sheets.find((s) => s.properties?.title === existing)?.properties?.sheetId;
+      if (sheetId !== undefined) await api(this.creds, 'POST', `/spreadsheets/${id}:batchUpdate`, { requests: [{ updateSheetProperties: { properties: { sheetId, title: this.tab }, fields: 'title' } }] });
+    }
+    if (!existing) {
       try {
         await api(this.creds, 'POST', `/spreadsheets/${id}:batchUpdate`, { requests: [{ addSheet: { properties: { title: this.tab, gridProperties: { frozenRowCount: 1 } } } }] });
       } catch (e) {

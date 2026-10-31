@@ -29,6 +29,21 @@ x.com (logged in)                       daggerok.github.io/twitter (viewer)     
 - Storage is the daggerok/youtube way: Google Identity Services in the browser, only the public OAuth Client ID and the spreadsheet id in localStorage, the token in memory (silent renewal, one retry on a 401), the Sheets API called directly. One tab `X-<handle>` per account, header row frozen, one row per post, newest first. Writes overwrite rows 2..n+1 in one PUT and then clear the tail, so a failed write leaves the old rows in place
 - Without the userscript on the viewer's browser (another machine), the badge on x.com has a JSON button and the viewer an Import JSON button
 
+## Getting started, for a human who has never heard of userscripts
+
+1. **What you install.** Tampermonkey is a Chrome extension (a small add-on inside Chrome). A userscript is a file it runs on the sites you allow. This project's file, `x-sync.user.js`, makes the little "𝕏 sync" box appear on x.com profiles and talks to the viewer page. That is all it does
+2. **Where your data lives.** In a Google Sheet in your own Google Drive, one tab per X account, named `X-<handle>`. The viewer page on GitHub Pages only shows it; nothing is stored on any server of ours
+3. **The three places you will use:** the x.com profile page (with the "𝕏 sync" box in the corner), the viewer https://daggerok.github.io/twitter/ , and the spreadsheet itself if you want to look at the raw rows
+
+### Workflows
+
+- **First time:** do the Setup below once, then type the profile link in the viewer's field and press 🔄 (Full refresh). The profile opens on x.com, the box scrolls the timeline until it ends and writes the rows into the sheet as it goes. Come back to the viewer and press ↻ (or Enter): the posts are there
+- **Every day after:** press ⬇ (Update): only the posts newer than the newest stored one are fetched, counts of the ones it passes are refreshed
+- **Full resync down to the oldest post:** press 🔄 again. Nothing has to be deleted: every post it meets again is updated in place (counts, `last_seen_at`), new ones are added, your 🙈 marks stay. To start from a clean tab anyway, delete the tab `X-<handle>` in the spreadsheet first (right click the tab, Delete), then 🔄. A run stops only when the timeline ends, X rate-limits it (wait an hour, press 🔄 again, it continues where it is) or you press Stop. X shows roughly the last 3,200 posts of a profile, older ones are out of reach
+- **Another account:** type its link in the field, 🔄. Each account has its own tab; the viewer shows the one in the field
+- **Another computer or browser:** install Tampermonkey and the userscript there too (two minutes), connect Google in the viewer, and the same sheet is there. Without the userscript on that browser you can still read: the viewer shows what the sheet has
+- **Something looks wrong:** the two dots in the toolbar: first green = userscript running here, second blue = Google connected. The dots button opens the log
+
 ## Setup (once)
 
 Prerequisites, when the ids are already in a local `google.json` (never committed, see .gitignore; the same file daggerok/youtube uses):

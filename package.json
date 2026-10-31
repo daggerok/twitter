@@ -1,6 +1,6 @@
 {
   "name": "twitter",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Follow X (Twitter) accounts into your own Google Sheet: a Tampermonkey userscript collects the posts of a profile while you scroll it in your logged-in browser, the viewer on GitHub Pages writes them to Google Sheets and shows them with filters, search and export. No X API, no server, no secrets in code.",
   "source": "src/index.html",
   "scripts": {

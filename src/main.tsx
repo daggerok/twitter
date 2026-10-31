@@ -16,7 +16,7 @@
 // =========================================================================
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createRoot } from 'react-dom/client';
-import { byNewest, mergePosts, type Media, type Post, type PostType, POST_TYPES } from '../shared/post';
+import { byNewest, mergePosts, sameHandle, type Media, type Post } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
 import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, type ColKey, type MediaKind, type TableState } from './filters';
 import { fetchEmail, GoogleSession } from './gis';
@@ -35,7 +35,7 @@ const SCALE_KEY = `${PREFIX}-scale`;
 const MEDIA_KEY = `${PREFIX}-media`;
 const DEFAULT_SCALE_SLIDER = 50;
 const sliderToScale = (v: number): number => 0.7 + (v / 100) * 0.8;
-const postsKey = (handle: string) => `${PREFIX}-posts-${handle}`;
+const postsKey = (handle: string) => `${PREFIX}-posts-${handle.toLowerCase()}`;
 const PAGE_SIZE = 50;
 const USERSCRIPT_URL = './x-sync.user.js';
 const REPO_URL = 'https://github.com/daggerok/twitter';
@@ -60,8 +60,8 @@ const loadConfig = (): Config => ({ ...EMPTY_CONFIG, ...lsJson<Partial<Config>>(
 const loadCachedPosts = (handle: string): Post[] => lsJson<Post[]>(postsKey(handle), []);
 const cachePosts = (handle: string, posts: Post[]): void => lsSet(postsKey(handle), JSON.stringify(posts));
 
-const cleanHandle = (s: string): string => s.trim().replace(/^@/, '').replace(/^https?:\/\/(x|twitter)\.com\//i, '').split(/[/?#]/)[0].toLowerCase();
-const isHandle = (s: string): boolean => /^[a-z0-9_]{1,15}$/.test(s);
+const cleanHandle = (s: string): string => s.trim().replace(/^@/, '').replace(/^https?:\/\/(x|twitter)\.com\//i, '').split(/[/?#]/)[0];
+const isHandle = (s: string): boolean => /^[A-Za-z0-9_]{1,15}$/.test(s);
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 const fmtDate = (iso: string): string => {
   const t = Date.parse(iso);
@@ -219,14 +219,14 @@ function App() {
   const publish = useCallback((h: string, list: Post[], sheet: boolean) => {
     cachePosts(h, list);
     sendMeta(h, newestIdOf(list), list.length);
-    if (h === handleRef.current) { setPosts(list); setFromSheet(sheet); }
+    if (sameHandle(h, handleRef.current)) { setPosts(list); setFromSheet(sheet); }
   }, []);
 
   /** The handle in the toolbar field; an invalid one shows an error and gives null. */
   const readField = useCallback((): string | null => {
     const h = cleanHandle(current);
     if (!isHandle(h)) { setError('Type an X profile link or @handle (1 to 15 letters, digits or _)'); return null; }
-    if (h !== handleRef.current) {
+    if (!sameHandle(h, handleRef.current)) {
       handleRef.current = h;
       setHandle(h);
       setPosts(loadCachedPosts(h));
@@ -237,8 +237,8 @@ function App() {
 
   const loadFromSheet = useCallback(async (h: string, quiet = false): Promise<Post[] | null> => {
     const list = await withSheet(`Loading @${h}`, async (token, id) => {
-      await ensureTab(token, id, tabOf(h));
-      return readPosts(token, id, tabOf(h));
+      const tab = await ensureTab(token, id, tabOf(h));
+      return readPosts(token, id, tab);
     });
     if (list) {
       publish(h, list, true);
@@ -258,8 +258,7 @@ function App() {
   /** Captured posts (userscript batches or a JSON import) merged into the tab of their account. */
   const storePosts = useCallback(async (h: string, captured: Post[]): Promise<boolean> => {
     const r = await withSheet(`Storing ${captured.length} posts of @${h}`, async (token, id) => {
-      const tab = tabOf(h);
-      await ensureTab(token, id, tab);
+      const tab = await ensureTab(token, id, tabOf(h));
       const stored = await readPosts(token, id, tab);
       const merged = mergePosts(stored, captured);
       await writePosts(token, id, tab, merged.posts);
@@ -395,7 +394,7 @@ function App() {
     setPosts(list);
     cachePosts(handleRef.current, list);
     if (!connected || !sid) { say(`${next.hidden ? '🙈 Hidden' : '👁 Visible again'} locally: connect Google to keep it in the sheet`); return; }
-    const ok = await withSheet(`${next.hidden ? 'Hiding' : 'Showing'} post ${post.id}`, async (token, id) => { await writePostRow(token, id, tabOf(handleRef.current), next); return true; });
+    const ok = await withSheet(`${next.hidden ? 'Hiding' : 'Showing'} post ${post.id}`, async (token, id) => { const tab = await ensureTab(token, id, tabOf(handleRef.current)); await writePostRow(token, id, tab, next); return true; });
     if (ok) say(`${next.hidden ? '🙈 Hidden' : '👁 Visible again'}: ${post.url}`);
   }, [posts, connected, sid, withSheet, say]);
 

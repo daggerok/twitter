@@ -8,7 +8,7 @@
 // default: the owner wants a run to go on until the timeline ends or Stop is pressed), rate_limited
 // (HTTP 429 or the "Something went wrong" card after one Retry), left_profile (the url changed).
 // =========================================================================
-import { compareIds, handleFromPath, type Post } from '../../shared/post';
+import { compareIds, handleFromPath, sameHandle, type Post } from '../../shared/post';
 import { scanDom } from './dom-fallback';
 import type { RunMode, StopReason } from './gm';
 import type { Settings } from './settings';
@@ -109,7 +109,7 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
 
   while (true) {
     if (o.isStopped()) return result('stopped');
-    if (handleFromPath(location.pathname) !== o.handle) return result('left_profile');
+    if (!sameHandle(handleFromPath(location.pathname) || '', o.handle)) return result('left_profile');
     if (s.maxMinutes > 0 && Date.now() - startedAt > s.maxMinutes * 60_000) return result('max_minutes');
     await whileVisible();
 

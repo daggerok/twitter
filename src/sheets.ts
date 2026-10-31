@@ -4,7 +4,7 @@
 // One tab per account: `X-<handle>`, header row = POST_HEADERS, one row per post, newest first.
 // Writes are "overwrite rows 2..n+1, then clear the tail" so a failed PUT leaves the old rows in place.
 // =========================================================================
-import { fromRow, LAST_COL, POST_HEADERS, quoteTab, rangeOf as range, toRow, type Post } from '../shared/post';
+import { findTab, fromRow, LAST_COL, POST_HEADERS, quoteTab, rangeOf as range, toRow, type Post } from '../shared/post';
 import { googleFetch } from './gis';
 
 export { handleOfTab, tabOf, TAB_PREFIX } from '../shared/post';
@@ -31,8 +31,10 @@ export async function listTabs(token: string, id: string): Promise<{ title: stri
   return { title: m.properties?.title || '', tabs };
 }
 
-export async function ensureTab(token: string, id: string, tab: string): Promise<void> {
+/** The tab of an account: an existing one is found whatever its case (and kept as it is, the userscript renames to X's case), else created. Returns the real title. */
+export async function ensureTab(token: string, id: string, wanted: string): Promise<string> {
   const { tabs } = await listTabs(token, id);
+  const tab = findTab(tabs.map((t) => t.title), wanted) || wanted;
   if (!tabs.some((t) => t.title === tab)) {
     try {
       await googleFetch(`${API}/spreadsheets/${id}:batchUpdate`, token, {
@@ -49,6 +51,7 @@ export async function ensureTab(token: string, id: string, tab: string): Promise
     method: 'PUT',
     body: JSON.stringify({ range: `${quoteTab(tab)}!A1:${LAST_COL}1`, majorDimension: 'ROWS', values: [Array.from(POST_HEADERS)] }),
   });
+  return tab;
 }
 
 export async function readPosts(token: string, id: string, tab: string): Promise<Post[]> {
