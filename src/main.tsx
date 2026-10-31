@@ -117,6 +117,7 @@ function App() {
   const [log, setLog] = useState<LogLine[]>([]);
   const [scriptVersion, setScriptVersion] = useState('');
   const [stamp, setStamp] = useState(''); // the DOM mark the userscript leaves even when its messages do not arrive
+  const [settled, setSettled] = useState(false); // 2.5 s after load: only then a missing hello is worth a hint
   const [outbox, setOutbox] = useState<Batch[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [runStatus, setRunStatus] = useState<Status>(null);
@@ -270,6 +271,7 @@ function App() {
     return true;
   }, [withSheet, publish, say]);
 
+  useEffect(() => { const t = window.setTimeout(() => setSettled(true), 2500); return () => window.clearTimeout(t); }, []);
   useEffect(() => {
     const read = () => setStamp(document.documentElement.dataset.xsync || '');
     read();
@@ -499,13 +501,12 @@ function App() {
             <button className="font-bold" onClick={() => setError('')} aria-label="Dismiss">×</button>
           </div>
         )}
-        {busy && <div className="mb-4 text-xs text-slate-500 dark:text-slate-400 animate-pulse">{busy}</div>}
-        {!scriptVersion && !stamp && (
+        {settled && !scriptVersion && !stamp && (
           <div className="card status-warn mb-4 px-3 py-2 text-sm animate-fade-in" data-hint="no-script">
             <b>The userscript is not running on this page</b> (first dot red), so posts collected on x.com cannot reach the sheet. Check: click the Tampermonkey icon in the Chrome toolbar while on this page; it must list "X -&gt; Google Sheets sync" as running here. If it does not: chrome://extensions, Tampermonkey, Details, Site access, add <code className="px-1">https://daggerok.github.io/*</code> next to x.com; then install <a className="underline" href={USERSCRIPT_URL}>x-sync.user.js</a> if not yet, and reload this page. The dot turns green when it works.
           </div>
         )}
-        {!scriptVersion && stamp && (
+        {settled && !scriptVersion && stamp && (
           <div className="card status-bad mb-4 px-3 py-2 text-sm animate-fade-in" data-hint="bridge">
             <b>The userscript v{stamp} runs on this page but its messages do not arrive</b> (first dot red). Reload the page once; if it stays red, open the browser console (F12, Console) on this page and send its lines to the repo issues.
           </div>
@@ -541,6 +542,7 @@ function App() {
               <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(16 * scale)}px` }}>
                 {handle ? <a href={`https://x.com/${handle}`} target="_blank" rel="noreferrer">@{handle}</a> : 'Feed'} <span className="font-normal">{feed.length} / {posts.length}</span>
               </h3>
+              {busy && <span className="text-[10px] text-slate-500 dark:text-slate-400 animate-pulse" data-busy>⏳ {busy}</span>}
               {handle && (
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400">
                   {fromSheet ? <>☁️ Synced to Google Sheets • tab: <span className="font-mono">{tabOf(handle)}</span></> : posts.length ? '💾 local copy' : '—'}{lastRun ? ` • last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')}` : ''}
@@ -563,7 +565,7 @@ function App() {
               <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
                 <thead>
                   <tr className="text-slate-500 dark:text-slate-400">
-                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-44', 'post|reply, photo, video, gif, media, text only, pinned'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', ''], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
+                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-44', 'post|reply, photo, video, gif, media, text only, pinned'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', 'part of the link, e.g. status/17 or x.com/name'], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
                       const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
                       const active = col && table.sort.key === col;
                       return (
