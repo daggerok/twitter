@@ -6,16 +6,26 @@ import { byNewest, isPostType, POST_HEADERS, toRow, type Post } from '../shared/
 export type ColKey = 'datetime' | 'type' | 'post' | 'stats' | 'hidden';
 export const COLS: ColKey[] = ['datetime', 'type', 'post', 'stats', 'hidden'];
 export type SortDir = 'asc' | 'desc';
-export type MediaKind = 'photo' | 'video' | 'gif' | 'none';
-export const MEDIA_KINDS: { key: MediaKind; label: string }[] = [{ key: 'photo', label: '📷 Photo' }, { key: 'video', label: '🎬 Video' }, { key: 'gif', label: 'GIF' }, { key: 'none', label: 'No media (text only)' }];
-/** media: the ticked kinds of the dropdown, [] = every post; a post matches when it has one of the ticked kinds (none = no media at all) */
+export type MediaKind = 'photo' | 'video' | 'gif' | 'media' | '!photo' | '!video' | '!gif' | '!media';
+/** The dropdown: a kind ticked = the post has it, its `!` twin ticked = the post has not. Positives are OR-ed, negatives are AND-ed. */
+export const MEDIA_KINDS: { key: MediaKind; label: string }[] = [
+  { key: 'photo', label: '📷 Photo' }, { key: '!photo', label: '📷 !Photo (no photo)' },
+  { key: 'video', label: '🎬 Video' }, { key: '!video', label: '🎬 !Video (no video)' },
+  { key: 'gif', label: 'GIF' }, { key: '!gif', label: '!GIF (no gif)' },
+  { key: 'media', label: '🖼 Media (any)' }, { key: '!media', label: '🖼 !Media (text only)' },
+];
+/** media: the ticked entries of the dropdown, [] = every post */
 export type TableState = { filters: Record<ColKey, string>; sort: { key: ColKey; dir: SortDir }; media: MediaKind[] };
 export const EMPTY_TABLE: TableState = { filters: { datetime: '', type: '', post: '', stats: '', hidden: '' }, sort: { key: 'datetime', dir: 'desc' }, media: [] };
 
+const hasKind = (p: Post, kind: string): boolean => (kind === 'media' ? p.media.length > 0 : p.media.some((m) => m.type === kind));
+
 export function matchMedia(p: Post, kinds: MediaKind[]): boolean {
   if (!kinds.length) return true;
-  if (!p.media.length) return kinds.includes('none');
-  return p.media.some((m) => (kinds as string[]).includes(m.type));
+  const positives = kinds.filter((k) => !k.startsWith('!'));
+  const negatives = kinds.filter((k) => k.startsWith('!')).map((k) => k.slice(1));
+  if (positives.length && !positives.some((k) => hasKind(p, k))) return false;
+  return negatives.every((k) => !hasKind(p, k));
 }
 
 const MEDIA_WORD: Record<string, string> = { photo: '📷 photo', video: '🎬 video', gif: 'gif' };

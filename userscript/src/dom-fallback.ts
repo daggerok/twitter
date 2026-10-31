@@ -42,7 +42,15 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   const text = textEl ? (textEl as HTMLElement).innerText.trim() : '';
   const media: Media[] = [];
   article.querySelectorAll<HTMLImageElement>('[data-testid="tweetPhoto"] img').forEach((img) => { if (img.src) media.push({ type: 'photo', url: img.src }); });
-  if (article.querySelector('[data-testid="videoPlayer"]')) media.push({ type: 'video', url: `https://x.com/${author}/status/${id}/video/1` });
+  // videos and gifs: X renders a <video> (gifs too, looping); the source url when it is there, else the post's video page
+  const videos = Array.from(article.querySelectorAll<HTMLVideoElement>('video'));
+  if (videos.length || article.querySelector('[data-testid="videoPlayer"], [data-testid="videoComponent"], [data-testid="gifPlayer"]')) {
+    (videos.length ? videos : [null]).forEach((v, i) => {
+      const src = v ? (v.currentSrc || v.src || v.querySelector('source')?.src || '') : '';
+      const gif = !!v && v.loop && !v.controls || !!article.querySelector('[data-testid="gifPlayer"]') || /tweet_video/.test(src);
+      media.push({ type: gif ? 'gif' : 'video', url: src && !src.startsWith('blob:') ? src : `https://x.com/${author}/status/${id}/video/${i + 1}` });
+    });
+  }
   const links = Array.from(article.querySelectorAll<HTMLAnchorElement>('[data-testid="tweetText"] a[href^="http"]'))
     .map((a) => a.href).filter((h) => !/^https?:\/\/(x|twitter)\.com\//i.test(h));
   const replyTo = Array.from(article.querySelectorAll('a[href^="/"]')).map((a) => a.getAttribute('href') || '')
