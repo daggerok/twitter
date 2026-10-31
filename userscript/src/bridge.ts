@@ -6,17 +6,20 @@
 //   page -> script  { source: 'xsync-page',   type: 'ack',  ids: [batchId, ...] }  -> those batches leave the outbox
 //   page -> script  { source: 'xsync-page',   type: 'meta', handle, newestId, count } -> stored for incremental runs
 //   script -> page  { source: 'xsync-script', type: 'hello' | 'outbox' | 'runs' | 'status', ... }
-// Only messages whose `event.source === window` are accepted on both sides.
+// Both sides accept a message only from their own origin (`event.origin === location.origin`) with the source tag.
 // =========================================================================
-import { gmGet, gmOnChange, gmSet, KEYS, type Batch, type Run, type Status } from './gm';
+import { gmGet, gmOnChange, gmSet, KEYS, pageWindow, type Batch, type Run, type Status } from './gm';
 
 type PageMessage =
   | { source: 'xsync-page'; type: 'hello' }
   | { source: 'xsync-page'; type: 'ack'; ids: string[] }
   | { source: 'xsync-page'; type: 'meta'; handle: string; newestId: string; count: number };
 
+// Tampermonkey hands the script a wrapped `window` in some modes: messages go through and come from the real page window,
+// so the check is the origin plus the source tag, never `event.source === window` (it was false under the wrapper and
+// every message of the page was dropped, 2.0.2)
 const send = (msg: Record<string, unknown>): void => {
-  window.postMessage({ source: 'xsync-script', ...msg }, location.origin);
+  pageWindow().postMessage({ source: 'xsync-script', ...msg }, location.origin);
 };
 
 export function installViewerBridge(version: string): void {
@@ -28,8 +31,8 @@ export function installViewerBridge(version: string): void {
   const pushRuns = () => send({ type: 'runs', runs: gmGet<Run[]>(KEYS.runs, []) });
   const pushStatus = () => send({ type: 'status', status: gmGet<Status | null>(KEYS.status, null) });
 
-  window.addEventListener('message', (event: MessageEvent) => {
-    if (event.source !== window) return;
+  pageWindow().addEventListener('message', (event: MessageEvent) => {
+    if (event.origin !== location.origin) return;
     const data = event.data as Partial<PageMessage> | null;
     if (!data || data.source !== 'xsync-page') return;
     if (data.type === 'hello') {

@@ -20,7 +20,7 @@ const post = (msg: Record<string, unknown>): void => window.postMessage({ source
 
 export function connectBridge(on: BridgeEvents): () => void {
   const listener = (event: MessageEvent) => {
-    if (event.source !== window) return;
+    if (event.origin !== location.origin) return;
     const d = event.data as { source?: string; type?: string; version?: string; batches?: Batch[]; runs?: Run[]; status?: Status } | null;
     if (!d || d.source !== 'xsync-script') return;
     if (d.type === 'hello') on.hello(typeof d.version === 'string' ? d.version : '?');
