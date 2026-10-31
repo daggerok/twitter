@@ -8,7 +8,11 @@ Userscript: https://daggerok.github.io/twitter/x-sync.user.js
 
 The first version (a DOM scraper with copy and paste into a dashboard) is kept on the branch `backup/v1-2026-08-16` and the tag `v1-backup`
 
-## How it works
+## How it works, in plain words
+
+x.com lets nobody read a timeline from outside: the posts exist only in your own logged-in browser. Tampermonkey is a Chrome extension that runs small programs, userscripts, one `.user.js` file each, on the sites you allow it. Our file `x-sync.user.js` is such a program: on x.com it scrolls a profile and remembers the posts; on the viewer page the same file hands them to the viewer, which writes them to your Google Sheet. So Tampermonkey needs access to two sites, `x.com` and `daggerok.github.io`; with x.com only, the install link shows raw code instead of the install page and the posts never reach the sheet. The Google Sheet is just the storage: the viewer writes to it from the browser after you press Connect Google, no keys or passwords anywhere
+
+## How it works, in detail
 
 ```
 x.com (logged in)                       daggerok.github.io/twitter (viewer)          Google
