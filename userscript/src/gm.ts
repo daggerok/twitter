@@ -16,6 +16,7 @@ export type Run = {
   stop_reason: StopReason | '';
   userscript_version: string;
   source: 'graphql' | 'dom' | 'mixed' | 'none';
+  stored_in_sheet: number; // rows written straight from x.com (0 when the outbox was used)
 };
 
 export type Batch = { id: string; handle: string; run_id: string; posts: Post[]; created_at: string };
@@ -110,3 +111,30 @@ export const MAX_RUNS = 50;
 export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+// ---- GM_xmlhttpRequest (the userscript writes to the Sheets API from x.com with the viewer's token) ----
+
+type GmResponse = { status: number; responseText: string };
+declare function GM_xmlhttpRequest(o: {
+  method: string; url: string; headers?: Record<string, string>; data?: string; timeout?: number;
+  onload: (r: GmResponse) => void; onerror: (r: unknown) => void; ontimeout: () => void;
+}): void;
+
+export const hasGmRequest = (): boolean => typeof gm('GM_xmlhttpRequest') === 'function';
+
+export function gmRequest(method: string, url: string, headers: Record<string, string>, body?: string): Promise<GmResponse> {
+  return new Promise((resolve, reject) => {
+    try {
+      GM_xmlhttpRequest({
+        method, url, headers, data: body, timeout: 45_000,
+        onload: (r) => resolve({ status: r.status, responseText: r.responseText }),
+        onerror: () => reject(new Error(`network error: ${method} ${url.slice(0, 80)}`)),
+        ontimeout: () => reject(new Error(`timeout: ${method} ${url.slice(0, 80)}`)),
+      });
+    } catch (e) {
+      reject(e instanceof Error ? e : new Error(String(e)));
+    }
+  });
+}
+
+export const GOOGLE_KEY = 'xsync.google';

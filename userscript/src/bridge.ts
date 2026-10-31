@@ -8,7 +8,8 @@
 //   script -> page  { source: 'xsync-script', type: 'hello' | 'outbox' | 'runs' | 'status', ... }
 // Both sides accept a message only from their own origin (`event.origin === location.origin`) with the source tag.
 // =========================================================================
-import { gmGet, gmOnChange, gmSet, KEYS, pageWindow, type Batch, type Run, type Status } from './gm';
+import { gmGet, gmOnChange, gmSet, GOOGLE_KEY, KEYS, pageWindow, type Batch, type Run, type Status } from './gm';
+import { isCredsFresh, type GoogleCreds } from '../../shared/post';
 
 type PageMessage =
   | { source: 'xsync-page'; type: 'hello' }
@@ -49,6 +50,22 @@ export function installViewerBridge(version: string): void {
       gmSet(KEYS.meta(data.handle), { newestId: data.newestId, count: Number(data.count) || 0, updatedAt: new Date().toISOString() });
     }
   });
+
+  // the viewer puts its Google token, expiry and spreadsheet id into a DOM attribute (same origin page, token already
+  // in its memory); polled here because the DOM is shared by every world, unlike messages. Stored for the x.com side.
+  let lastCreds = '';
+  const pullCreds = () => {
+    try {
+      const raw = document.documentElement.dataset.xsyncGoogle || '';
+      if (raw === lastCreds) return;
+      lastCreds = raw;
+      if (!raw) { gmSet(GOOGLE_KEY, null); return; }
+      const c = JSON.parse(raw) as GoogleCreds;
+      gmSet(GOOGLE_KEY, isCredsFresh(c) ? c : null);
+    } catch { /* bad json: keep the last */ }
+  };
+  pullCreds();
+  setInterval(pullCreds, 2000);
 
   gmOnChange(KEYS.outbox, pushOutbox);
   gmOnChange(KEYS.runs, pushRuns);

@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
-import { byNewest, compareIds, fromRow, handleFromPath, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, toRow, type Post } from './post';
+import { byNewest, compareIds, firstRowOfRange, fromRow, handleFromPath, handleOfTab, isCredsFresh, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, tabOf, toRow, type Post } from './post';
 
 export const samplePost = (over: Partial<Post> = {}): Post => ({
   id: '1700000000000000001',
@@ -113,5 +113,28 @@ describe('x dates and profile paths', () => {
     expect(handleFromPath('/i/flow/login')).toBeNull();
     expect(handleFromPath('/elonmusk/status/123')).toBeNull();
     expect(handleFromPath('/search')).toBeNull();
+  });
+});
+
+describe('sheet tab helpers', () => {
+  test('tabOf, handleOfTab, quoteTab, rangeOf', () => {
+    expect(tabOf('Elon_Musk')).toBe('X-elon_musk');
+    expect(handleOfTab('X-abc')).toBe('abc');
+    expect(handleOfTab('YT-abc')).toBeNull();
+    expect(quoteTab('X-abc')).toBe("'X-abc'");
+    expect(quoteTab('Xabc')).toBe('Xabc');
+    expect(decodeURIComponent(rangeOf('X-abc', 'A2:Y'))).toBe("'X-abc'!A2:Y");
+  });
+  test('firstRowOfRange reads the append answer', () => {
+    expect(firstRowOfRange("'X-abc'!A1400:Y1402")).toBe(1400);
+    expect(firstRowOfRange('Xabc!A2:Y2')).toBe(2);
+    expect(firstRowOfRange('')).toBe(0);
+  });
+  test('isCredsFresh needs token, spreadsheet and more than a minute left', () => {
+    const now = 1_000_000;
+    expect(isCredsFresh({ token: 't', spreadsheetId: 's', expiresAt: now + 120_000, email: '' }, now)).toBe(true);
+    expect(isCredsFresh({ token: 't', spreadsheetId: 's', expiresAt: now + 30_000, email: '' }, now)).toBe(false);
+    expect(isCredsFresh({ token: '', spreadsheetId: 's', expiresAt: now + 120_000, email: '' }, now)).toBe(false);
+    expect(isCredsFresh(null, now)).toBe(false);
   });
 });

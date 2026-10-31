@@ -123,6 +123,9 @@ export class GoogleSession {
 
   get connected(): boolean { return !!this.token && !this.disabled; }
 
+  /** The current token and its expiry (for the userscript channel), null when none or disconnected. */
+  peek(): Token | null { return this.disabled ? null : this.token; }
+
   async get(interactive = false, force = false): Promise<string> {
     const cid = this.clientId().trim();
     if (!cid) throw new Error('Enter the Google OAuth Client ID in Settings first');

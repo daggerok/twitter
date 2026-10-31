@@ -29,6 +29,8 @@ export function userscriptHeader(version: string): string {
     '// @grant        GM_addValueChangeListener',
     '// @grant        GM_registerMenuCommand',
     '// @grant        unsafeWindow',
+    '// @grant        GM_xmlhttpRequest',
+    '// @connect      sheets.googleapis.com',
     '// ==/UserScript==',
     '',
   ].join('\n');
