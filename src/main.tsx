@@ -370,7 +370,7 @@ function App() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* toolbar, sticky like youtube */}
-      <div className="sticky top-0 z-50 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md">
+      <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
         <div className="px-4 sm:px-8">
           <div className="flex flex-col md:flex-row md:items-center gap-2 py-3">
             <div className="flex items-center gap-2 w-full md:flex-1 min-w-0">
@@ -405,7 +405,7 @@ function App() {
               <div className="pb-2">
                 <div className="card overflow-hidden text-xs">
                   <div className="panel-head text-[11px]">
-                    <div className="font-semibold text-blue-700 dark:text-blue-300">🐛 Log <span className="font-normal text-slate-400">({log.length})</span></div>
+                    <div className="font-semibold text-emerald-500">🐛 Log <span className="font-normal text-slate-400">({log.length})</span></div>
                     <button className="btn sm" onClick={() => setLog([])}>Clear</button>
                   </div>
                   {log.length ? (
@@ -476,7 +476,7 @@ function App() {
               return (
                 <li key={h} className="py-1.5 flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <button className={`font-medium ${selected ? 'text-blue-600 dark:text-blue-400' : ''}`} onClick={() => setFilters((f) => ({ ...f, handles: toggleIn(f.handles, h) }))} title="Filter the feed by this account">
+                    <button className={`font-medium ${selected ? 'text-emerald-600 dark:text-emerald-400' : ''}`} onClick={() => setFilters((f) => ({ ...f, handles: toggleIn(f.handles, h) }))} title="Filter the feed by this account">
                       @{h}
                     </button>
                     <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{st.posts.length} posts{st.loadedFromSheet ? '' : ' (local copy)'}{run ? ` · last run ${fmtDate(run.finished_at)}: ${run.posts_seen} seen, ${run.stop_reason.replace(/_/g, ' ')}` : ''}</span>
@@ -571,19 +571,19 @@ function Settings(p: SettingsProps) {
   return (
     <div className="card overflow-hidden text-sm mb-2 shadow-lg">
       <div className="panel-head">
-        <h3 className="font-bold text-blue-700 dark:text-blue-300">📋 Setup</h3>
+        <h3 className="font-bold text-emerald-500">📋 Setup</h3>
         <button className="btn sm" onClick={p.onClose}>Close</button>
       </div>
       <div className="p-4 space-y-4">
         <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
           <div><strong className="text-slate-700 dark:text-slate-200">What this is:</strong> x.com lets nobody read a timeline from outside, the posts exist only in your own logged-in browser. <b>Tampermonkey</b> is a Chrome extension that runs small programs (<b>userscripts</b>, one .user.js file each) on the sites you allow it. Our file x-sync.user.js scrolls a profile on x.com and remembers the posts; the same file, running on this page, hands them to this viewer, which writes them to your Google Sheet. Tampermonkey must therefore be allowed on <b>both</b> x.com and {location.hostname}: with x.com only, the install link shows raw code instead of the install page and the posts never reach the sheet.</div>
           <div><strong className="text-emerald-600 dark:text-emerald-400">Auto-load + cross-device:</strong> localStorage + your Google Sheet. Connect Google on any device and the same accounts and posts are there.</div>
-          <div><strong className="text-blue-600 dark:text-blue-400">Per-account tabs:</strong> every X account gets its own tab (e.g. X-handle) inside one spreadsheet. The YT-… tabs of youtube can live in the same file.</div>
+          <div><strong className="text-blue-500">Per-account tabs:</strong> every X account gets its own tab (e.g. X-handle) inside one spreadsheet. The YT-… tabs of youtube can live in the same file.</div>
         </div>
-        <details className="setup rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-          <summary className="px-4 py-3 text-sm font-semibold text-blue-900 dark:text-blue-200"><span className="chev">▸</span> Google Sheets and Tampermonkey setup (once)</summary>
-          <ol className="list-decimal ml-8 mr-4 mb-4 space-y-1 text-xs text-blue-800 dark:text-blue-300">
-            <li>Go to <a className="underline" href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">console.cloud.google.com</a>, enable the <b>Google Sheets API</b>, OAuth consent screen (External, your email under Test users), create an OAuth 2.0 Client ID of type Web application with the authorized JavaScript origins <code className="bg-blue-100 dark:bg-blue-800 px-1">{origin}</code> and <code className="bg-blue-100 dark:bg-blue-800 px-1">http://localhost:1234</code>. No secret is used</li>
+        <details className="setup rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+          <summary className="px-4 py-3 text-sm font-semibold text-emerald-900 dark:text-emerald-200"><span className="chev">▸</span> Google Sheets and Tampermonkey setup (once)</summary>
+          <ol className="list-decimal ml-8 mr-4 mb-4 space-y-1 text-xs text-emerald-900 dark:text-emerald-200">
+            <li>Go to <a className="underline text-emerald-600 dark:text-emerald-400" href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">console.cloud.google.com</a>, enable the <b>Google Sheets API</b>, OAuth consent screen (External, your email under Test users), create an OAuth 2.0 Client ID of type Web application with the authorized JavaScript origins <code className="bg-emerald-100 dark:bg-emerald-800 px-1">{origin}</code> and <code className="bg-emerald-100 dark:bg-emerald-800 px-1">http://localhost:1234</code>. No secret is used</li>
             <li>Paste the Client ID below, press <b>Connect Google</b>, then <b>Create spreadsheet</b> or paste the url of an existing one</li>
             <li>Install <a className="underline" href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Tampermonkey</a>; in Chrome 138+ open its extension details, turn on <b>Allow User Scripts</b> and give it site access to <b>x.com</b> and <b>{location.hostname}</b></li>
             <li>Open <a className="underline font-medium" href={USERSCRIPT_URL}>x-sync.user.js</a>: Tampermonkey shows its install page, press Install. Reload this page: the first dot in the toolbar turns green</li>
