@@ -129,6 +129,8 @@ details.setup[open] > summary .chev{transform:rotate(90deg)}
 .dark .tb.blue{color:#60a5fa}.dark .tb.blue:hover{background:rgba(59,130,246,.2)}
 .dark .tb.green{color:#34d399}.dark .tb.green:hover{background:rgba(16,185,129,.2)}
 .dark .tb.rose{color:#fb7185}.dark .tb.rose:hover{background:rgba(244,63,94,.2)}
+/* the theme button, the youtube look: a yellow sun on the dark page */
+.dark .tb.sun{color:#facc15}.dark .tb.sun:hover{color:#fde047;background:#1e293b}
 .dot{display:inline-block;width:.5rem;height:.5rem;border-radius:9999px}
 .ib{width:1.75rem;height:1.75rem;border-radius:.375rem;border:1px solid #cbd5e1;background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;color:#64748b;flex:none}
 .ib:hover{background:#f1f5f9}

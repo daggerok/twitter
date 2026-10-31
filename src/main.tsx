@@ -19,6 +19,7 @@ import { createRoot } from 'react-dom/client';
 import { byNewest, mergePosts, sameHandle, type Media, type Post } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
 import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, type ColKey, type MediaKind, type TableState } from './filters';
+import { isDark, isNight, isThemeMode, nextMode, themeIcon, themeTitle, type ThemeMode } from './theme';
 import { fetchEmail, GoogleSession } from './gis';
 import type { GoogleCreds } from '../shared/post';
 import { maskEmail, maskId, maskSpreadsheetUrl } from './mask';
@@ -90,7 +91,9 @@ async function copyText(text: string): Promise<boolean> {
 type LogLine = { ts: string; msg: string };
 
 function App() {
-  const [dark, setDark] = useState(() => lsGet(THEME_KEY) === 'dark');
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => { const v = lsGet(THEME_KEY); return isThemeMode(v) ? v : 'light'; });
+  const [night, setNight] = useState(() => isNight());
+  const dark = isDark(themeMode, night);
   const [cfg, setCfg] = useState<Config>(loadConfig);
   const [showSettings, setShowSettings] = useState(() => !loadConfig().clientId);
   const [showLog, setShowLog] = useState(false);
@@ -135,7 +138,9 @@ function App() {
     setLog((l) => [{ ts: new Date().toLocaleTimeString(), msg }, ...l].slice(0, 200));
   }, []);
 
-  useEffect(() => { lsSet(THEME_KEY, dark ? 'dark' : 'light'); document.documentElement.classList.toggle('dark', dark); document.documentElement.style.backgroundColor = dark ? '#020617' : '#f8fafc'; }, [dark]);
+  useEffect(() => { lsSet(THEME_KEY, themeMode); }, [themeMode]);
+  useEffect(() => { if (themeMode !== 'auto') return undefined; const tick = () => setNight(isNight()); tick(); const t = window.setInterval(tick, 60_000); return () => window.clearInterval(t); }, [themeMode]);
+  useEffect(() => { document.documentElement.classList.toggle('dark', dark); document.documentElement.style.backgroundColor = dark ? '#020617' : '#f8fafc'; }, [dark]);
   useEffect(() => { lsSet(CONFIG_KEY, JSON.stringify(cfg)); }, [cfg]);
   useEffect(() => { lsSet(CURRENT_KEY, current); }, [current]);
   useEffect(() => { lsSet(SCALE_KEY, String(scaleSlider)); }, [scaleSlider]);
@@ -459,7 +464,9 @@ function App() {
               <button className="tb green" title={connected && sid ? 'Ensure the tab and reload the posts from Google Sheets' : 'Ensure the tab and reload the posts from Google Sheets (connect Google and set the spreadsheet first)'} onClick={() => { void load(); }} disabled={isBusy || !connected || !sid || !current.trim()}>↻</button>
               <button className="tb green flex-col leading-none" title="Export CSV of the filtered feed" onClick={exportCsv} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">CSV</span></button>
               <button className="tb green flex-col leading-none" title="Export JSON of the filtered feed" onClick={exportJson} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">JSON</span></button>
-              <button className="tb" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((d) => !d)}>{dark ? '☀' : '🌙'}</button>
+              <button className={`tb theme ${dark ? 'sun' : ''}`} title={themeTitle(themeMode, night)} onClick={() => setThemeMode((m) => nextMode(m))} data-theme-mode={themeMode}>
+                <span className="relative inline-flex">{themeIcon(themeMode, night).icon}{themeIcon(themeMode, night).auto && <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none" data-auto>A</span>}</span>
+              </button>
             </div>
           </div>
 
