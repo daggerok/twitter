@@ -14,6 +14,11 @@ describe('applyFilters', () => {
   test('no filter: newest first', () => {
     expect(applyFilters(posts, EMPTY_FILTERS).map((p) => p.id)).toEqual(['3', '2', '1']);
   });
+  test('hidden posts are out of the feed and listed alone with showHidden', () => {
+    const list = [...posts, samplePost({ id: '0', hidden: true, text: 'noise' })];
+    expect(applyFilters(list, EMPTY_FILTERS).map((p) => p.id)).toEqual(['3', '2', '1']);
+    expect(applyFilters(list, { ...EMPTY_FILTERS, showHidden: true }).map((p) => p.id)).toEqual(['0']);
+  });
   test('handles, types, dates, media, search words, sort', () => {
     expect(applyFilters(posts, { ...EMPTY_FILTERS, handles: ['a'] }).map((p) => p.id)).toEqual(['3', '1']);
     expect(applyFilters(posts, { ...EMPTY_FILTERS, types: ['reply', 'quote'] }).map((p) => p.id)).toEqual(['2', '1']);

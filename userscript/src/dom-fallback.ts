@@ -75,6 +75,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     is_pinned: isPinned,
     first_seen_at: seenAt,
     last_seen_at: seenAt,
+    hidden: false,
   };
 }
 

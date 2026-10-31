@@ -226,6 +226,7 @@ export function postOf(result: unknown, pinned: boolean, seenAt: string): Post |
     is_pinned: pinned,
     first_seen_at: seenAt,
     last_seen_at: seenAt,
+    hidden: false,
   };
 }
 

@@ -22,7 +22,7 @@ import { applyFilters, EMPTY_FILTERS, formatCount, linkify, postsFromJson, toCsv
 import { fetchEmail, GoogleSession } from './gis';
 import type { GoogleCreds } from '../shared/post';
 import { maskEmail, maskId, maskSpreadsheetUrl } from './mask';
-import { createSpreadsheet, deleteTab, ensureTab, handleOfTab, listTabs, readPosts, spreadsheetId, spreadsheetUrl, tabOf, writePosts } from './sheets';
+import { createSpreadsheet, ensureTab, handleOfTab, listTabs, readPosts, spreadsheetId, spreadsheetUrl, tabOf, writePostRow, writePosts } from './sheets';
 
 // ---- 1. Storage (config, accounts, a copy of the posts; the view) -------------------------------------
 
@@ -371,7 +371,19 @@ function App() {
     }
   }, [canStore, storePosts, publish, say]);
 
+  /** The crossed eye: hide a post from the feed (or bring it back); its row is rewritten in the sheet, the rest untouched. */
+  const toggleHidden = useCallback(async (post: Post) => {
+    const next = { ...post, hidden: !post.hidden };
+    const list = posts.map((p) => (p.id === post.id ? next : p));
+    setPosts(list);
+    cachePosts(handleRef.current, list);
+    if (!connected || !sid) { say(`${next.hidden ? '🙈 Hidden' : '👁 Visible again'} locally: connect Google to keep it in the sheet`); return; }
+    const ok = await withSheet(`${next.hidden ? 'Hiding' : 'Showing'} post ${post.id}`, async (token, id) => { await writePostRow(token, id, tabOf(handleRef.current), next); return true; });
+    if (ok) say(`${next.hidden ? '🙈 Hidden' : '👁 Visible again'}: ${post.url}`);
+  }, [posts, connected, sid, withSheet, say]);
+
   // ---- feed ----
+  const hiddenCount = useMemo(() => posts.filter((p) => p.hidden).length, [posts]);
   const feed = useMemo(() => applyFilters(posts, filters), [posts, filters]);
   const visible = feed.slice(0, shown);
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -502,6 +514,7 @@ function App() {
               <button key={t} className={`btn sm ${filters.types.includes(t) ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, types: toggleIn(f.types, t) as PostType[] }))}>{t}</button>
             ))}
             <button className={`btn sm ${filters.hasMedia ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, hasMedia: !f.hasMedia }))}>has media</button>
+            <button className={`btn sm ${filters.showHidden ? 'active' : ''}`} title="Posts you hid with the crossed eye; press to see them and bring them back" onClick={() => setFilters((f) => ({ ...f, showHidden: !f.showHidden }))} disabled={!hiddenCount && !filters.showHidden}>🙈 hidden {hiddenCount}</button>
             <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">from <input className="inp" type="date" value={filters.from} onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} /></label>
             <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">to <input className="inp" type="date" value={filters.to} onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} /></label>
             <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">sort
@@ -512,11 +525,11 @@ function App() {
           </div>
           {visible.length === 0 && (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : posts.length ? 'Nothing to show with these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
+              {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : filters.showHidden ? 'No hidden posts.' : posts.length ? 'Nothing to show with these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
             </p>
           )}
           <ul className="space-y-2">
-            {visible.map((p) => <PostCard key={p.id} post={p} />)}
+            {visible.map((p) => <PostCard key={p.id} post={p} onToggleHidden={() => { void toggleHidden(p); }} />)}
           </ul>
           {feed.length > shown && <button className="btn w-full justify-center" onClick={() => setShown((s) => s + PAGE_SIZE)}>Show {Math.min(PAGE_SIZE, feed.length - shown)} more of {feed.length - shown}</button>}
         </section>
@@ -628,14 +641,15 @@ function Settings(p: SettingsProps) {
 
 // ---- 4. Post card ------------------------------------------------------------------------------------
 
-function PostCard({ post: p }: { post: Post }) {
+function PostCard({ post: p, onToggleHidden }: { post: Post; onToggleHidden: () => void }) {
   const parts = useMemo(() => linkify(p.text), [p.text]);
   const who: ReactNode = p.type === 'repost' && p.reposted_handle
     ? <>@{p.handle} reposted <a className="underline" href={`https://x.com/${p.reposted_handle}`} target="_blank" rel="noreferrer">@{p.reposted_handle}</a></>
     : <><span className="font-medium">{p.author_name || `@${p.handle}`}</span> <span className="text-slate-500 dark:text-slate-400">@{p.handle}</span></>;
   return (
-    <li className="card p-3 space-y-2 animate-fade-in">
+    <li className={`card p-3 space-y-2 animate-fade-in ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'}>
       <div className="flex flex-wrap items-center gap-2 text-xs">
+        <button type="button" className="ib" title={p.hidden ? 'Show this post again' : 'Hide this post (noise, not important)'} onClick={onToggleHidden}>{p.hidden ? '👁' : '🙈'}</button>
         <span className={`badge ${p.type}`}>{p.type}</span>
         {p.is_pinned && <span className="badge pinned">pinned</span>}
         <span className="text-sm">{who}</span>

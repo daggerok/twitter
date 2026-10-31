@@ -74,6 +74,25 @@ export async function writePosts(token: string, id: string, tab: string, posts: 
   await googleFetch(`${API}/spreadsheets/${id}/values/${range(tab, `A${rows.length + 2}:${LAST_COL}`)}:clear`, token, { method: 'POST', body: '{}' });
 }
 
+/** One post changed in the viewer (hidden): rewrite only its row, found by the id column, or append it. Other rows stay. */
+export async function writePostRow(token: string, id: string, tab: string, post: Post): Promise<void> {
+  const r = await googleFetch<{ values?: unknown[][] }>(`${API}/spreadsheets/${id}/values/${range(tab, 'A2:A')}`, token);
+  const index = (r.values || []).findIndex((cells) => String(cells && cells[0] !== undefined ? cells[0] : '') === post.id);
+  const row = toRow(post);
+  if (index === -1) {
+    await googleFetch(`${API}/spreadsheets/${id}/values/${range(tab, `A1:${LAST_COL}1`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, token, {
+      method: 'POST',
+      body: JSON.stringify({ range: `${quoteTab(tab)}!A1:${LAST_COL}1`, majorDimension: 'ROWS', values: [row] }),
+    });
+    return;
+  }
+  const cells = `A${index + 2}:${LAST_COL}${index + 2}`;
+  await googleFetch(`${API}/spreadsheets/${id}/values/${range(tab, cells)}?valueInputOption=RAW`, token, {
+    method: 'PUT',
+    body: JSON.stringify({ range: `${quoteTab(tab)}!${cells}`, majorDimension: 'ROWS', values: [row] }),
+  });
+}
+
 export async function deleteTab(token: string, id: string, sheetId: number): Promise<void> {
   await googleFetch(`${API}/spreadsheets/${id}:batchUpdate`, token, {
     method: 'POST',
