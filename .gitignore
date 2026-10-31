@@ -7,3 +7,8 @@ node_modules/
 # local only: captured X responses with real data, screenshots, scratch scripts
 .claude/
 captures/
+
+daggerok.json
+
+# the owner's Google ids (Client ID, spreadsheet url): local only, like in daggerok/youtube
+google.json
