@@ -119,7 +119,7 @@ function App() {
   const session = useRef(new GoogleSession(() => cfgRef.current.clientId));
   const storing = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const sentinel = useRef<HTMLLIElement>(null);
+  const sentinel = useRef<HTMLTableRowElement>(null);
 
   const say = useCallback((msg: string) => {
     setLog((l) => [{ ts: new Date().toLocaleTimeString(), msg }, ...l].slice(0, 200));
@@ -556,11 +556,24 @@ function App() {
               {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : filters.showHidden ? 'No hidden posts.' : posts.length ? 'Nothing to show with these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
             </p>
           )}
-          <ul className="space-y-3" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
-            {visible.map((p, i) => (
-              <PostCard key={p.id} post={p} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
-            ))}
-          </ul>
+          {visible.length > 0 && (
+            <div className="overflow-x-auto themed-scroll -mx-4">
+              <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
+                <thead>
+                  <tr className="text-slate-500 dark:text-slate-400">
+                    {[['Datetime', 'w-44'], ['Type', 'w-28'], ['Post', ''], ['Stats', 'w-44 hidden lg:table-cell'], ['URL', 'w-24'], ['', 'w-14']].map(([label, w]) => (
+                      <th key={label || 'hide'} className={`px-4 align-top font-semibold uppercase tracking-wider ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(10 * scale)}px` }}>{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
+                  {visible.map((p, i) => (
+                    <PostRow key={p.id} post={p} scale={scale} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           {feed.length > shown && <div className="text-center text-xs text-slate-400 py-2" data-more={feed.length - shown}>{feed.length - shown} more below…</div>}
           </div>
         </section>
@@ -672,44 +685,59 @@ function Settings(p: SettingsProps) {
 
 // ---- 4. Post card ------------------------------------------------------------------------------------
 
-function PostCard({ post: p, onToggleHidden, sentinel }: { post: Post; onToggleHidden: () => void; sentinel?: RefObject<HTMLLIElement | null> }) {
+const MEDIA_ICON: Record<string, string> = { photo: '📷', video: '🎬', gif: 'GIF' };
+
+/** One post as a table row, the youtube inventory look: date, type, text, stats, Open, the crossed eye. */
+function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; scale: number; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
   const parts = useMemo(() => linkify(p.text), [p.text]);
-  const who: ReactNode = p.type === 'repost' && p.reposted_handle
-    ? <>@{p.handle} reposted <a className="underline" href={`https://x.com/${p.reposted_handle}`} target="_blank" rel="noreferrer">@{p.reposted_handle}</a></>
-    : <><span className="font-medium">{p.author_name || `@${p.handle}`}</span> <span className="text-slate-500 dark:text-slate-400">@{p.handle}</span></>;
+  const py = `${Math.round(10 * scale)}px`;
+  const small = `${Math.round(11 * scale)}px`;
+  const t = Date.parse(p.created_at);
+  const d = Number.isFinite(t) ? new Date(t) : null;
+  const date = d ? d.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }) : p.created_at || '—';
+  const time = d ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+  const media = new Map<string, number>();
+  p.media.forEach((m) => media.set(m.type, (media.get(m.type) || 0) + 1));
+  const context = p.type === 'repost' && p.reposted_handle ? `↻ repost of @${p.reposted_handle}` : p.type === 'reply' && p.in_reply_to_handle ? `↩ to @${p.in_reply_to_handle}` : p.type === 'quote' && p.quoted_id ? '❝ quotes a post' : '';
   return (
-    <li ref={sentinel} className={`card p-[1em] space-y-[.6em] animate-fade-in ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
-      <div className="flex flex-wrap items-center gap-[.6em] text-[.8em]">
-        <button type="button" className="ib" title={p.hidden ? 'Show this post again' : 'Hide this post (noise, not important)'} onClick={onToggleHidden}>{p.hidden ? '👁' : '🙈'}</button>
+    <tr ref={sentinel} className={`post transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/20 group ${p.hidden ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
+      <td className="px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap align-top" style={{ paddingTop: py, paddingBottom: py }} title={p.created_at}>
+        <span className="hidden 2xl:inline">{date}, {time}</span>
+        <span className="block 2xl:hidden leading-tight"><span className="block">{date}</span><span className="block">{time}</span></span>
+      </td>
+      <td className="px-4 whitespace-nowrap align-top" style={{ paddingTop: py, paddingBottom: py }}>
         <span className={`badge ${p.type}`}>{p.type}</span>
-        {p.is_pinned && <span className="badge pinned">pinned</span>}
-        <span className="text-[1.1em]">{who}</span>
-        {p.type === 'reply' && p.in_reply_to_handle && <span className="text-slate-500 dark:text-slate-400">replying to @{p.in_reply_to_handle}</span>}
-        <a className="ml-auto text-slate-500 dark:text-slate-400 underline" href={p.url} target="_blank" rel="noreferrer" title={p.created_at}>{fmtDate(p.created_at)}</a>
-      </div>
-      {p.text && (
-        <p className="post-text text-[1em] leading-snug">
+        {p.is_pinned && <span className="badge pinned ml-1">pinned</span>}
+        {media.size > 0 && (
+          <span className="media-badge block mt-1 text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>
+            {Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')}
+          </span>
+        )}
+      </td>
+      <td className="px-4 align-top" style={{ paddingTop: py, paddingBottom: py }}>
+        {(context || p.type === 'repost') && <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>{context}{p.type === 'repost' && p.author_name ? ` · ${p.author_name}` : ''}</div>}
+        <div className="post-text leading-snug">
           {parts.map((x, i) => (x.kind === 'link' ? <a key={i} href={x.value} target="_blank" rel="noreferrer">{x.value}</a> : <span key={i}>{x.value}</span>))}
-        </p>
-      )}
-      {p.media.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {p.media.map((m, i) => (m.type === 'photo'
-            ? <a key={i} href={m.url} target="_blank" rel="noreferrer"><img src={m.url} alt="" loading="lazy" className="thumb object-cover rounded-lg border border-slate-200 dark:border-slate-700" /></a>
-            : <a key={i} href={m.url} target="_blank" rel="noreferrer" className="btn sm">▶ {m.type}</a>))}
+          {!p.text && <span className="text-slate-400">(no text)</span>}
         </div>
-      )}
-      {p.quoted_id && <a className="text-[.8em] underline text-slate-500 dark:text-slate-400" href={`https://x.com/i/status/${p.quoted_id}`} target="_blank" rel="noreferrer">quoted post</a>}
-      <div className="flex flex-wrap gap-[.8em] text-[.8em] text-slate-500 dark:text-slate-400">
-        <span title="replies">💬 {formatCount(p.replies)}</span>
-        <span title="reposts">🔁 {formatCount(p.reposts)}</span>
-        <span title="likes">❤ {formatCount(p.likes)}</span>
-        {p.quotes > 0 && <span title="quotes">❝ {formatCount(p.quotes)}</span>}
-        {p.bookmarks > 0 && <span title="bookmarks">🔖 {formatCount(p.bookmarks)}</span>}
-        {p.views > 0 && <span title="views">👁 {formatCount(p.views)}</span>}
-        <a className="ml-auto underline" href={p.url} target="_blank" rel="noreferrer">Open on X</a>
-      </div>
-    </li>
+        {p.media.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-x-3 text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>
+            {p.media.map((m, i) => <a key={i} className="underline decoration-dotted" href={m.url} target="_blank" rel="noreferrer">{MEDIA_ICON[m.type] || m.type} {m.type} {i + 1}</a>)}
+          </div>
+        )}
+      </td>
+      <td className="px-4 whitespace-nowrap align-top text-slate-500 dark:text-slate-400 hidden lg:table-cell" style={{ paddingTop: py, paddingBottom: py, fontSize: small }}>
+        <span title="replies">💬 {formatCount(p.replies)}</span> <span title="reposts">🔁 {formatCount(p.reposts)}</span> <span title="likes">❤ {formatCount(p.likes)}</span>
+        {p.views > 0 && <> <span title="views">👁 {formatCount(p.views)}</span></>}
+        {p.bookmarks > 0 && <> <span title="bookmarks">🔖 {formatCount(p.bookmarks)}</span></>}
+      </td>
+      <td className="px-4 whitespace-nowrap align-top" style={{ paddingTop: py, paddingBottom: py }}>
+        <a className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline" href={p.url} target="_blank" rel="noreferrer">Open ↗</a>
+      </td>
+      <td className="px-4 whitespace-nowrap align-top text-right" style={{ paddingTop: py, paddingBottom: py }}>
+        <button type="button" className="ib" title={p.hidden ? 'Show this post again' : 'Hide this post (noise, not important)'} onClick={onToggleHidden}>{p.hidden ? '👁' : '🙈'}</button>
+      </td>
+    </tr>
   );
 }
 

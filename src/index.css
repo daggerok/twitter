@@ -94,9 +94,9 @@ input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-r
 .dark input[type=range].scale-slider{background:#334155}
 .dark input[type=range].scale-slider::-webkit-slider-thumb{background:#10b981}
 .dark input[type=range].scale-slider::-moz-range-thumb{background:#10b981}
-.feed .badge{font-size:.72em;padding:.2em .5em}
+.feed .badge{font-size:.75em;padding:.2em .55em;border-radius:.375rem;font-weight:700}
 .feed .ib{width:1.9em;height:1.9em;font-size:.8em}
-.feed img.thumb{height:7em;width:7em}
+.feed table td,.feed table th{vertical-align:top}
 .post-text{white-space:pre-wrap;overflow-wrap:anywhere}
 .post-text a{color:#047857;text-decoration:underline}
 .dark .post-text a{color:#34d399}
