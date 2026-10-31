@@ -105,6 +105,26 @@ input[type=range].scale-slider::-moz-range-thumb{width:14px;height:14px;border-r
 .filter-inp::placeholder{color:#94a3b8;font-weight:600}
 .dark .filter-inp{background:#0f172a;border-color:#334155;color:#e2e8f0}
 .ib.dd{height:1.6rem}
+/* lightbox: a click on a media badge opens the item full size, zooming in from the middle; Esc, ✕ or the backdrop close it */
+.lb{position:fixed;inset:0;z-index:2147483100;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,.82);animation:lbFade .18s ease-out;padding:16px}
+.lb.out{animation:lbFadeOut .18s ease-in forwards}
+.lb .lb-box{position:relative;max-width:min(96vw,1400px);max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:.5rem;animation:lbZoom .22s cubic-bezier(.2,.8,.2,1)}
+.lb.out .lb-box{animation:lbZoomOut .18s ease-in forwards}
+.lb img,.lb video{max-width:min(96vw,1400px);max-height:84vh;border-radius:.75rem;box-shadow:0 24px 80px rgba(0,0,0,.6);background:#000}
+.lb iframe{width:min(96vw,1120px);height:min(84vh,630px);border:0;border-radius:.75rem;background:#000;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.lb .lb-bar{display:flex;align-items:center;gap:.5rem;color:#e2e8f0;font-size:.75rem}
+.lb .lb-btn{cursor:pointer;border:1px solid rgba(255,255,255,.25);background:rgba(15,23,42,.7);color:#fff;border-radius:999px;width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;font-size:1rem}
+.lb .lb-btn:hover{background:rgba(30,41,59,.95)}
+.lb .lb-btn:disabled{opacity:.3;cursor:default}
+.lb .lb-x{position:absolute;top:-.5rem;right:-.5rem}
+@keyframes lbFade{from{opacity:0}to{opacity:1}}
+@keyframes lbFadeOut{from{opacity:1}to{opacity:0}}
+@keyframes lbZoom{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes lbZoomOut{from{transform:scale(1);opacity:1}to{transform:scale(.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.lb,.lb .lb-box,.lb.out,.lb.out .lb-box{animation:none}}
+.media-badge button{cursor:zoom-in;border:0;background:transparent;color:inherit;font:inherit;padding:0}
+.media-badge button:hover{color:#059669}
+.dark .media-badge button:hover{color:#34d399}
 .post-text{white-space:pre-wrap;overflow-wrap:anywhere}
 .post-text a{color:#047857;text-decoration:underline}
 .dark .post-text a{color:#34d399}

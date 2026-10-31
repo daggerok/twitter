@@ -18,7 +18,7 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type Rea
 import { createRoot } from 'react-dom/client';
 import { byNewest, mergePosts, sameHandle, type Media, type Post } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
-import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, type ColKey, type MediaKind, type TableState } from './filters';
+import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, youtubeId, youtubeLinks, type ColKey, type MediaKind, type TableState } from './filters';
 import { isDark, isNight, isThemeMode, nextMode, themeIcon, themeTitle, type ThemeMode } from './theme';
 import { fetchEmail, GoogleSession } from './gis';
 import type { GoogleCreds } from '../shared/post';
@@ -405,6 +405,7 @@ function App() {
   // ---- feed (column filters and sorting, the youtube table) ----
   const feed = useMemo(() => applyTable(posts, table, fmtDate), [posts, table]);
   const setFilter = (c: ColKey, v: string) => setTable((t) => ({ ...t, filters: { ...t.filters, [c]: v } }));
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [ddAt, setDdAt] = useState<{ x: number; y: number } | null>(null); // the media dropdown is fixed-positioned: the table wrapper would clip it
   const ddRef = useRef<HTMLDetailsElement>(null);
   // a click anywhere else, or Escape, closes the media dropdown
@@ -568,11 +569,11 @@ function App() {
               <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
                 <thead>
                   <tr className="text-slate-500 dark:text-slate-400">
-                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-44', 'post|reply, photo, video, gif, media, text only, pinned'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', 'part of the link, e.g. status/17 or x.com/name'], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
+                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-28', 'post|reply|repost|quote, pinned'], ['media', 'Media', 'w-44', 'photo, video, gif, youtube, media, text only'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', 'part of the link, e.g. status/17 or x.com/name'], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
                       const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
                       const active = col && table.sort.key === col;
                       return (
-                        <th key={key} className={`px-4 align-top sticky top-0 ${key === 'type' && ddAt ? 'z-30' : 'z-20'} bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(10 * scale)}px` }}>
+                        <th key={key} className={`px-4 align-top sticky top-0 ${key === 'media' && ddAt ? 'z-30' : 'z-20'} bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(10 * scale)}px` }}>
                           {col ? (
                             <button type="button" className={`flex items-center gap-1 font-semibold uppercase tracking-wider text-left transition-colors hover:text-emerald-500 ${active ? 'text-emerald-500' : ''}`} onClick={() => sortBy(col)} title={`Sort by ${label}`} data-sort={active ? table.sort.dir : 'none'}>
                               {label} <span className="text-[10px]">{active ? (table.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>
@@ -581,7 +582,7 @@ function App() {
                           {col && (
                             <div className="mt-1.5 flex items-center gap-1">
                               <input className="filter-inp" placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />
-                              {col === 'type' && (
+                              {col === 'media' && (
                                 <details ref={ddRef} className="setup inline-block ml-1 align-middle" data-media-dd onToggle={(e) => { const el = e.currentTarget; if (el.open) { const r = el.getBoundingClientRect(); setDdAt({ x: r.left, y: r.bottom + 4 }); } else setDdAt(null); }}>
                                   <summary className={`ib dd normal-case tracking-normal font-normal ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick what the post must have (Photo, Video, GIF, Media = any) or must not have (the ! twins); nothing ticked = every post">🖼{table.media.length ? ` ` : ''} ▾</summary>
                                   <div className="fixed z-50 card p-2 shadow-xl min-w-52 space-y-1 normal-case tracking-normal font-normal" style={{ left: ddAt?.x ?? 0, top: ddAt?.y ?? 0, fontSize: `${Math.round(12 * scale)}px` }}>
@@ -601,12 +602,12 @@ function App() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
                   {visible.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-xs text-slate-500 dark:text-slate-400" data-empty>
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-xs text-slate-500 dark:text-slate-400" data-empty>
                       {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : posts.length ? 'Nothing matches these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
                     </td></tr>
                   )}
                   {visible.map((p, i) => (
-                    <PostRow key={p.id} post={p} scale={scale} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
+                    <PostRow key={p.id} post={p} scale={scale} onOpenMedia={(items, index) => setLightbox({ items, index })} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
                   ))}
                 </tbody>
               </table>
@@ -617,6 +618,7 @@ function App() {
         </section>
       </div>
 
+      {lightbox && <Lightbox items={lightbox.items} index={lightbox.index} onIndex={(i) => setLightbox((l) => (l ? { ...l, index: i } : l))} onClose={() => setLightbox(null)} />}
       <footer className="flex h-4 shrink-0 items-center justify-center px-4 text-[10px] leading-none text-slate-500 dark:text-slate-400">
         <a className="transition-colors hover:text-slate-600 dark:hover:text-slate-200" href={REPO_URL} target="_blank" rel="noreferrer">daggerok &copy; {new Date().getFullYear()}</a>
       </footer>
@@ -724,6 +726,54 @@ function Settings(p: SettingsProps) {
 // ---- 4. Post card ------------------------------------------------------------------------------------
 
 const MEDIA_ICON: Record<string, string> = { photo: '📷', video: '🎬', gif: 'GIF' };
+const TYPE_HELP: Record<string, string> = {
+  post: 'post: the account wrote it',
+  reply: 'reply: an answer under someone else\'s post',
+  repost: 'repost: someone else\'s post shared as is (a retweet)',
+  quote: 'quote: someone else\'s post with the account\'s own words on top',
+};
+type LightboxItem = { kind: string; url: string };
+
+/** Full size of a photo (X serves the large variant with name=large). */
+const fullSize = (url: string): string => (/^https:\/\/pbs\.twimg\.com\/media\//.test(url) && !/[?&]name=/.test(url) ? `${url}${url.includes('?') ? '&' : '?'}name=large` : url);
+
+/** Modal with a zoom-in animation: a photo full size, an X video with controls, a gif looping, a YouTube link as the embedded player. */
+function Lightbox({ items, index, onIndex, onClose }: { items: LightboxItem[]; index: number; onIndex: (i: number) => void; onClose: () => void }) {
+  const [closing, setClosing] = useState(false);
+  const close = useCallback(() => { setClosing(true); window.setTimeout(onClose, 180); }, [onClose]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight' && index < items.length - 1) onIndex(index + 1);
+      else if (e.key === 'ArrowLeft' && index > 0) onIndex(index - 1);
+    };
+    document.addEventListener('keydown', key);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = prev; };
+  }, [close, index, items.length, onIndex]);
+  const it = items[index];
+  if (!it) return null;
+  const yt = it.kind === 'youtube' ? youtubeId(it.url) : null;
+  return (
+    <div className={`lb ${closing ? 'out' : ''}`} onClick={close} data-lightbox={it.kind}>
+      <div className="lb-box" onClick={(e) => e.stopPropagation()}>
+        {it.kind === 'photo' && <img src={fullSize(it.url)} alt="" />}
+        {it.kind === 'video' && <video src={it.url} controls autoPlay playsInline />}
+        {it.kind === 'gif' && <video src={it.url} autoPlay loop muted playsInline />}
+        {yt && <iframe src={`https://www.youtube-nocookie.com/embed/${yt}?autoplay=1`} title="YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />}
+        {it.kind === 'youtube' && !yt && <a className="text-emerald-400 underline" href={it.url} target="_blank" rel="noreferrer">{it.url}</a>}
+        <div className="lb-bar">
+          <button type="button" className="lb-btn" onClick={() => onIndex(index - 1)} disabled={index <= 0} title="Previous (←)">‹</button>
+          <span>{index + 1} / {items.length} · {it.kind}</span>
+          <button type="button" className="lb-btn" onClick={() => onIndex(index + 1)} disabled={index >= items.length - 1} title="Next (→)">›</button>
+          <a className="lb-btn" href={it.url} target="_blank" rel="noreferrer" title="Open the file in a new tab">↗</a>
+        </div>
+        <button type="button" className="lb-btn lb-x" onClick={close} title="Close (Esc)">✕</button>
+      </div>
+    </div>
+  );
+}
 const PREVIEW_DELAY_MS = 1000;
 
 /** Inline photos, videos and gifs of a post (the media column when 🖼 media is on, and the hover preview). */
@@ -755,7 +805,7 @@ function useHoverPreview() {
 }
 
 /** One post as a table row, the youtube inventory look: date, type, text, stats, Open, the crossed eye. */
-function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; scale: number; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
+function PostRow({ post: p, scale, onOpenMedia, onToggleHidden, sentinel }: { post: Post; scale: number; onOpenMedia: (items: LightboxItem[], index: number) => void; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
   const parts = useMemo(() => linkify(p.text), [p.text]);
   const preview = useHoverPreview();
   const py = `${Math.round(10 * scale)}px`;
@@ -766,6 +816,9 @@ function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; sca
   const time = d ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
   const media = new Map<string, number>();
   p.media.forEach((m) => media.set(m.type, (media.get(m.type) || 0) + 1));
+  const yt = youtubeLinks(p);
+  const items: LightboxItem[] = [...p.media.map((m) => ({ kind: m.type, url: m.url })), ...yt.map((url) => ({ kind: 'youtube' as const, url }))];
+  const firstOf = (kind: string) => Math.max(0, items.findIndex((it) => it.kind === kind));
   // nothing to read (media only): the row is dimmed like a hidden one, the media badge says what is there, a second on it previews
   const mediaOnly = !p.text && p.media.length > 0;
   const dim = p.hidden || mediaOnly;
@@ -778,25 +831,28 @@ function PostRow({ post: p, scale, onToggleHidden, sentinel }: { post: Post; sca
         <span className="block 2xl:hidden leading-tight"><span className="block">{date}</span><span className="block">{time}</span></span>
       </td>
       <td className="px-4 whitespace-nowrap align-top" style={{ paddingTop: py, paddingBottom: py }}>
-        <span className={`badge ${p.type}`}>{p.type}</span>
-        {p.is_pinned && <span className="badge pinned ml-1">pinned</span>}
-        {media.size > 0 && (
-          <span className="media-badge ml-1 text-slate-500 dark:text-slate-400 cursor-help" style={{ fontSize: small }} onMouseEnter={preview.enter} onMouseLeave={preview.leave} title="Rest the mouse here a second for a preview">
-            {Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')}
+        <span className={`badge ${p.type}`} title={TYPE_HELP[p.type]}>{p.type}</span>
+        {p.is_pinned && <span className="badge pinned ml-1" title="Pinned to the top of the profile">pinned</span>}
+      </td>
+      <td className="px-4 whitespace-nowrap align-top" style={{ paddingTop: py, paddingBottom: py }}>
+        {items.length > 0 ? (
+          <span className="media-badge text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-2" style={{ fontSize: small }} onMouseEnter={preview.enter} onMouseLeave={preview.leave} title="Click to open full size; rest the mouse a second for a preview">
+            {Array.from(media.entries()).map(([k, n]) => <button key={k} type="button" onClick={() => onOpenMedia(items, firstOf(k))} data-open-media={k}>{MEDIA_ICON[k] || k}{n > 1 ? ` ×${n}` : ''}</button>)}
+            {yt.length > 0 && <button type="button" onClick={() => onOpenMedia(items, firstOf('youtube'))} data-open-media="youtube">▶ YouTube{yt.length > 1 ? ` ×${yt.length}` : ''}</button>}
           </span>
+        ) : <span className="text-slate-300 dark:text-slate-600" style={{ fontSize: small }}>—</span>}
+        {preview.at && p.media.length > 0 && (
+          <div className="media-preview fixed z-[2147483000] card p-2 shadow-2xl" style={{ left: Math.min(preview.at.x + 16, window.innerWidth - 380), top: Math.min(preview.at.y + 16, window.innerHeight - 300), width: 360, maxWidth: 'calc(100vw - 32px)' }} onMouseLeave={preview.leave}>
+            <MediaInline media={p.media} scale={Math.min(scale, 1)} className="" />
+          </div>
         )}
       </td>
       <td className="px-4 align-top" style={{ paddingTop: py, paddingBottom: py }}>
         {(context || p.type === 'repost') && <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>{context}{p.type === 'repost' && p.author_name ? ` · ${p.author_name}` : ''}</div>}
         <div className="post-text leading-snug">
           {parts.map((x, i) => (x.kind === 'link' ? <a key={i} href={x.value} target="_blank" rel="noreferrer">{x.value}</a> : <span key={i}>{x.value}</span>))}
-          {!p.text && <span className="text-slate-400 cursor-help" onMouseEnter={mediaOnly ? preview.enter : undefined} onMouseLeave={preview.leave}>{mediaOnly ? `(media only: ${Array.from(media.entries()).map(([k, n]) => `${MEDIA_ICON[k] || k}${n > 1 ? ` ×${n}` : ''}`).join(' ')})` : '(no text)'}</span>}
+          {!p.text && <span className="text-slate-400 cursor-help" onMouseEnter={mediaOnly ? preview.enter : undefined} onMouseLeave={preview.leave}>{mediaOnly ? '(media only, see the Media column)' : '(no text)'}</span>}
         </div>
-        {preview.at && p.media.length > 0 && (
-          <div className="media-preview fixed z-[2147483000] card p-2 shadow-2xl" style={{ left: Math.min(preview.at.x + 16, window.innerWidth - 380), top: Math.min(preview.at.y + 16, window.innerHeight - 300), width: 360, maxWidth: 'calc(100vw - 32px)' }} onMouseLeave={preview.leave}>
-            <MediaInline media={p.media} scale={Math.min(scale, 1)} className="" />
-          </div>
-        )}
       </td>
       <td className="px-4 whitespace-nowrap align-top text-slate-500 dark:text-slate-400 hidden lg:table-cell" style={{ paddingTop: py, paddingBottom: py, fontSize: small }}>
         <span title="replies">💬 {formatCount(p.replies)}</span> <span title="reposts">🔁 {formatCount(p.reposts)}</span> <span title="likes">❤ {formatCount(p.likes)}</span>

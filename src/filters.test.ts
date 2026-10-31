@@ -2,7 +2,7 @@
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
 import { samplePost } from '../shared/post.test';
-import { applyTable, columnText, EMPTY_TABLE, formatCount, hasFilters, linkify, matchFilter, postsFromJson, toCsv } from './filters';
+import { applyTable, columnText, EMPTY_TABLE, formatCount, hasFilters, linkify, matchFilter, postsFromJson, toCsv, youtubeId } from './filters';
 
 const fmt = (iso: string) => iso.slice(0, 16).replace('T', ', ');
 const posts = [
@@ -32,8 +32,9 @@ describe('applyTable', () => {
   });
   test('column filters: type, media words, post text, hidden, datetime', () => {
     expect(applyTable(posts, withFilter('type', 'reply|quote'), fmt).map((p) => p.id)).toEqual(['2', '1']);
-    expect(applyTable(posts, withFilter('type', 'photo'), fmt).map((p) => p.id)).toEqual(['2']);
-    expect(applyTable(posts, withFilter('type', 'text only'), fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable(posts, withFilter('media', 'photo'), fmt).map((p) => p.id)).toEqual(['2']);
+    expect(applyTable(posts, withFilter('media', 'text only'), fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable([samplePost({ id: '9', links: ['https://youtu.be/dQw4w9WgXcQ'] })], withFilter('media', 'youtube'), fmt).map((p) => p.id)).toEqual(['9']);
     expect(applyTable(posts, withFilter('post', 'hello*world'), fmt).map((p) => p.id)).toEqual(['3']);
     expect(applyTable(posts, withFilter('post', '@someone'), fmt).map((p) => p.id)).toEqual(['2']);
     expect(applyTable(posts, withFilter('hidden', 'hidden'), fmt).map((p) => p.id)).toEqual(['1']);
@@ -65,8 +66,16 @@ describe('applyTable', () => {
     expect(hasFilters(EMPTY_TABLE)).toBe(false);
     expect(hasFilters(withFilter('post', 'x'))).toBe(true);
   });
-  test('columnText of the type column names pinned and the media', () => {
-    expect(columnText(samplePost({ is_pinned: true, media: [{ type: 'video', url: 'v' }, { type: 'gif', url: 'g' }] }), 'type', fmt)).toBe('post pinned 🎬 video gif media');
+  test('columnText: type names pinned, media names the kinds and youtube', () => {
+    const p = samplePost({ is_pinned: true, media: [{ type: 'video', url: 'v' }, { type: 'gif', url: 'g' }], links: ['https://www.youtube.com/watch?v=dQw4w9WgXcQ'] });
+    expect(columnText(p, 'type', fmt)).toBe('post pinned');
+    expect(columnText(p, 'media', fmt)).toBe('🎬 video gif ▶ youtube media');
+  });
+  test('youtubeId', () => {
+    expect(youtubeId('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1')).toBe('dQw4w9WgXcQ');
+    expect(youtubeId('https://youtu.be/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+    expect(youtubeId('https://youtube.com/shorts/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+    expect(youtubeId('https://example.com/watch?v=dQw4w9WgXcQ')).toBeNull();
   });
 });
 
