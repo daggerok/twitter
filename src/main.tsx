@@ -453,10 +453,10 @@ function App() {
               </button>
               <button className="tb blue font-bold" title="Update: sync the new posts of this profile (opens x.com)" onClick={() => openSync('incremental')} disabled={!current.trim()}>⬇</button>
               <button className="tb" title="Full refresh: sync the whole visible timeline again (opens x.com)" onClick={() => openSync('full')} disabled={!current.trim()}>🔄</button>
-              {cfg.clientId && (connected
-                ? <button className="tb rose" title="Disconnect Google" onClick={disconnect} disabled={isBusy}>🔌</button>
-                : <button className="tb blue" title="Connect Google Sheets" onClick={() => { void connect(true); }} disabled={isBusy}>☁️</button>)}
-              {connected && sid && <button className="tb green" title="Ensure the tab and reload the posts from Google Sheets" onClick={() => { void load(); }} disabled={isBusy || !current.trim()}>↻</button>}
+              {/* every button is always there (no toolbar jumps): disabled when it makes no sense right now */}
+              <button className="tb blue" title={cfg.clientId ? (connected ? 'Google Sheets connected' : 'Connect Google Sheets') : 'Connect Google Sheets (paste the Client ID in Settings first)'} onClick={() => { void connect(true); }} disabled={isBusy || connected || !cfg.clientId}>☁️</button>
+              <button className="tb rose" title={connected ? 'Disconnect Google' : 'Disconnect Google (not connected)'} onClick={disconnect} disabled={isBusy || !connected}>🔌</button>
+              <button className="tb green" title={connected && sid ? 'Ensure the tab and reload the posts from Google Sheets' : 'Ensure the tab and reload the posts from Google Sheets (connect Google and set the spreadsheet first)'} onClick={() => { void load(); }} disabled={isBusy || !connected || !sid || !current.trim()}>↻</button>
               <button className="tb green flex-col leading-none" title="Export CSV of the filtered feed" onClick={exportCsv} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">CSV</span></button>
               <button className="tb green flex-col leading-none" title="Export JSON of the filtered feed" onClick={exportJson} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">JSON</span></button>
               <button className="tb" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((d) => !d)}>{dark ? '☀' : '🌙'}</button>
