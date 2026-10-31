@@ -18,7 +18,7 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type Rea
 import { createRoot } from 'react-dom/client';
 import { byNewest, mergePosts, type Media, type Post, type PostType, POST_TYPES } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
-import { applyFilters, EMPTY_FILTERS, formatCount, linkify, postsFromJson, toCsv, type Filters, type SortKey } from './filters';
+import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, type ColKey, type MediaKind, type TableState } from './filters';
 import { fetchEmail, GoogleSession } from './gis';
 import type { GoogleCreds } from '../shared/post';
 import { maskEmail, maskId, maskSpreadsheetUrl } from './mask';
@@ -98,7 +98,14 @@ function App() {
   const [handle, setHandle] = useState(() => cleanHandle(lsGet(CURRENT_KEY) || ''));
   const [posts, setPosts] = useState<Post[]>(() => loadCachedPosts(cleanHandle(lsGet(CURRENT_KEY) || '')));
   const [fromSheet, setFromSheet] = useState(false);
-  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...lsJson<Partial<Filters>>(FILTERS_KEY, {}), handles: [] }));
+  const [table, setTable] = useState<TableState>(() => {
+    const t = lsJson<Partial<TableState>>(FILTERS_KEY, {});
+    const filters = { ...EMPTY_TABLE.filters };
+    COLS.forEach((c) => { const v = t.filters && typeof t.filters[c] === 'string' ? t.filters[c] : ''; filters[c] = v; });
+    const sort = t.sort && COLS.includes(t.sort.key) && (t.sort.dir === 'asc' || t.sort.dir === 'desc') ? t.sort : EMPTY_TABLE.sort;
+    const media = Array.isArray(t.media) ? t.media.filter((k): k is MediaKind => MEDIA_KINDS.some((m) => m.key === k)) : [];
+    return { filters, sort, media };
+  });
   const [shown, setShown] = useState(PAGE_SIZE);
   const [scaleSlider, setScaleSlider] = useState(() => { const n = Number(lsGet(SCALE_KEY)); return Number.isFinite(n) && lsGet(SCALE_KEY) !== null ? Math.min(100, Math.max(0, n)) : DEFAULT_SCALE_SLIDER; });
   const scale = sliderToScale(scaleSlider);
@@ -132,7 +139,7 @@ function App() {
   useEffect(() => { lsSet(CURRENT_KEY, current); }, [current]);
   useEffect(() => { lsSet(SCALE_KEY, String(scaleSlider)); }, [scaleSlider]);
   useEffect(() => { lsSet(MEDIA_KEY, showMedia ? 'on' : 'off'); }, [showMedia]);
-  useEffect(() => { lsSet(FILTERS_KEY, JSON.stringify(filters)); setShown(PAGE_SIZE); }, [filters]);
+  useEffect(() => { lsSet(FILTERS_KEY, JSON.stringify(table)); setShown(PAGE_SIZE); }, [table]);
 
   const sid = spreadsheetId(cfg.spreadsheetId);
   const isBusy = !!busy;
@@ -392,9 +399,11 @@ function App() {
     if (ok) say(`${next.hidden ? '🙈 Hidden' : '👁 Visible again'}: ${post.url}`);
   }, [posts, connected, sid, withSheet, say]);
 
-  // ---- feed ----
-  const hiddenCount = useMemo(() => posts.filter((p) => p.hidden).length, [posts]);
-  const feed = useMemo(() => applyFilters(posts, filters), [posts, filters]);
+  // ---- feed (column filters and sorting, the youtube table) ----
+  const feed = useMemo(() => applyTable(posts, table, fmtDate), [posts, table]);
+  const setFilter = (c: ColKey, v: string) => setTable((t) => ({ ...t, filters: { ...t.filters, [c]: v } }));
+  const toggleMedia = (k: MediaKind) => setTable((t) => ({ ...t, media: t.media.includes(k) ? t.media.filter((x) => x !== k) : [...t.media, k] }));
+  const sortBy = (c: ColKey) => setTable((t) => ({ ...t, sort: { key: c, dir: t.sort.key === c && t.sort.dir === 'desc' ? 'asc' : 'desc' } }));
   const visible = feed.slice(0, shown);
   // infinite scroll: the next 50 cards mount when the middle of the last page comes near the viewport, so the end is never reached
   const sentinelAt = Math.max(0, visible.length - Math.ceil(PAGE_SIZE / 2)) - 1;
@@ -407,11 +416,9 @@ function App() {
     io.observe(el);
     return () => io.disconnect();
   }, [feed.length, shown]);
-  const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
   const lastRun = runs.filter((r) => r.handle === handle).sort((a, b) => (a.finished_at < b.finished_at ? 1 : -1))[0];
   const exportCsv = () => download(`x-${handle || 'feed'}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(feed), 'text/csv');
   const exportJson = () => download(`x-${handle || 'feed'}-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ posts: feed }, null, 2), 'application/json');
-  const filtersOn = JSON.stringify({ ...filters, handles: [] }) !== JSON.stringify(EMPTY_FILTERS);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -438,7 +445,8 @@ function App() {
                 ? <button className="tb rose" title="Disconnect Google" onClick={disconnect} disabled={isBusy}>🔌</button>
                 : <button className="tb blue" title="Connect Google Sheets" onClick={() => { void connect(true); }} disabled={isBusy}>☁️</button>)}
               {connected && sid && <button className="tb green" title="Ensure the tab and reload the posts from Google Sheets" onClick={() => { void load(); }} disabled={isBusy || !current.trim()}>↻</button>}
-              <button className="tb green" title="Export CSV" onClick={exportCsv} disabled={!feed.length}>📥</button>
+              <button className="tb green flex-col leading-none" title="Export CSV of the filtered feed" onClick={exportCsv} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">CSV</span></button>
+              <button className="tb green flex-col leading-none" title="Export JSON of the filtered feed" onClick={exportJson} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">{'{}'}</span></button>
               <button className="tb" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((d) => !d)}>{dark ? '☀' : '🌙'}</button>
             </div>
           </div>
@@ -499,7 +507,7 @@ function App() {
             <Settings
               cfg={cfg} setCfg={setCfg} connected={connected} email={email || cfg.lastAccountEmail} busy={isBusy} sheetTitle={sheetTitle} handle={handle}
               onClose={() => setShowSettings(false)} onConnect={() => { void connect(true); }} onDisconnect={disconnect}
-              onCreate={() => { void createSheet(); }} onList={() => { void listSheet(); }} onImport={() => fileInput.current?.click()}
+              onCreate={() => { void createSheet(); }} onList={() => { void listSheet(); }} onImport={() => fileInput.current?.click()} onExport={exportJson}
             />
             <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = ''; }} />
           </div>
@@ -529,45 +537,54 @@ function App() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
-              <input type="range" min="0" max="100" value={scaleSlider} onChange={(e) => setScaleSlider(Number(e.target.value))} className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`} />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">A</span>
+            <div className="flex items-center gap-3 flex-shrink-0">
               <button className={`btn sm ${showMedia ? 'active' : ''}`} title={showMedia ? 'Showing photos, videos and gifs inline; press for text only' : 'Text only; press to show photos, videos and gifs inline. Posts without text are dimmed meanwhile'} onClick={() => setShowMedia((m) => !m)} data-media={showMedia ? 'on' : 'off'}>🖼 media</button>
-              <button className="btn sm" onClick={exportCsv} disabled={!feed.length}>CSV</button>
-              <button className="btn sm" onClick={exportJson} disabled={!feed.length}>JSON</button>
-              <button className="btn sm" onClick={() => setFilters({ ...EMPTY_FILTERS })} disabled={!filtersOn}>Clear filters</button>
+              <span className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
+                <input type="range" min="0" max="100" value={scaleSlider} onChange={(e) => setScaleSlider(Number(e.target.value))} className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`} />
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">A</span>
+              </span>
             </div>
           </div>
           <div className="p-4 space-y-4">
-          <div className="flex flex-wrap gap-2 items-center">
-            <input className="inp max-w-xs" placeholder="Search text, author, link" value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} />
-            {POST_TYPES.map((t: PostType) => (
-              <button key={t} className={`btn sm ${filters.types.includes(t) ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, types: toggleIn(f.types, t) as PostType[] }))}>{t}</button>
-            ))}
-            <button className={`btn sm ${filters.hasMedia ? 'active' : ''}`} onClick={() => setFilters((f) => ({ ...f, hasMedia: !f.hasMedia }))}>has media</button>
-            <button className={`btn sm ${filters.showHidden ? 'active' : ''}`} title="Posts you hid with the crossed eye; press to see them and bring them back" onClick={() => setFilters((f) => ({ ...f, showHidden: !f.showHidden }))} disabled={!hiddenCount && !filters.showHidden}>🙈 hidden {hiddenCount}</button>
-            <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">from <input className="inp" type="date" value={filters.from} onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} /></label>
-            <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">to <input className="inp" type="date" value={filters.to} onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} /></label>
-            <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">sort
-              <select className="inp" value={filters.sort} onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value as SortKey }))}>
-                <option value="date">date</option><option value="likes">likes</option><option value="views">views</option><option value="reposts">reposts</option><option value="replies">replies</option>
-              </select>
-            </label>
-          </div>
+          {hasFilters(table) && <div className="text-right"><button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [] }))}>Clear filters</button></div>}
           {visible.length === 0 && (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : filters.showHidden ? 'No hidden posts.' : posts.length ? 'Nothing to show with these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
+              {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : posts.length ? 'Nothing matches these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
             </p>
           )}
-          {visible.length > 0 && (
+          {posts.length > 0 && (
             <div className="overflow-x-auto themed-scroll -mx-4">
               <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
                 <thead>
                   <tr className="text-slate-500 dark:text-slate-400">
-                    {[['Datetime', 'w-44'], ['Type', 'w-28'], ['Post', ''], ['Stats', 'w-44 hidden lg:table-cell'], ['URL', 'w-24'], ['', 'w-14']].map(([label, w]) => (
-                      <th key={label || 'hide'} className={`px-4 align-top font-semibold uppercase tracking-wider ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(10 * scale)}px` }}>{label}</th>
-                    ))}
+                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-32', 'post|reply, photo, video, gif, media, text only, pinned'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', ''], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
+                      const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
+                      const active = col && table.sort.key === col;
+                      return (
+                        <th key={key} className={`px-4 align-top ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(6 * scale)}px` }}>
+                          {col ? (
+                            <button type="button" className={`flex items-center gap-1 font-semibold uppercase tracking-wider text-left transition-colors hover:text-emerald-500 ${active ? 'text-emerald-500' : ''}`} onClick={() => sortBy(col)} title={`Sort by ${label}`} data-sort={active ? table.sort.dir : 'none'}>
+                              {label} <span className="text-[10px]">{active ? (table.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>
+                            </button>
+                          ) : <span className="font-semibold uppercase tracking-wider">{label}</span>}
+                          {col === 'type' && (
+                            <details className="setup relative inline-block ml-1 align-middle" data-media-dd>
+                              <summary className={`ib dd normal-case tracking-normal font-normal ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick the kinds to show, none ticked = every post">🖼 {table.media.length ? MEDIA_KINDS.filter((m) => table.media.includes(m.key)).map((m) => m.label.split(' ')[0]).join(' ') : 'all'} ▾</summary>
+                              <div className="absolute left-0 z-40 mt-1 card p-2 shadow-xl min-w-44 space-y-1 normal-case tracking-normal font-normal" style={{ fontSize: `${Math.round(12 * scale)}px` }}>
+                                {MEDIA_KINDS.map((m) => (
+                                  <label key={m.key} className="flex items-center gap-2 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={table.media.includes(m.key)} onChange={() => toggleMedia(m.key)} data-media-kind={m.key} /> {m.label}</label>
+                                ))}
+                                <button type="button" className="btn sm w-full justify-center" onClick={() => setTable((t) => ({ ...t, media: [] }))} disabled={!table.media.length}>All</button>
+                              </div>
+                            </details>
+                          )}
+                          {col && (
+                            <input className="inp mt-1 px-2 py-1 text-[10px] font-normal normal-case tracking-normal min-h-0" style={{ fontSize: `${Math.round(10 * scale)}px` }} placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />
+                          )}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
@@ -594,7 +611,7 @@ function App() {
 
 type SettingsProps = {
   cfg: Config; setCfg: (f: (c: Config) => Config) => void; connected: boolean; email: string; busy: boolean; sheetTitle: string; handle: string;
-  onClose: () => void; onConnect: () => void; onDisconnect: () => void; onCreate: () => void; onList: () => void; onImport: () => void;
+  onClose: () => void; onConnect: () => void; onDisconnect: () => void; onCreate: () => void; onList: () => void; onImport: () => void; onExport: () => void;
 };
 
 function MaskedField(p: { label: string; value: string; mask: (v: string) => string; placeholder: string; onChange: (v: string) => void; hint?: string }) {
@@ -735,9 +752,10 @@ function PostRow({ post: p, scale, showMedia, onToggleHidden, sentinel }: { post
   // media off and nothing to read: the row is dimmed like a hidden one, the media badge says what is there
   const mediaOnly = !p.text && p.media.length > 0;
   const dim = p.hidden || (mediaOnly && !showMedia);
+  const rowClass = p.hidden ? 'opacity-40' : dim ? 'opacity-60' : '';
   const context = p.type === 'repost' && p.reposted_handle ? `↻ repost of @${p.reposted_handle}` : p.type === 'reply' && p.in_reply_to_handle ? `↩ to @${p.in_reply_to_handle}` : p.type === 'quote' && p.quoted_id ? '❝ quotes a post' : '';
   return (
-    <tr ref={sentinel} className={`post transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/20 group ${dim ? 'opacity-60' : ''}`} data-hidden={p.hidden ? '1' : '0'} data-dim={dim ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
+    <tr ref={sentinel} className={`post transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/20 group ${rowClass}`} data-hidden={p.hidden ? '1' : '0'} data-dim={dim ? '1' : '0'} data-sentinel={sentinel ? '1' : undefined}>
       <td className="px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap align-top" style={{ paddingTop: py, paddingBottom: py }} title={p.created_at}>
         <span className="hidden 2xl:inline">{date}, {time}</span>
         <span className="block 2xl:hidden leading-tight"><span className="block">{date}</span><span className="block">{time}</span></span>
