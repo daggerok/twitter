@@ -48,12 +48,12 @@ Settings of a run (badge ⚙ or the Tampermonkey menu): max posts (2000), max mi
 
 ## Viewer
 
-The shell is the daggerok/youtube one: a sticky toolbar with the 𝕏 mark, the handle field (Enter or ➕ adds the account) and borderless icon buttons: ⚙️ Setup (slides open and closed), two status dots (green = userscript installed in this browser, blue = Google connected; the button opens the log), ☁️ Connect Google or 🔌 Disconnect, ↻ find the `X-<handle>` tabs of the sheet and reload every account, 📥 CSV of the filtered feed, 📄 Import JSON, 🌙 or ☀ theme. Client ID, spreadsheet url and the connected email are masked with dots, 👁 shows and 📋 copies them
+The shell is the daggerok/youtube one, one account at a time: the field holds the profile link or handle (Enter shows what the sheet already has for it) and the toolbar is ⚙️ Setup (slides open and closed), two status dots (green = userscript installed in this browser, blue = Google Sheets connected; the button opens the debug console), ⬇ Update (sync the new posts, opens x.com), 🔄 Full refresh (the whole visible timeline again, counts refreshed), ☁️ Connect Google or 🔌 Disconnect, ↻ reload the tab from the sheet, 📥 CSV, 🌙 or ☀ theme. Client ID, spreadsheet url and the connected email are masked with dots, 👁 shows and 📋 copies them; Import JSON, Create new spreadsheet, Attach / list tabs and the "sync replies too" switch sit in Setup
 
-- Accounts: ⬇ Sync new (incremental, stops at the newest stored post), 🔄 Full sync (the whole visible timeline again, counts refreshed), ↻ Reload (read the tab), ↗ Open on X, ✕ Remove (the list only), 🗑 Delete tab (the spreadsheet too)
-- Feed: filter by account (click the handle), type (post, reply, repost, quote), has media, date range, text search (every word must match text, author, handle or links), sort by date, likes, views, reposts or replies; 50 cards at a time; CSV and JSON of the filtered view
-- 📄 Import JSON: the file the badge's JSON button downloads on x.com
-- Light and dark theme, mobile layout; the config, the account list and a copy of the posts stay in localStorage (every access in try/catch), the Google token only in memory
+- Another account: type its link or handle in the field and press ⬇ (or Enter for the stored posts); every account keeps its own `X-<handle>` tab, the feed shows the one in the field
+- Feed: filter by type (post, reply, repost, quote), has media, date range, text search (every word must match text, author, handle or links), sort by date, likes, views, reposts or replies; 50 cards at a time; CSV and JSON of the filtered view
+- Import JSON (Setup): the file the badge's JSON button downloads on x.com
+- Light and dark theme, mobile layout; the config, the current account and a copy of the posts stay in localStorage (every access in try/catch), the Google token only in memory
 
 ## Sheet columns
 

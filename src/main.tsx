@@ -28,8 +28,8 @@ import { createSpreadsheet, deleteTab, ensureTab, handleOfTab, listTabs, readPos
 const PREFIX = 'twitter';
 const THEME_KEY = `${PREFIX}-theme`;
 const CONFIG_KEY = `${PREFIX}-gs-config`;
-const ACCOUNTS_KEY = `${PREFIX}-accounts`;
 const FILTERS_KEY = `${PREFIX}-filters`;
+const CURRENT_KEY = `${PREFIX}-current`;
 const postsKey = (handle: string) => `${PREFIX}-posts-${handle}`;
 const PAGE_SIZE = 50;
 const USERSCRIPT_URL = './x-sync.user.js';
@@ -52,7 +52,6 @@ function lsJson<T>(key: string, fallback: T): T {
 }
 
 const loadConfig = (): Config => ({ ...EMPTY_CONFIG, ...lsJson<Partial<Config>>(CONFIG_KEY, {}) });
-const loadAccounts = (): string[] => lsJson<unknown[]>(ACCOUNTS_KEY, []).filter((h): h is string => typeof h === 'string');
 const loadCachedPosts = (handle: string): Post[] => lsJson<Post[]>(postsKey(handle), []);
 const cachePosts = (handle: string, posts: Post[]): void => lsSet(postsKey(handle), JSON.stringify(posts));
 
@@ -81,9 +80,8 @@ async function copyText(text: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
-// ---- 2. App ------------------------------------------------------------------------------------------
+// ---- 2. App (one account at a time, like one channel in youtube) --------------------------------------
 
-type AccountState = { posts: Post[]; loadedFromSheet: boolean };
 type LogLine = { ts: string; msg: string };
 
 function App() {
@@ -91,13 +89,11 @@ function App() {
   const [cfg, setCfg] = useState<Config>(loadConfig);
   const [showSettings, setShowSettings] = useState(() => !loadConfig().clientId);
   const [showLog, setShowLog] = useState(false);
-  const [accounts, setAccounts] = useState<string[]>(loadAccounts);
-  const [data, setData] = useState<Record<string, AccountState>>(() => {
-    const out: Record<string, AccountState> = {};
-    loadAccounts().forEach((h) => { out[h] = { posts: loadCachedPosts(h), loadedFromSheet: false }; });
-    return out;
-  });
-  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...lsJson<Partial<Filters>>(FILTERS_KEY, {}) }));
+  const [current, setCurrent] = useState(() => lsGet(CURRENT_KEY) || '');
+  const [handle, setHandle] = useState(() => cleanHandle(lsGet(CURRENT_KEY) || ''));
+  const [posts, setPosts] = useState<Post[]>(() => loadCachedPosts(cleanHandle(lsGet(CURRENT_KEY) || '')));
+  const [fromSheet, setFromSheet] = useState(false);
+  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...lsJson<Partial<Filters>>(FILTERS_KEY, {}), handles: [] }));
   const [shown, setShown] = useState(PAGE_SIZE);
   const [email, setEmail] = useState('');
   const [connected, setConnected] = useState(false);
@@ -108,10 +104,11 @@ function App() {
   const [outbox, setOutbox] = useState<Batch[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [runStatus, setRunStatus] = useState<Status>(null);
-  const [newHandle, setNewHandle] = useState('');
   const [sheetTitle, setSheetTitle] = useState('');
   const cfgRef = useRef(cfg);
   cfgRef.current = cfg;
+  const handleRef = useRef(handle);
+  handleRef.current = handle;
   const session = useRef(new GoogleSession(() => cfgRef.current.clientId));
   const storing = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -122,10 +119,11 @@ function App() {
 
   useEffect(() => { lsSet(THEME_KEY, dark ? 'dark' : 'light'); document.documentElement.classList.toggle('dark', dark); document.documentElement.style.backgroundColor = dark ? '#020617' : '#f8fafc'; }, [dark]);
   useEffect(() => { lsSet(CONFIG_KEY, JSON.stringify(cfg)); }, [cfg]);
-  useEffect(() => { lsSet(ACCOUNTS_KEY, JSON.stringify(accounts)); }, [accounts]);
+  useEffect(() => { lsSet(CURRENT_KEY, current); }, [current]);
   useEffect(() => { lsSet(FILTERS_KEY, JSON.stringify(filters)); setShown(PAGE_SIZE); }, [filters]);
 
   const sid = spreadsheetId(cfg.spreadsheetId);
+  const isBusy = !!busy;
 
   // ---- Google ----
   const connect = useCallback(async (interactive: boolean) => {
@@ -167,7 +165,7 @@ function App() {
 
   const withSheet = useCallback(async <T,>(label: string, op: (token: string, id: string) => Promise<T>): Promise<T | null> => {
     const id = spreadsheetId(cfgRef.current.spreadsheetId);
-    if (!id) { setError('Paste the spreadsheet url in Settings first'); setShowSettings(true); return null; }
+    if (!id) { setError('Paste the spreadsheet url in Setup first'); setShowSettings(true); return null; }
     setBusy(label);
     try {
       const r = await session.current.run((token) => op(token, id));
@@ -183,28 +181,50 @@ function App() {
     }
   }, [say]);
 
-  const setAccountPosts = useCallback((handle: string, posts: Post[], fromSheet: boolean) => {
-    setData((d) => ({ ...d, [handle]: { posts, loadedFromSheet: fromSheet || (d[handle]?.loadedFromSheet ?? false) } }));
-    cachePosts(handle, posts);
-    sendMeta(handle, newestIdOf(posts), posts.length);
+  /** Posts of an account after a read or a write: cached, shown when it is the current one, newest id to the userscript. */
+  const publish = useCallback((h: string, list: Post[], sheet: boolean) => {
+    cachePosts(h, list);
+    sendMeta(h, newestIdOf(list), list.length);
+    if (h === handleRef.current) { setPosts(list); setFromSheet(sheet); }
   }, []);
 
-  const loadAccount = useCallback(async (handle: string, quiet = false) => {
-    const posts = await withSheet(`Loading @${handle}`, async (token, id) => {
-      await ensureTab(token, id, tabOf(handle));
-      return readPosts(token, id, tabOf(handle));
-    });
-    if (posts) {
-      setAccountPosts(handle, posts, true);
-      if (!quiet) say(`☁️ Loaded ${posts.length} posts of @${handle} from tab ${tabOf(handle)}`);
+  /** The handle in the toolbar field; an invalid one shows an error and gives null. */
+  const readField = useCallback((): string | null => {
+    const h = cleanHandle(current);
+    if (!isHandle(h)) { setError('Type an X profile link or @handle (1 to 15 letters, digits or _)'); return null; }
+    if (h !== handleRef.current) {
+      handleRef.current = h;
+      setHandle(h);
+      setPosts(loadCachedPosts(h));
+      setFromSheet(false);
     }
-    return posts;
-  }, [withSheet, setAccountPosts, say]);
+    return h;
+  }, [current]);
+
+  const loadFromSheet = useCallback(async (h: string, quiet = false): Promise<Post[] | null> => {
+    const list = await withSheet(`Loading @${h}`, async (token, id) => {
+      await ensureTab(token, id, tabOf(h));
+      return readPosts(token, id, tabOf(h));
+    });
+    if (list) {
+      publish(h, list, true);
+      if (!quiet) say(`☁️ Loaded ${list.length} posts of @${h} from tab ${tabOf(h)}`);
+    }
+    return list;
+  }, [withSheet, publish, say]);
+
+  /** Enter or ↻: show the stored posts of the handle in the field. */
+  const load = useCallback(async () => {
+    const h = readField();
+    if (!h) return;
+    if (connected && sid) await loadFromSheet(h);
+    else say(`💾 @${h}: ${loadCachedPosts(h).length} posts from the local copy (connect Google for the sheet)`);
+  }, [readField, connected, sid, loadFromSheet, say]);
 
   /** Captured posts (userscript batches or a JSON import) merged into the tab of their account. */
-  const storePosts = useCallback(async (handle: string, captured: Post[]): Promise<boolean> => {
-    const r = await withSheet(`Storing ${captured.length} posts of @${handle}`, async (token, id) => {
-      const tab = tabOf(handle);
+  const storePosts = useCallback(async (h: string, captured: Post[]): Promise<boolean> => {
+    const r = await withSheet(`Storing ${captured.length} posts of @${h}`, async (token, id) => {
+      const tab = tabOf(h);
       await ensureTab(token, id, tab);
       const stored = await readPosts(token, id, tab);
       const merged = mergePosts(stored, captured);
@@ -212,11 +232,10 @@ function App() {
       return merged;
     });
     if (!r) return false;
-    setAccounts((a) => (a.includes(handle) ? a : [...a, handle]));
-    setAccountPosts(handle, r.posts, true);
-    say(`☁️ @${handle}: ${r.inserted} new, ${r.updated} updated, ${r.posts.length} in tab ${tabOf(handle)}`);
+    publish(h, r.posts, true);
+    say(`☁️ @${h}: ${r.inserted} new, ${r.updated} updated, ${r.posts.length} in tab ${tabOf(h)}`);
     return true;
-  }, [withSheet, setAccountPosts, say]);
+  }, [withSheet, publish, say]);
 
   // ---- userscript bridge ----
   useEffect(() => connectBridge({
@@ -239,8 +258,8 @@ function App() {
       });
       const entries = Array.from(byHandle.entries());
       for (let i = 0; i < entries.length; i += 1) {
-        const [handle, g] = entries[i];
-        const ok = await storePosts(handle, g.posts);
+        const [h, g] = entries[i];
+        const ok = await storePosts(h, g.posts);
         if (!ok) break;
         ackBatches(g.ids);
       }
@@ -255,60 +274,22 @@ function App() {
     if (outboxCount && canStore) void storeOutbox();
   }, [outboxCount, canStore, storeOutbox]);
 
-  // after a connect, load every account that only has its cached copy
+  // after a connect, the current account comes from its tab
   useEffect(() => {
-    if (!connected || !sid) return;
-    accounts.filter((h) => !data[h]?.loadedFromSheet).forEach((h) => { void loadAccount(h, true); });
+    if (connected && sid && handle && !fromSheet) void loadFromSheet(handle, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, sid]);
 
-  // ---- accounts ----
-  const addAccount = useCallback(async () => {
-    const h = cleanHandle(newHandle);
-    if (!isHandle(h)) { setError('A handle is 1 to 15 letters, digits or _'); return; }
-    setNewHandle('');
-    if (!accounts.includes(h)) setAccounts((a) => [...a, h]);
-    setData((d) => (d[h] ? d : { ...d, [h]: { posts: [], loadedFromSheet: false } }));
-    if (connected && sid) await loadAccount(h);
-  }, [newHandle, accounts, connected, sid, loadAccount]);
-
-  const removeAccount = useCallback(async (handle: string, alsoTab: boolean) => {
-    if (!window.confirm(alsoTab ? `Remove @${handle} and delete its tab ${tabOf(handle)} from the spreadsheet?` : `Remove @${handle} from this list? The tab stays in the spreadsheet.`)) return;
-    if (alsoTab) {
-      const ok = await withSheet(`Deleting tab ${tabOf(handle)}`, async (token, id) => {
-        const { tabs } = await listTabs(token, id);
-        const t = tabs.find((x) => x.title === tabOf(handle));
-        if (t) await deleteTab(token, id, t.sheetId);
-        return true;
-      });
-      if (!ok) return;
-    }
-    setAccounts((a) => a.filter((x) => x !== handle));
-    setData((d) => { const n = { ...d }; delete n[handle]; return n; });
-    lsDel(postsKey(handle));
-    setFilters((f) => ({ ...f, handles: f.handles.filter((x) => x !== handle) }));
-  }, [withSheet]);
-
-  const discoverTabs = useCallback(async () => {
-    const r = await withSheet('Reading the spreadsheet', (token, id) => listTabs(token, id));
-    if (!r) return;
-    setSheetTitle(r.title);
-    const found = r.tabs.map((t) => handleOfTab(t.title)).filter((h): h is string => !!h && isHandle(h));
-    const fresh = found.filter((h) => !accounts.includes(h));
-    if (fresh.length) {
-      setAccounts((a) => [...a, ...fresh]);
-      setData((d) => { const n = { ...d }; fresh.forEach((h) => { n[h] = n[h] || { posts: [], loadedFromSheet: false }; }); return n; });
-      fresh.forEach((h) => { void loadAccount(h, true); });
-    }
-    say(`📄 "${r.title}": ${r.tabs.length} tabs, ${found.length} accounts${fresh.length ? `, ${fresh.length} added` : ''}`);
-  }, [withSheet, accounts, loadAccount, say]);
-
-  const reloadAll = useCallback(async () => {
-    await discoverTabs();
-    const list = loadAccounts();
-    for (let i = 0; i < list.length; i += 1) await loadAccount(list[i], true);
-    say(`↻ Reloaded ${list.length} accounts from the sheet`);
-  }, [discoverTabs, loadAccount, say]);
+  // ---- sync ----
+  const openSync = useCallback((mode: 'incremental' | 'full') => {
+    const h = readField();
+    if (!h) return;
+    const list = h === handleRef.current ? posts : loadCachedPosts(h);
+    sendMeta(h, newestIdOf(list), list.length);
+    const path = cfg.withReplies ? `/${h}/with_replies` : `/${h}`;
+    say(`${mode === 'full' ? '🔄 Full sync' : '⬇ Sync new'} of @${h}: the profile opens on x.com, the badge there scrolls it`);
+    window.open(`https://x.com${path}#xsync=${mode}`, '_blank', 'noopener');
+  }, [readField, posts, cfg.withReplies, say]);
 
   const createSheet = useCallback(async () => {
     try {
@@ -326,75 +307,73 @@ function App() {
     }
   }, [say]);
 
-  const openSync = useCallback((handle: string, mode: 'incremental' | 'full') => {
-    const posts = data[handle]?.posts || [];
-    sendMeta(handle, newestIdOf(posts), posts.length);
-    const path = cfg.withReplies ? `/${handle}/with_replies` : `/${handle}`;
-    window.open(`https://x.com${path}#xsync=${mode}`, '_blank', 'noopener');
-  }, [data, cfg.withReplies]);
+  const listSheet = useCallback(async () => {
+    const r = await withSheet('Reading the spreadsheet', (token, id) => listTabs(token, id));
+    if (!r) return;
+    setSheetTitle(r.title);
+    const found = r.tabs.map((t) => handleOfTab(t.title)).filter((h): h is string => !!h && isHandle(h));
+    say(`📄 "${r.title}": ${r.tabs.length} tabs, accounts: ${found.length ? found.map((h) => `@${h}`).join(', ') : 'none yet'}`);
+  }, [withSheet, say]);
 
   const importJson = useCallback(async (file: File) => {
     try {
-      const posts = postsFromJson(await file.text());
-      if (!posts.length) { setError('No posts in that file'); return; }
+      const list = postsFromJson(await file.text());
+      if (!list.length) { setError('No posts in that file'); return; }
       const byHandle = new Map<string, Post[]>();
-      posts.forEach((p) => byHandle.set(p.handle, [...(byHandle.get(p.handle) || []), p]));
+      list.forEach((p) => byHandle.set(p.handle, [...(byHandle.get(p.handle) || []), p]));
       const entries = Array.from(byHandle.entries());
       for (let i = 0; i < entries.length; i += 1) {
-        const [handle, list] = entries[i];
-        if (canStore) await storePosts(handle, list);
+        const [h, items] = entries[i];
+        if (canStore) await storePosts(h, items);
         else {
-          const merged = mergePosts(data[handle]?.posts || [], list);
-          setAccounts((a) => (a.includes(handle) ? a : [...a, handle]));
-          setAccountPosts(handle, merged.posts, false);
-          say(`💾 @${handle}: ${merged.inserted} new kept locally (connect Google to store them)`);
+          const merged = mergePosts(loadCachedPosts(h), items);
+          publish(h, merged.posts, false);
+          say(`💾 @${h}: ${merged.inserted} new kept locally (connect Google to store them)`);
         }
       }
+      const first = entries[0][0];
+      if (!handleRef.current) { setCurrent(`https://x.com/${first}`); handleRef.current = first; setHandle(first); setPosts(loadCachedPosts(first)); }
     } catch (e) {
       setError(`Import: ${errorText(e)}`);
     }
-  }, [canStore, storePosts, data, setAccountPosts, say]);
+  }, [canStore, storePosts, publish, say]);
 
   // ---- feed ----
-  const allPosts = useMemo(() => accounts.flatMap((h) => data[h]?.posts || []), [accounts, data]);
-  const feed = useMemo(() => applyFilters(allPosts, filters), [allPosts, filters]);
+  const feed = useMemo(() => applyFilters(posts, filters), [posts, filters]);
   const visible = feed.slice(0, shown);
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
-  const lastRunOf = (handle: string): Run | undefined => runs.filter((r) => r.handle === handle).sort((a, b) => (a.finished_at < b.finished_at ? 1 : -1))[0];
-
-  const exportCsv = () => download(`x-feed-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(feed), 'text/csv');
-  const exportJson = () => download(`x-feed-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ posts: feed }, null, 2), 'application/json');
-
-  const isBusy = !!busy;
+  const lastRun = runs.filter((r) => r.handle === handle).sort((a, b) => (a.finished_at < b.finished_at ? 1 : -1))[0];
+  const exportCsv = () => download(`x-${handle || 'feed'}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(feed), 'text/csv');
+  const exportJson = () => download(`x-${handle || 'feed'}-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ posts: feed }, null, 2), 'application/json');
+  const filtersOn = JSON.stringify({ ...filters, handles: [] }) !== JSON.stringify(EMPTY_FILTERS);
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* toolbar, sticky like youtube */}
+      {/* toolbar, the youtube one: field, settings, status dots, update, full refresh, cloud, attach, export, theme */}
       <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
         <div className="px-4 sm:px-8">
           <div className="flex flex-col md:flex-row md:items-center gap-2 py-3">
             <div className="flex items-center gap-2 w-full md:flex-1 min-w-0">
               <span className="text-xl font-bold select-none" title="X Feed Sheets">𝕏</span>
-              <form className="flex-1 min-w-0" onSubmit={(e) => { e.preventDefault(); void addAccount(); }}>
-                <input className="inp mono" title="Profile link or @handle, Enter adds the account" placeholder="X profile link or @handle, Enter to add…" value={newHandle} onChange={(e) => setNewHandle(e.target.value)} />
+              <form className="flex-1 min-w-0" onSubmit={(e) => { e.preventDefault(); void load(); }}>
+                <input className="inp mono" title="X profile link or @handle, Enter loads its stored posts" placeholder="X profile link or @handle (https://x.com/elonmusk)…" value={current} onChange={(e) => setCurrent(e.target.value)} />
               </form>
             </div>
             <div className="grid grid-flow-col auto-cols-fr justify-items-center gap-1.5 w-full md:flex md:w-auto">
               <button className={`tb ${showSettings ? 'on' : ''}`} title="Settings" onClick={() => setShowSettings((s) => !s)}>⚙️</button>
-              <button className={`tb ${showLog ? 'on' : ''}`} title={`Log (${log.length}). Dots: userscript ${scriptVersion ? `v${scriptVersion} installed` : 'not installed in this browser'}, Google ${connected ? `connected${email ? ` as ${maskEmail(email)}` : ''}` : 'not connected'}`} onClick={() => setShowLog((s) => !s)}>
+              <button className={`tb ${showLog ? 'on' : ''}`} title={`Log (${log.length}). Dots: userscript ${scriptVersion ? `v${scriptVersion} installed` : 'not installed in this browser'}, Google Sheets ${connected ? `connected${email ? ` as ${maskEmail(email)}` : ''}` : 'not connected'}`} onClick={() => setShowLog((s) => !s)}>
                 <span className="flex items-center gap-1">
                   <span className={`dot ${scriptVersion ? 'bg-emerald-500' : 'bg-red-500'}`} data-script={scriptVersion || 'none'} />
-                  <span className={`dot ${connected ? 'bg-blue-500' : 'bg-slate-400'}`} data-google={connected ? 'on' : 'off'} />
+                  <span className={`dot ${connected && sid ? 'bg-blue-500' : 'bg-slate-400'}`} data-google={connected ? 'on' : 'off'} />
                 </span>
               </button>
-              <button className="tb blue" title="Add the account" onClick={() => { void addAccount(); }} disabled={!newHandle.trim()}>➕</button>
+              <button className="tb blue font-bold" title="Update: sync the new posts of this profile (opens x.com)" onClick={() => openSync('incremental')} disabled={!current.trim()}>⬇</button>
+              <button className="tb" title="Full refresh: sync the whole visible timeline again (opens x.com)" onClick={() => openSync('full')} disabled={!current.trim()}>🔄</button>
               {cfg.clientId && (connected
                 ? <button className="tb rose" title="Disconnect Google" onClick={disconnect} disabled={isBusy}>🔌</button>
-                : <button className="tb blue" title="Connect Google" onClick={() => { void connect(true); }} disabled={isBusy}>☁️</button>)}
-              {connected && sid && <button className="tb green" title="Find accounts in the sheet and reload every tab" onClick={() => { void reloadAll(); }} disabled={isBusy}>↻</button>}
-              <button className="tb green" title="Export CSV of the filtered feed" onClick={exportCsv} disabled={!feed.length}>📥</button>
-              <button className="tb" title="Import a JSON file downloaded from the badge on x.com" onClick={() => fileInput.current?.click()}>📄</button>
-              <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = ''; }} />
+                : <button className="tb blue" title="Connect Google Sheets" onClick={() => { void connect(true); }} disabled={isBusy}>☁️</button>)}
+              {connected && sid && <button className="tb green" title="Ensure the tab and reload the posts from Google Sheets" onClick={() => { void load(); }} disabled={isBusy || !current.trim()}>↻</button>}
+              <button className="tb green" title="Export CSV" onClick={exportCsv} disabled={!feed.length}>📥</button>
               <button className="tb" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((d) => !d)}>{dark ? '☀' : '🌙'}</button>
             </div>
           </div>
@@ -405,7 +384,7 @@ function App() {
               <div className="pb-2">
                 <div className="card overflow-hidden text-xs">
                   <div className="panel-head text-[11px]">
-                    <div className="font-semibold text-emerald-500">🐛 Log <span className="font-normal text-slate-400">({log.length})</span></div>
+                    <div className="font-semibold text-emerald-500">🐛 Debug Console <span className="font-normal text-slate-400">({log.length})</span></div>
                     <button className="btn sm" onClick={() => setLog([])}>Clear</button>
                   </div>
                   {log.length ? (
@@ -443,10 +422,11 @@ function App() {
         <div id="settings-wrap" className={`slide-wrap ${showSettings ? 'open' : ''}`}>
           <div className="slide-inner">
             <Settings
-              cfg={cfg} setCfg={setCfg} connected={connected} email={email || cfg.lastAccountEmail} busy={isBusy} sheetTitle={sheetTitle}
+              cfg={cfg} setCfg={setCfg} connected={connected} email={email || cfg.lastAccountEmail} busy={isBusy} sheetTitle={sheetTitle} handle={handle}
               onClose={() => setShowSettings(false)} onConnect={() => { void connect(true); }} onDisconnect={disconnect}
-              onCreate={() => { void createSheet(); }} onDiscover={() => { void discoverTabs(); }}
+              onCreate={() => { void createSheet(); }} onList={() => { void listSheet(); }} onImport={() => fileInput.current?.click()}
             />
+            <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = ''; }} />
           </div>
         </div>
 
@@ -461,48 +441,17 @@ function App() {
           </section>
         )}
 
-        {/* accounts */}
-        <section className="card p-3 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">Accounts <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{accounts.length}</span></h2>
-            <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400"><input type="checkbox" checked={cfg.withReplies} onChange={(e) => setCfg((c) => ({ ...c, withReplies: e.target.checked }))} /> sync replies too</label>
-          </div>
-          {accounts.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No accounts yet. Type a handle in the top field and press Enter, then ⬇ Sync new: the profile opens on x.com and the userscript collects its posts.</p>}
-          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-            {accounts.map((h) => {
-              const st = data[h] || { posts: [], loadedFromSheet: false };
-              const run = lastRunOf(h);
-              const selected = filters.handles.includes(h);
-              return (
-                <li key={h} className="py-1.5 flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <button className={`font-medium ${selected ? 'text-emerald-600 dark:text-emerald-400' : ''}`} onClick={() => setFilters((f) => ({ ...f, handles: toggleIn(f.handles, h) }))} title="Filter the feed by this account">
-                      @{h}
-                    </button>
-                    <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{st.posts.length} posts{st.loadedFromSheet ? '' : ' (local copy)'}{run ? ` · last run ${fmtDate(run.finished_at)}: ${run.posts_seen} seen, ${run.stop_reason.replace(/_/g, ' ')}` : ''}</span>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <button className="tb blue" onClick={() => openSync(h, 'incremental')} title="Sync new: open the profile on x.com and collect the posts newer than the stored ones">⬇</button>
-                    <button className="tb" onClick={() => openSync(h, 'full')} title="Full sync: the whole visible timeline again, counts refreshed">🔄</button>
-                    <button className="tb green" onClick={() => { void loadAccount(h); }} disabled={!connected || !sid} title="Reload the tab from the sheet">↻</button>
-                    <a className="tb" href={`https://x.com/${h}`} target="_blank" rel="noreferrer" title="Open on X">↗</a>
-                    <button className="tb rose" onClick={() => { void removeAccount(h, false); }} title="Remove from this list (the tab stays)">✕</button>
-                    {connected && sid && <button className="tb rose" onClick={() => { void removeAccount(h, true); }} title="Remove and delete the tab from the spreadsheet">🗑</button>}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        {/* feed */}
+        {/* feed of the current account */}
         <section className="card p-3 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">Feed <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{feed.length} of {allPosts.length}</span></h2>
+            <h2 className="font-semibold">
+              {handle ? <a className="text-emerald-600 dark:text-emerald-400" href={`https://x.com/${handle}`} target="_blank" rel="noreferrer">@{handle}</a> : 'Feed'}
+              <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">{feed.length} of {posts.length}{handle && !fromSheet && posts.length ? ' (local copy)' : ''}{lastRun ? ` · last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')}` : ''}</span>
+            </h2>
             <div className="flex gap-1">
               <button className="btn sm" onClick={exportCsv} disabled={!feed.length}>CSV</button>
               <button className="btn sm" onClick={exportJson} disabled={!feed.length}>JSON</button>
-              <button className="btn sm" onClick={() => setFilters({ ...EMPTY_FILTERS })} disabled={JSON.stringify(filters) === JSON.stringify(EMPTY_FILTERS)}>Clear filters</button>
+              <button className="btn sm" onClick={() => setFilters({ ...EMPTY_FILTERS })} disabled={!filtersOn}>Clear filters</button>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
@@ -519,9 +468,13 @@ function App() {
               </select>
             </label>
           </div>
-          {visible.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nothing to show{allPosts.length ? ' with these filters' : ' yet'}.</p>}
+          {visible.length === 0 && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : posts.length ? 'Nothing to show with these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
+            </p>
+          )}
           <ul className="space-y-2">
-            {visible.map((p) => <PostCard key={`${p.handle}-${p.id}`} post={p} />)}
+            {visible.map((p) => <PostCard key={p.id} post={p} />)}
           </ul>
           {feed.length > shown && <button className="btn w-full justify-center" onClick={() => setShown((s) => s + PAGE_SIZE)}>Show {Math.min(PAGE_SIZE, feed.length - shown)} more of {feed.length - shown}</button>}
         </section>
@@ -537,8 +490,8 @@ function App() {
 // ---- 3. Settings (masked values with eye and copy, like youtube) -----------------------------------------
 
 type SettingsProps = {
-  cfg: Config; setCfg: (f: (c: Config) => Config) => void; connected: boolean; email: string; busy: boolean; sheetTitle: string;
-  onClose: () => void; onConnect: () => void; onDisconnect: () => void; onCreate: () => void; onDiscover: () => void;
+  cfg: Config; setCfg: (f: (c: Config) => Config) => void; connected: boolean; email: string; busy: boolean; sheetTitle: string; handle: string;
+  onClose: () => void; onConnect: () => void; onDisconnect: () => void; onCreate: () => void; onList: () => void; onImport: () => void;
 };
 
 function MaskedField(p: { label: string; value: string; mask: (v: string) => string; placeholder: string; onChange: (v: string) => void; hint?: string }) {
@@ -587,7 +540,7 @@ function Settings(p: SettingsProps) {
             <li>Paste the Client ID below, press <b>Connect Google</b>, then <b>Create spreadsheet</b> or paste the url of an existing one</li>
             <li>Install <a className="underline" href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Tampermonkey</a>; in Chrome 138+ open its extension details, turn on <b>Allow User Scripts</b> and give it site access to <b>x.com</b> and <b>{location.hostname}</b></li>
             <li>Open <a className="underline font-medium" href={USERSCRIPT_URL}>x-sync.user.js</a>: Tampermonkey shows its install page, press Install. Reload this page: the first dot in the toolbar turns green</li>
-            <li>Type a handle in the top field, Enter, then ⬇ Sync new: the profile opens on x.com (log in there first), the corner badge scrolls it; come back here and the posts are stored</li>
+            <li>Type a profile link or handle in the top field, then ⬇: the profile opens on x.com (log in there first), the corner badge scrolls it; come back here and the posts are stored</li>
           </ol>
           <div className="px-4 pb-3 text-xs text-amber-700 dark:text-amber-300">Security: only the public Client ID and the spreadsheet id are stored in this browser, the Google token lives in memory. Posts go from your browser to your Google Sheet and nowhere else.</div>
         </details>
@@ -619,10 +572,13 @@ function Settings(p: SettingsProps) {
         <MaskedField label="Spreadsheet ID or full URL" value={p.cfg.spreadsheetId} mask={(v) => (v.includes('/d/') ? maskSpreadsheetUrl(v) : maskId(v))} placeholder="https://docs.google.com/spreadsheets/d/1abc…/edit" onChange={(v) => p.setCfg((c) => ({ ...c, spreadsheetId: v.trim() }))} hint="One spreadsheet holds the tabs of ALL your accounts." />
 
         <div className="flex flex-wrap items-center gap-2">
-          <button className="btn sm primary" onClick={p.onDiscover} disabled={p.busy || !p.connected || !id} title="Add every X-<handle> tab of the spreadsheet to the account list">Find accounts in the sheet</button>
-          <button className="btn sm" onClick={p.onCreate} disabled={p.busy || !p.cfg.clientId} title="A new spreadsheet in your Google Drive">Create spreadsheet</button>
+          <button className="btn sm primary" onClick={p.onList} disabled={p.busy || !p.connected || !id} title="List the X-<handle> tabs of the spreadsheet in the log">Attach / list tabs</button>
+          <button className="btn sm" onClick={p.onCreate} disabled={p.busy || !p.cfg.clientId} title="A new spreadsheet in your Google Drive">Create new spreadsheet</button>
           <a className="btn sm" href={USERSCRIPT_URL}>Install userscript</a>
+          <button className="btn sm" onClick={p.onImport} title="A JSON file downloaded from the badge on x.com">Import JSON</button>
+          <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 ml-auto"><input type="checkbox" checked={p.cfg.withReplies} onChange={(e) => p.setCfg((c) => ({ ...c, withReplies: e.target.checked }))} /> sync replies too</label>
         </div>
+        <div className="text-[10px] text-slate-400">Current account tab (auto): <span className="font-mono">{p.handle ? tabOf(p.handle) : '—'}</span></div>
       </div>
     </div>
   );
