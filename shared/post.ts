@@ -37,13 +37,14 @@ export type Post = {
   is_pinned: boolean;
   first_seen_at: string;   // ISO, set once
   last_seen_at: string;    // ISO, every capture
+  hidden: boolean;         // marked by the owner in the viewer (crossed eye): out of the feed, never reset by a capture
 };
 
 export const POST_HEADERS = [
   'id', 'handle', 'author_name', 'created_at', 'type', 'text', 'lang', 'url',
   'in_reply_to_id', 'in_reply_to_handle', 'conversation_id', 'quoted_id', 'reposted_id', 'reposted_handle',
   'media', 'links', 'likes', 'reposts', 'replies', 'quotes', 'bookmarks', 'views',
-  'is_pinned', 'first_seen_at', 'last_seen_at',
+  'is_pinned', 'first_seen_at', 'last_seen_at', 'hidden',
 ] as const;
 
 /** Column letter of the last header: A1 ranges of a posts tab are `A:${LAST_COL}`. */
@@ -64,7 +65,7 @@ export function toRow(p: Post): string[] {
     p.in_reply_to_id, p.in_reply_to_handle, p.conversation_id, p.quoted_id, p.reposted_id, p.reposted_handle,
     clampCell(JSON.stringify(p.media)), clampCell(JSON.stringify(p.links)),
     String(p.likes), String(p.reposts), String(p.replies), String(p.quotes), String(p.bookmarks), String(p.views),
-    p.is_pinned ? 'TRUE' : 'FALSE', p.first_seen_at, p.last_seen_at,
+    p.is_pinned ? 'TRUE' : 'FALSE', p.first_seen_at, p.last_seen_at, p.hidden ? 'TRUE' : 'FALSE',
   ];
 }
 
@@ -127,6 +128,7 @@ export function fromRow(row: unknown[]): Post | null {
     is_pinned: cell(row, 22).toUpperCase() === 'TRUE',
     first_seen_at: cell(row, 23) || created,
     last_seen_at: cell(row, 24) || cell(row, 23) || created,
+    hidden: cell(row, 25).toUpperCase() === 'TRUE',
   };
 }
 
@@ -156,7 +158,8 @@ export function mergePosts(stored: Post[], captured: Post[]): { posts: Post[]; i
   captured.forEach((p) => {
     const old = byId.get(p.id);
     if (old) {
-      byId.set(p.id, { ...old, ...p, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned });
+      // hidden belongs to the owner (set in the viewer): a capture never resets it
+      byId.set(p.id, { ...old, ...p, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden });
       updated += 1;
     } else {
       byId.set(p.id, p);

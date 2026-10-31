@@ -12,15 +12,17 @@ export type Filters = {
   hasMedia: boolean;
   search: string;             // case-insensitive, every word must be in text, author or handle
   sort: SortKey;
+  showHidden: boolean;        // false: the feed without the hidden posts; true: only the hidden ones (to bring them back)
 };
 
-export const EMPTY_FILTERS: Filters = { handles: [], types: [], from: '', to: '', hasMedia: false, search: '', sort: 'date' };
+export const EMPTY_FILTERS: Filters = { handles: [], types: [], from: '', to: '', hasMedia: false, search: '', sort: 'date', showHidden: false };
 
 export function applyFilters(posts: Post[], f: Filters): Post[] {
   const words = f.search.toLowerCase().split(/\s+/).filter(Boolean);
   const from = f.from ? `${f.from}T00:00:00.000Z` : '';
   const to = f.to ? `${f.to}T23:59:59.999Z` : '';
   const out = posts.filter((p) => {
+    if (!!p.hidden !== f.showHidden) return false;
     if (f.handles.length && !f.handles.includes(p.handle)) return false;
     if (f.types.length && !f.types.includes(p.type)) return false;
     if (from && p.created_at < from) return false;
@@ -82,6 +84,7 @@ export function postsFromJson(text: string): Post[] {
       is_pinned: p.is_pinned === true,
       first_seen_at: typeof p.first_seen_at === 'string' ? p.first_seen_at : new Date().toISOString(),
       last_seen_at: typeof p.last_seen_at === 'string' ? p.last_seen_at : new Date().toISOString(),
+      hidden: p.hidden === true,
     });
   });
   return out;

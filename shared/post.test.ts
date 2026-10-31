@@ -29,13 +29,14 @@ export const samplePost = (over: Partial<Post> = {}): Post => ({
   is_pinned: false,
   first_seen_at: '2026-10-02T00:00:00.000Z',
   last_seen_at: '2026-10-02T00:00:00.000Z',
+  hidden: false,
   ...over,
 });
 
 describe('sheet rows', () => {
-  test('25 columns, A..Y', () => {
-    expect(POST_HEADERS.length).toBe(25);
-    expect(LAST_COL).toBe('Y');
+  test('26 columns, A..Z', () => {
+    expect(POST_HEADERS.length).toBe(26);
+    expect(LAST_COL).toBe('Z');
     expect(toRow(samplePost()).length).toBe(POST_HEADERS.length);
   });
 
@@ -95,6 +96,11 @@ describe('ids and order', () => {
     expect(r.posts[1].last_seen_at).toBe('2026-10-05T00:00:00.000Z');
     expect(mergePosts(r.posts, captured).inserted).toBe(0);
   });
+
+  test('mergePosts keeps the owner hidden flag over a fresh capture', () => {
+    expect(mergePosts([samplePost({ hidden: true })], [samplePost({ hidden: false, likes: 7 })]).posts[0]).toMatchObject({ hidden: true, likes: 7 });
+    expect(mergePosts([], [samplePost({ hidden: true })]).posts[0].hidden).toBe(true);
+  });
 });
 
 describe('x dates and profile paths', () => {
@@ -123,7 +129,7 @@ describe('sheet tab helpers', () => {
     expect(handleOfTab('YT-abc')).toBeNull();
     expect(quoteTab('X-abc')).toBe("'X-abc'");
     expect(quoteTab('Xabc')).toBe('Xabc');
-    expect(decodeURIComponent(rangeOf('X-abc', 'A2:Y'))).toBe("'X-abc'!A2:Y");
+    expect(decodeURIComponent(rangeOf('X-abc', 'A2:Z'))).toBe("'X-abc'!A2:Z");
   });
   test('firstRowOfRange reads the append answer', () => {
     expect(firstRowOfRange("'X-abc'!A1400:Y1402")).toBe(1400);
