@@ -40,6 +40,13 @@ describe('applyTable', () => {
     expect(applyTable(posts, withFilter('hidden', 'visible'), fmt).map((p) => p.id)).toEqual(['3', '2']);
     expect(applyTable(posts, withFilter('datetime', '2026-02'), fmt).map((p) => p.id)).toEqual(['2']);
   });
+  test('url column: filter by a part of the link, sort by the link', () => {
+    const list = posts.map((p) => ({ ...p, url: `https://x.com/someone/status/${p.id}` }));
+    expect(applyTable(list, withFilter('url', 'status/2'), fmt).map((p) => p.id)).toEqual(['2']);
+    expect(applyTable(list, withFilter('url', 'X.COM*status/1|status/3'), fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable(list, { ...EMPTY_TABLE, sort: { key: 'url', dir: 'asc' } }, fmt).map((p) => p.id)).toEqual(['1', '2', '3']);
+    expect(EMPTY_TABLE.filters.url).toBe('');
+  });
   test('media dropdown: ticked kinds, none = text only, any mix', () => {
     const list = [...posts, samplePost({ id: '4', media: [{ type: 'video', url: 'v' }, { type: 'gif', url: 'g' }] })];
     expect(applyTable(list, { ...EMPTY_TABLE, media: ['photo'] }, fmt).map((p) => p.id)).toEqual(['2']);

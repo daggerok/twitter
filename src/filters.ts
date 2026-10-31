@@ -3,8 +3,8 @@
 // import of the userscript, link splitting.
 import { byNewest, isPostType, POST_HEADERS, toRow, type Post } from '../shared/post';
 
-export type ColKey = 'datetime' | 'type' | 'post' | 'stats' | 'hidden';
-export const COLS: ColKey[] = ['datetime', 'type', 'post', 'stats', 'hidden'];
+export type ColKey = 'datetime' | 'type' | 'post' | 'stats' | 'url' | 'hidden';
+export const COLS: ColKey[] = ['datetime', 'type', 'post', 'stats', 'url', 'hidden'];
 export type SortDir = 'asc' | 'desc';
 export type MediaKind = 'photo' | 'video' | 'gif' | 'media' | '!photo' | '!video' | '!gif' | '!media';
 /** The dropdown: a kind ticked = the post has it, its `!` twin ticked = the post has not. Positives are OR-ed, negatives are AND-ed. */
@@ -16,7 +16,7 @@ export const MEDIA_KINDS: { key: MediaKind; label: string }[] = [
 ];
 /** media: the ticked entries of the dropdown, [] = every post */
 export type TableState = { filters: Record<ColKey, string>; sort: { key: ColKey; dir: SortDir }; media: MediaKind[] };
-export const EMPTY_TABLE: TableState = { filters: { datetime: '', type: '', post: '', stats: '', hidden: '' }, sort: { key: 'datetime', dir: 'desc' }, media: [] };
+export const EMPTY_TABLE: TableState = { filters: { datetime: '', type: '', post: '', stats: '', url: '', hidden: '' }, sort: { key: 'datetime', dir: 'desc' }, media: [] };
 
 const hasKind = (p: Post, kind: string): boolean => (kind === 'media' ? p.media.length > 0 : p.media.some((m) => m.type === kind));
 
@@ -37,6 +37,7 @@ export function columnText(p: Post, col: ColKey, fmtDate: (iso: string) => strin
     case 'type': return [p.type, p.is_pinned ? 'pinned' : '', ...p.media.map((m) => MEDIA_WORD[m.type] || m.type), p.media.length ? 'media' : 'text only'].filter(Boolean).join(' ').toLowerCase();
     case 'post': return [p.text, p.type === 'repost' ? `repost of @${p.reposted_handle}` : '', p.type === 'reply' ? `to @${p.in_reply_to_handle}` : '', p.author_name, `@${p.handle}`, p.links.join(' ')].filter(Boolean).join(' ').toLowerCase();
     case 'stats': return `replies ${p.replies} reposts ${p.reposts} likes ${p.likes} views ${p.views} bookmarks ${p.bookmarks}`;
+    case 'url': return p.url.toLowerCase();
     case 'hidden': return p.hidden ? 'hidden' : 'visible';
     default: return '';
   }
@@ -69,6 +70,7 @@ const sortValue = (p: Post, key: ColKey, fmtDate: (iso: string) => string): stri
     case 'type': return `${p.type} ${p.is_pinned ? '0' : '1'}`;
     case 'post': return p.text.toLowerCase();
     case 'stats': return p.likes;
+    case 'url': return p.url.toLowerCase();
     case 'hidden': return p.hidden ? 1 : 0;
     default: return fmtDate(p.created_at);
   }
