@@ -431,11 +431,11 @@ function App() {
   const exportJson = () => download(`x-${handle || 'feed'}-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ posts: feed }, null, 2), 'application/json');
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="h-dvh flex flex-col">
       {/* toolbar, the youtube one: field, settings, status dots, update, full refresh, cloud, attach, export, theme */}
       <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
         <div className="px-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 py-3">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 py-4">
             <div className="flex items-center gap-2 w-full md:flex-1 min-w-0">
               <form className="flex-1 min-w-0" onSubmit={(e) => { e.preventDefault(); void load(); }}>
                 <input className="inp mono" title="X profile link or @handle, Enter loads its stored posts" placeholder="X profile link or @handle (https://x.com/elonmusk)…" value={current} onChange={(e) => setCurrent(e.target.value)} />
@@ -464,7 +464,7 @@ function App() {
           {/* log console, slides open */}
           <div id="log-wrap" className={`slide-wrap ${showLog ? 'open' : ''}`}>
             <div className="slide-inner">
-              <div className="pb-2">
+              <div className="pb-4">
                 <div className="card overflow-hidden text-xs">
                   <div className="panel-head text-[11px]">
                     <div className="font-semibold text-emerald-500">🐛 Debug Console <span className="font-normal text-slate-400">({log.length})</span></div>
@@ -492,27 +492,27 @@ function App() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 pt-1 space-y-4">
+      <div className="flex-1 min-h-0 flex flex-col px-4 overflow-y-auto themed-scroll">
         {error && (
-          <div className="card status-bad px-3 py-2 text-sm flex justify-between gap-2 animate-fade-in">
+          <div className="card status-bad mb-4 px-3 py-2 text-sm flex justify-between gap-2 animate-fade-in">
             <span className="break-words">{error}</span>
             <button className="font-bold" onClick={() => setError('')} aria-label="Dismiss">×</button>
           </div>
         )}
-        {busy && <div className="text-xs text-slate-500 dark:text-slate-400 animate-pulse">{busy}</div>}
+        {busy && <div className="mb-4 text-xs text-slate-500 dark:text-slate-400 animate-pulse">{busy}</div>}
         {!scriptVersion && !stamp && (
-          <div className="card status-warn px-3 py-2 text-sm animate-fade-in" data-hint="no-script">
+          <div className="card status-warn mb-4 px-3 py-2 text-sm animate-fade-in" data-hint="no-script">
             <b>The userscript is not running on this page</b> (first dot red), so posts collected on x.com cannot reach the sheet. Check: click the Tampermonkey icon in the Chrome toolbar while on this page; it must list "X -&gt; Google Sheets sync" as running here. If it does not: chrome://extensions, Tampermonkey, Details, Site access, add <code className="px-1">https://daggerok.github.io/*</code> next to x.com; then install <a className="underline" href={USERSCRIPT_URL}>x-sync.user.js</a> if not yet, and reload this page. The dot turns green when it works.
           </div>
         )}
         {!scriptVersion && stamp && (
-          <div className="card status-bad px-3 py-2 text-sm animate-fade-in" data-hint="bridge">
+          <div className="card status-bad mb-4 px-3 py-2 text-sm animate-fade-in" data-hint="bridge">
             <b>The userscript v{stamp} runs on this page but its messages do not arrive</b> (first dot red). Reload the page once; if it stays red, open the browser console (F12, Console) on this page and send its lines to the repo issues.
           </div>
         )}
 
         {/* settings, slides open */}
-        <div id="settings-wrap" className={`slide-wrap ${showSettings ? 'open' : ''}`}>
+        <div id="settings-wrap" className={`slide-wrap shrink-0 ${showSettings ? 'open mb-4' : ''}`}>
           <div className="slide-inner">
             <Settings
               cfg={cfg} setCfg={setCfg} connected={connected} email={email || cfg.lastAccountEmail} busy={isBusy} sheetTitle={sheetTitle} handle={handle}
@@ -525,7 +525,7 @@ function App() {
 
         {/* inbox from the userscript */}
         {(outboxCount > 0 || runStatus?.state === 'running') && (
-          <section className="card px-3 py-2 text-sm flex flex-wrap items-center justify-between gap-2 animate-fade-in">
+          <section className="card mb-4 px-3 py-2 text-sm flex flex-wrap items-center justify-between gap-2 animate-fade-in">
             <div>
               {runStatus?.state === 'running' && <div>⏳ Syncing @{runStatus.handle} ({runStatus.mode}): {runStatus.seen} posts so far{runStatus.message ? ` · ${runStatus.message}` : ''}</div>}
               {outboxCount > 0 && <div>📥 {outboxCount} captured posts waiting{canStore ? ', storing…' : ' (connect Google and set the spreadsheet to store them)'}</div>}
@@ -535,7 +535,7 @@ function App() {
         )}
 
         {/* feed of the current account */}
-        <section className="card overflow-hidden shadow-lg feed">
+        <section className="card overflow-hidden shadow-lg feed flex-1 min-h-64 flex flex-col">
           <div className="panel-head">
             <div className="min-w-0 flex flex-wrap items-baseline gap-x-2">
               <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(16 * scale)}px` }}>
@@ -556,15 +556,10 @@ function App() {
               </span>
             </div>
           </div>
-          <div className="p-4 space-y-4">
+          <div className="flex-1 min-h-0 flex flex-col p-4 space-y-4">
           {hasFilters(table) && <div className="text-right"><button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [] }))}>Clear filters</button></div>}
-          {visible.length === 0 && posts.length === 0 && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : posts.length ? 'Nothing matches these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
-            </p>
-          )}
-          {posts.length > 0 && (
-            <div className="overflow-x-auto themed-scroll -mx-4">
+          {(
+            <div className="flex-1 min-h-0 overflow-auto themed-scroll -mx-4">
               <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
                 <thead>
                   <tr className="text-slate-500 dark:text-slate-400">
@@ -572,7 +567,7 @@ function App() {
                       const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
                       const active = col && table.sort.key === col;
                       return (
-                        <th key={key} className={`px-4 align-top ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(6 * scale)}px` }}>
+                        <th key={key} className={`px-4 align-top sticky top-0 z-20 bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(6 * scale)}px` }}>
                           {col ? (
                             <button type="button" className={`flex items-center gap-1 font-semibold uppercase tracking-wider text-left transition-colors hover:text-emerald-500 ${active ? 'text-emerald-500' : ''}`} onClick={() => sortBy(col)} title={`Sort by ${label}`} data-sort={active ? table.sort.dir : 'none'}>
                               {label} <span className="text-[10px]">{active ? (table.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>
@@ -600,7 +595,11 @@ function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
-                  {visible.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400" data-empty>Nothing matches these filters.</td></tr>}
+                  {visible.length === 0 && (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-xs text-slate-500 dark:text-slate-400" data-empty>
+                      {!handle ? 'Type an X profile link or @handle in the field above, then ⬇ to sync its posts (or Enter to show what the sheet already has).' : posts.length ? 'Nothing matches these filters.' : `No posts of @${handle} yet: press ⬇ to sync them from x.com.`}
+                    </td></tr>
+                  )}
                   {visible.map((p, i) => (
                     <PostRow key={p.id} post={p} scale={scale} showMedia={showMedia} onToggleHidden={() => { void toggleHidden(p); }} sentinel={i === sentinelAt && feed.length > shown ? sentinel : undefined} />
                   ))}
@@ -613,7 +612,7 @@ function App() {
         </section>
       </div>
 
-      <footer className="text-center text-[10px] text-slate-400 dark:text-slate-600 px-4 sm:px-8 pb-[3.5px] sm:pb-[19.5px] pt-3">
+      <footer className="flex h-4 shrink-0 items-center justify-center px-4 text-[10px] leading-none text-slate-400 dark:text-slate-600">
         <a className="underline decoration-dotted" href={REPO_URL} target="_blank" rel="noreferrer">daggerok</a> (c) {new Date().getFullYear()}
       </footer>
     </div>
@@ -655,7 +654,7 @@ function Settings(p: SettingsProps) {
   const origin = location.origin;
   const url = id ? spreadsheetUrl(id) : '';
   return (
-    <div className="card overflow-hidden text-sm mb-2 shadow-lg">
+    <div className="card overflow-hidden text-sm shadow-lg">
       <div className="panel-head">
         <h3 className="font-bold text-emerald-500">📋 Setup</h3>
         <button className="btn sm" onClick={p.onClose}>Close</button>
