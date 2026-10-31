@@ -445,7 +445,7 @@ function App() {
                 : <button className="tb blue" title="Connect Google Sheets" onClick={() => { void connect(true); }} disabled={isBusy}>☁️</button>)}
               {connected && sid && <button className="tb green" title="Ensure the tab and reload the posts from Google Sheets" onClick={() => { void load(); }} disabled={isBusy || !current.trim()}>↻</button>}
               <button className="tb green flex-col leading-none" title="Export CSV of the filtered feed" onClick={exportCsv} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">CSV</span></button>
-              <button className="tb green flex-col leading-none" title="Export JSON of the filtered feed" onClick={exportJson} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">{'{}'}</span></button>
+              <button className="tb green flex-col leading-none" title="Export JSON of the filtered feed" onClick={exportJson} disabled={!feed.length}>📥<span className="text-[8px] font-bold tracking-wide">JSON</span></button>
               <button className="tb" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark((d) => !d)}>{dark ? '☀' : '🌙'}</button>
             </div>
           </div>
@@ -526,12 +526,12 @@ function App() {
         {/* feed of the current account */}
         <section className="card overflow-hidden shadow-lg feed">
           <div className="panel-head">
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-wrap items-baseline gap-x-2">
               <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(16 * scale)}px` }}>
                 {handle ? <a href={`https://x.com/${handle}`} target="_blank" rel="noreferrer">@{handle}</a> : 'Feed'} <span className="font-normal">{feed.length} / {posts.length}</span>
               </h3>
               {handle && (
-                <div className="text-[10px] mt-0.5 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400">
                   {fromSheet ? <>☁️ Synced to Google Sheets • tab: <span className="font-mono">{tabOf(handle)}</span></> : posts.length ? '💾 local copy' : '—'}{lastRun ? ` • last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')}` : ''}
                 </div>
               )}
