@@ -42,15 +42,11 @@ declare function GM_registerMenuCommand(caption: string, cb: () => void): number
 declare const unsafeWindow: Window & typeof globalThis;
 declare const GM_info: { script: { version: string; name: string } } | undefined;
 
-const gm = (name: string): unknown => {
-  try {
-    return (globalThis as unknown as Record<string, unknown>)[name];
-  } catch {
-    return undefined;
-  }
-};
-
-export const hasGM = (): boolean => typeof gm('GM_getValue') === 'function';
+// Tampermonkey hands the GM_* functions to the script as local bindings of its wrapper, NOT as properties of
+// globalThis: a lookup through globalThis finds nothing (2.2.3 diagnostics: gm false, GM_addElement never used, so
+// the page hook was blocked by x.com's CSP). Each check references the identifier itself; an undeclared one throws
+// a ReferenceError, which is the "absent" answer.
+export const hasGM = (): boolean => { try { return typeof GM_getValue === 'function'; } catch { return false; } };
 
 export function gmGet<T>(key: string, fallback: T): T {
   try {
@@ -71,13 +67,13 @@ export function gmDel(key: string): void {
 
 export function gmOnChange(key: string, cb: (value: unknown) => void): void {
   try {
-    if (typeof gm('GM_addValueChangeListener') === 'function') GM_addValueChangeListener(key, (_k, _o, n) => cb(n));
+    if (typeof GM_addValueChangeListener === 'function') GM_addValueChangeListener(key, (_k, _o, n) => cb(n));
   } catch { /* older managers: the viewer polls through hello instead */ }
 }
 
 export function gmMenu(caption: string, cb: () => void): void {
   try {
-    if (typeof gm('GM_registerMenuCommand') === 'function') GM_registerMenuCommand(caption, cb);
+    if (typeof GM_registerMenuCommand === 'function') GM_registerMenuCommand(caption, cb);
   } catch { /* ignore */ }
 }
 
@@ -120,7 +116,7 @@ declare function GM_xmlhttpRequest(o: {
   onload: (r: GmResponse) => void; onerror: (r: unknown) => void; ontimeout: () => void;
 }): void;
 
-export const hasGmRequest = (): boolean => typeof gm('GM_xmlhttpRequest') === 'function';
+export const hasGmRequest = (): boolean => { try { return typeof GM_xmlhttpRequest === 'function'; } catch { return false; } };
 
 export function gmRequest(method: string, url: string, headers: Record<string, string>, body?: string): Promise<GmResponse> {
   return new Promise((resolve, reject) => {
@@ -145,7 +141,7 @@ declare function GM_addElement(tag: string, attributes: Record<string, string>):
 /** Put JavaScript into the page itself. Returns false when no element could be added. */
 export function gmAddScript(code: string): boolean {
   try {
-    if (typeof gm('GM_addElement') === 'function') { GM_addElement('script', { textContent: code }); return true; }
+    if (typeof GM_addElement === 'function') { GM_addElement('script', { textContent: code }); return true; }
   } catch { /* fall through */ }
   try {
     const s = document.createElement('script');
