@@ -98,6 +98,7 @@ export const KEYS = {
   outbox: 'xsync.outbox',
   runs: 'xsync.runs',
   status: 'xsync.status',
+  watch: 'xsync.watch',
   meta: (handle: string) => `xsync.meta.${handle.toLowerCase()}`,
   seen: (handle: string) => `xsync.seen.${handle.toLowerCase()}`,
 };

@@ -11,6 +11,7 @@ const FIELDS: { key: keyof Settings; label: string }[] = [
   { key: 'restMinSec', label: 'Rest, min seconds' },
   { key: 'restMaxSec', label: 'Rest, max seconds' },
   { key: 'idleScrolls', label: 'Stop after N scrolls without new posts' },
+  { key: 'watchEveryMin', label: 'Watch: check every N minutes' },
 ];
 
 export function openSettings(onSaved: (s: Settings) => void): void {
