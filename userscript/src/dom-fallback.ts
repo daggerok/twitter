@@ -41,7 +41,11 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   const textEl = article.querySelector('[data-testid="tweetText"]');
   const text = textEl ? (textEl as HTMLElement).innerText.trim() : '';
   const media: Media[] = [];
-  article.querySelectorAll<HTMLImageElement>('[data-testid="tweetPhoto"] img').forEach((img) => { if (img.src) media.push({ type: 'photo', url: img.src }); });
+  article.querySelectorAll<HTMLImageElement>('[data-testid="tweetPhoto"] img').forEach((img) => {
+    if (!img.src) return;
+    const gif = gifFromThumb(img.src);
+    media.push(gif ? { type: 'gif', url: gif } : { type: 'photo', url: img.src });
+  });
   // videos and gifs: X renders a <video> (gifs too, looping); the source url when it is there, else the post's video page
   const videos = Array.from(article.querySelectorAll<HTMLVideoElement>('video'));
   if (videos.length || article.querySelector('[data-testid="videoPlayer"], [data-testid="videoComponent"], [data-testid="gifPlayer"]')) {
@@ -97,6 +101,12 @@ export function scanDom(seenAt = new Date().toISOString()): Post[] {
     } catch { /* one odd card never stops the scan */ }
   });
   return out;
+}
+
+/** A gif's poster is served as pbs.twimg.com/tweet_video_thumb/<id>; its mp4 is video.twimg.com/tweet_video/<id>.mp4. */
+export function gifFromThumb(src: string): string | null {
+  const m = /pbs\.twimg\.com\/tweet_video_thumb\/([A-Za-z0-9_-]+)/.exec(src);
+  return m ? `https://video.twimg.com/tweet_video/${m[1]}.mp4` : null;
 }
 
 export { countFromLabel };

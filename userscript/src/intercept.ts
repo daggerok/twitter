@@ -27,6 +27,7 @@ export const diag = {
   parsed: {} as Record<string, number>,    // op -> posts the parser found
   sample: '',               // first 1,500 chars of the first timeline response (the owner's own data, never stored)
   errors: [] as string[],
+  ops: {} as Record<string, number>,       // every GraphQL operation name the page requested, wanted or not
 };
 export type StatusHandler = (operation: string, status: number) => void;
 
@@ -38,7 +39,9 @@ function pageCode(wanted: string[]): string {
   if (window.__xsyncNet) return;
   window.__xsyncNet = true;
   var wanted = ${JSON.stringify(wanted)};
-  var opOf = function (url) { var m = /\\/i\\/api\\/graphql\\/[^/]+\\/([A-Za-z0-9_]+)/.exec(String(url || '')); return m && wanted.indexOf(m[1]) >= 0 ? m[1] : null; };
+  var anyOp = function (url) { var m = /\\/i\\/api\\/graphql\\/[^/]+\\/([A-Za-z0-9_]+)/.exec(String(url || '')); return m ? m[1] : null; };
+  // every GraphQL operation name is reported once as __op (the 🐞 file lists them, so a renamed timeline operation shows up)
+  var opOf = function (url) { var name = anyOp(url); if (name) post('__op', 0, name); return name && wanted.indexOf(name) >= 0 ? name : null; };
   var urlOf = function (input) { try { return typeof input === 'string' ? input : input && input.url ? input.url : input && input.href ? input.href : String(input); } catch (e) { return ''; } };
   var post = function (op, status, text) { try { window.postMessage({ source: 'xsync-net', op: op, status: status, text: text }, location.origin); } catch (e) {} };
   post('__hello', 0, '');
@@ -80,6 +83,7 @@ export function installInterceptor(onPayload: PayloadHandler, onStatus: StatusHa
   const seen = new Map<string, number>(); // op+length -> time, to drop the duplicate of a payload both channels saw
   const report = (op: string, status: number, text: string) => {
     if (op === '__hello') { diag.pageHello = true; return; }
+    if (op === '__op') { diag.ops[text] = (diag.ops[text] || 0) + 1; return; }
     diag.messages[`${op}:${status}`] = (diag.messages[`${op}:${status}`] || 0) + 1;
     if (!diag.sample && text && op !== 'UserByScreenName') diag.sample = text.slice(0, 1500);
     onStatus(op, status);
