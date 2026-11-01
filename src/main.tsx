@@ -94,8 +94,9 @@ function App() {
   const [night, setNight] = useState(() => isNight());
   const dark = isDark(themeMode, night);
   const [cfg, setCfg] = useState<Config>(loadConfig);
-  const [showSettings, setShowSettings] = useState(() => !loadConfig().clientId);
-  const [showLog, setShowLog] = useState(false);
+  // the open panels survive a reload (owner: the debug console open before a refresh is open after it); Setup opens itself while no Client ID is set
+  const [showSettings, setShowSettings] = useState(() => !loadConfig().clientId || lsGet(`${PREFIX}-panel-setup`) === 'open');
+  const [showLog, setShowLog] = useState(() => lsGet(`${PREFIX}-panel-log`) === 'open');
   const [current, setCurrent] = useState(() => lsGet(CURRENT_KEY) || '');
   const [handle, setHandle] = useState(() => cleanHandle(lsGet(CURRENT_KEY) || ''));
   const [posts, setPosts] = useState<Post[]>(() => loadCachedPosts(cleanHandle(lsGet(CURRENT_KEY) || '')));
@@ -142,6 +143,8 @@ function App() {
   useEffect(() => { lsSet(CONFIG_KEY, JSON.stringify(cfg)); }, [cfg]);
   useEffect(() => { lsSet(CURRENT_KEY, current); }, [current]);
   useEffect(() => { lsSet(SCALE_KEY, String(scaleSlider)); }, [scaleSlider]);
+  useEffect(() => { lsSet(`${PREFIX}-panel-setup`, showSettings ? 'open' : 'closed'); }, [showSettings]);
+  useEffect(() => { lsSet(`${PREFIX}-panel-log`, showLog ? 'open' : 'closed'); }, [showLog]);
   useEffect(() => { lsSet(FILTERS_KEY, JSON.stringify(table)); setShown(PAGE_SIZE); }, [table]);
 
   const sid = spreadsheetId(cfg.spreadsheetId);
