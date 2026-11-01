@@ -104,7 +104,7 @@ export function fromRow(row: unknown[]): Post | null {
   const created = cell(row, 3);
   return {
     id,
-    handle: cell(row, 1).toLowerCase(),
+    handle: cell(row, 1),
     author_name: cell(row, 2),
     created_at: created,
     type: isPostType(type) ? type : 'post',

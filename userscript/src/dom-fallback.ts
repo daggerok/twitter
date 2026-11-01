@@ -29,13 +29,13 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   const path = new URL(link.href, location.href).pathname;
   const m = /^\/([^/]+)\/status\/(\d+)$/.exec(path);
   if (!m) return null;
-  const author = m[1].toLowerCase();
+  const author = m[1];
   const id = m[2];
   const social = article.querySelector('[data-testid="socialContext"]');
   const socialText = (social && social.textContent) || '';
   const isRepost = /repost|retweet/i.test(socialText);
   const isPinned = /pinned/i.test(socialText);
-  if (handle && author !== handle.toLowerCase() && !isRepost) return null;
+  if (handle && author.toLowerCase() !== handle.toLowerCase() && !isRepost) return null;
   const time = article.querySelector('time');
   const created = (time && time.getAttribute('datetime')) || '';
   const textEl = article.querySelector('[data-testid="tweetText"]');
@@ -56,7 +56,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   const replyTo = Array.from(article.querySelectorAll('a[href^="/"]')).map((a) => a.getAttribute('href') || '')
     .find((h) => !!h && !h.includes('/status/') && /^\/[A-Za-z0-9_]{1,15}$/.test(h) && article.textContent?.includes('Replying to'));
   const type: PostType = isRepost ? 'repost' : replyTo && !isPinned ? 'reply' : article.querySelector('[data-testid="quoteTweet"], div[role="link"] time') ? 'quote' : 'post'; // a quoted post is a nested div[role=link] card with its own time; the post's own timestamp is an a[role=link], never a quote
-  const owner = handle.toLowerCase() || author;
+  const owner = handle || author;
   return {
     id,
     handle: isRepost ? owner : author,
@@ -67,7 +67,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     lang: '',
     url: `https://x.com/${isRepost ? owner : author}/status/${id}`,
     in_reply_to_id: '',
-    in_reply_to_handle: type === 'reply' && replyTo ? replyTo.slice(1).toLowerCase() : '',
+    in_reply_to_handle: type === 'reply' && replyTo ? replyTo.slice(1) : '',
     conversation_id: '',
     quoted_id: '',
     reposted_id: isRepost ? id : '',

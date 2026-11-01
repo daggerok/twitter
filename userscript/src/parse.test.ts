@@ -20,7 +20,7 @@ describe('parseTimeline', () => {
     expect(r.skipped).toBe(3);
     expect(r.errors).toBe(0);
     expect(r.cursorBottom).toBe('DAABCgABbottom');
-    expect(r.account).toEqual({ handle: 'fixtureacc', display_handle: 'FixtureAcc', user_id: '44196397', display_name: 'Fixture Account', followers: 12345 });
+    expect(r.account).toEqual({ handle: 'FixtureAcc', display_handle: 'FixtureAcc', user_id: '44196397', display_name: 'Fixture Account', followers: 12345 });
   });
 
   test('pinned post: flag, expanded link, photo media, media t.co removed from the text, counts and views', () => {
@@ -34,7 +34,7 @@ describe('parseTimeline', () => {
     expect(p?.likes).toBe(10);
     expect(p?.bookmarks).toBe(4);
     expect(p?.views).toBe(500);
-    expect(p?.url).toBe('https://x.com/fixtureacc/status/1800000000000000001');
+    expect(p?.url).toBe('https://x.com/FixtureAcc/status/1800000000000000001');
     expect(p?.first_seen_at).toBe(SEEN);
     expect(p?.last_seen_at).toBe(SEEN);
   });
@@ -51,10 +51,10 @@ describe('parseTimeline', () => {
     const p = byId.get('1900000000000000008');
     expect(p?.type).toBe('repost');
     expect(p?.reposted_id).toBe('1850000000000000005');
-    expect(p?.reposted_handle).toBe('other');
+    expect(p?.reposted_handle).toBe('Other');
     expect(p?.text).toBe('the original text that gets cut at one hundred and forty characters in the retweet legacy text so the parser must take the original');
     expect(p?.media).toEqual([{ type: 'video', url: 'https://video.twimg.com/high.mp4' }]);
-    expect(p?.handle).toBe('fixtureacc');
+    expect(p?.handle).toBe('FixtureAcc');
   });
 
   test('quote inside TweetWithVisibilityResults: quoted_id, the quote url is not an external link', () => {
@@ -66,11 +66,11 @@ describe('parseTimeline', () => {
     expect(p?.likes).toBe(5);
   });
 
-  test('reply from a conversation module: in_reply_to fields lowercased', () => {
+  test('reply from a conversation module: in_reply_to fields as X writes them', () => {
     const p = byId.get('1900000000000000004');
     expect(p?.type).toBe('reply');
     expect(p?.in_reply_to_id).toBe('1900000000000000003');
-    expect(p?.in_reply_to_handle).toBe('someoneelse');
+    expect(p?.in_reply_to_handle).toBe('SomeoneElse');
     expect(p?.conversation_id).toBe('1900000000000000003');
   });
 
@@ -96,8 +96,8 @@ describe('parseTimeline', () => {
 describe('parseUser and urls', () => {
   test('UserByScreenName in both schemas', () => {
     expect(parseUser({ data: { user: { result: { rest_id: '7', core: { screen_name: 'Abc', name: 'A B C' }, legacy: { followers_count: 3 } } } } }))
-      .toEqual({ handle: 'abc', display_handle: 'Abc', user_id: '7', display_name: 'A B C', followers: 3 });
-    expect(parseUser({ data: { user: { result: { rest_id: '7', legacy: { screen_name: 'Abc', name: 'A B C', followers_count: 3 } } } } })?.handle).toBe('abc');
+      .toEqual({ handle: 'Abc', display_handle: 'Abc', user_id: '7', display_name: 'A B C', followers: 3 });
+    expect(parseUser({ data: { user: { result: { rest_id: '7', legacy: { screen_name: 'Abc', name: 'A B C', followers_count: 3 } } } } })?.handle).toBe('Abc');
     expect(parseUser({})).toBeNull();
   });
 

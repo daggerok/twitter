@@ -91,7 +91,7 @@ describe('csv, json import, linkify', () => {
     const got = postsFromJson(file);
     expect(got.length).toBe(2);
     expect(got[0]).toEqual(samplePost());
-    expect(got[1].handle).toBe('h');
+    expect(got[1].handle).toBe('H');
     expect(got[1].likes).toBe(3);
     expect(got[1].url).toBe('https://x.com/H/status/x');
     expect(postsFromJson('[]')).toEqual([]);
