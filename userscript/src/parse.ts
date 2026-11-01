@@ -40,7 +40,11 @@ export function instructionsOf(json: unknown): unknown[] {
   const candidates = [
     get(json, 'data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions'),
     get(json, 'data', 'user', 'result', 'timeline', 'timeline', 'instructions'),
+    // the 2026 operations (UserRepliesTimeline, UserTweetsTimeline, ...) answer under user_result / timeline_response
+    get(json, 'data', 'user_result', 'result', 'timeline_response', 'timeline', 'instructions'),
+    get(json, 'data', 'user', 'result', 'timeline_response', 'timeline', 'instructions'),
     get(json, 'data', 'threaded_conversation_with_injections_v2', 'instructions'),
+    get(json, 'data', 'timeline_response', 'instructions'),
   ];
   for (const c of candidates) if (Array.isArray(c)) return c;
   return [];
@@ -49,26 +53,31 @@ export function instructionsOf(json: unknown): unknown[] {
 /** Every tweet result object of a payload, with the pinned flag; cursor entries are skipped. */
 function tweetResults(json: unknown): { result: unknown; pinned: boolean; promoted: boolean }[] {
   const out: { result: unknown; pinned: boolean; promoted: boolean }[] = [];
+  // two spellings: the classic one (type, entryType, itemContent, itemType) and the newer one, where every object
+  // carries __typename and the item content sits under `content`
   const pushItem = (itemContent: unknown, pinned: boolean) => {
     if (!isObj(itemContent)) return;
-    if (itemContent.itemType && itemContent.itemType !== 'TimelineTweet') return;
+    const itemType = itemContent.itemType || itemContent.__typename;
+    if (itemType && itemType !== 'TimelineTweet') return;
     const result = get(itemContent, 'tweet_results', 'result');
     if (result === undefined) return;
     out.push({ result, pinned, promoted: isObj(itemContent.promotedMetadata) });
   };
+  const itemOf = (it: unknown): unknown => get(it, 'item', 'itemContent') ?? get(it, 'item', 'content') ?? get(it, 'content');
   const pushEntry = (entry: unknown, pinned: boolean) => {
     const content = get(entry, 'content');
     if (!isObj(content)) return;
-    if (content.entryType === 'TimelineTimelineItem') pushItem(content.itemContent, pinned);
-    else if (content.entryType === 'TimelineTimelineModule') {
-      arr(content.items).forEach((it) => pushItem(get(it, 'item', 'itemContent'), pinned));
+    const entryType = content.entryType || content.__typename;
+    if (entryType === 'TimelineTimelineItem') pushItem(content.itemContent ?? content.content, pinned);
+    else if (entryType === 'TimelineTimelineModule') {
+      arr(content.items).forEach((it) => pushItem(itemOf(it), pinned));
     }
   };
   instructionsOf(json).forEach((ins) => {
-    const type = get(ins, 'type');
+    const type = get(ins, 'type') || get(ins, '__typename');
     if (type === 'TimelinePinEntry') pushEntry(get(ins, 'entry'), true);
     else if (type === 'TimelineAddEntries') arr(get(ins, 'entries')).forEach((e) => pushEntry(e, false));
-    else if (type === 'TimelineAddToModule') arr(get(ins, 'moduleItems')).forEach((it) => pushItem(get(it, 'item', 'itemContent'), false));
+    else if (type === 'TimelineAddToModule') arr(get(ins, 'moduleItems')).forEach((it) => pushItem(itemOf(it), false));
   });
   return out;
 }
@@ -76,10 +85,10 @@ function tweetResults(json: unknown): { result: unknown; pinned: boolean; promot
 export function bottomCursor(json: unknown): string | null {
   let cursor: string | null = null;
   instructionsOf(json).forEach((ins) => {
-    if (get(ins, 'type') !== 'TimelineAddEntries') return;
+    if ((get(ins, 'type') || get(ins, '__typename')) !== 'TimelineAddEntries') return;
     arr(get(ins, 'entries')).forEach((e) => {
       const c = get(e, 'content');
-      if (isObj(c) && c.entryType === 'TimelineTimelineCursor' && c.cursorType === 'Bottom') cursor = str(c.value) || null;
+      if (isObj(c) && (c.entryType || c.__typename) === 'TimelineTimelineCursor' && c.cursorType === 'Bottom') cursor = str(c.value) || null;
     });
   });
   return cursor;
@@ -283,3 +292,10 @@ export function graphqlOperation(url: string): string | null {
 }
 
 export const TIMELINE_OPERATIONS = new Set(['UserTweets', 'UserTweetsAndReplies', 'UserMedia', 'TweetDetail']);
+
+/**
+ * Is this GraphQL operation a timeline of posts? The classic names, and the 2026 ones that end in `Timeline`
+ * (`UserRepliesTimeline`, `UserTweetsTimeline`, `UserMediaTimeline`, ...). Side queries never match.
+ */
+export const TIMELINE_OPERATION_RE = /^(UserTweets|UserTweetsAndReplies|UserMedia|TweetDetail|User\w*Timeline)$/;
+export const isTimelineOperation = (op: string): boolean => TIMELINE_OPERATION_RE.test(op);
