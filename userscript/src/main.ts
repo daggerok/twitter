@@ -94,14 +94,16 @@ function onX(): void {
     const effectiveMode: RunMode = mode === 'incremental' && !newestId ? 'full' : mode;
     badge.setRunning(true);
     badge.setJsonAvailable(false);
+    // the source is known while the run goes: a timeline response seen through the interceptor means graphql, else the DOM reader
+    const liveSource = () => (feed.apiPayloads > 0 ? 'graphql' : sink.posts.size > 0 ? 'dom' : '…');
     const status = (state: 'running' | 'paused' | 'done', message: string, stop: StopReason | '' = '') =>
-      setStatus({ state, handle, mode: effectiveMode, seen: sink.posts.size, fresh: sink.posts.size, started_at: startedAt, message, stop_reason: stop });
+      setStatus({ state, handle, mode: effectiveMode, seen: sink.posts.size, fresh: sink.posts.size, started_at: startedAt, message: `${message ? `${message} · ` : ''}source: ${liveSource()}`, stop_reason: stop });
     let note = effectiveMode === 'full' && mode === 'incremental' ? 'nothing stored yet: full run' : '';
     const where = () => (sink.writer ? `${stored} in the sheet${writeError ? ' · write error, rest waits for the viewer' : ''}` : creds ? `sheet unreachable: ${writeError.slice(0, 60)}` : 'no Google token yet: open the viewer once, then the sheet is written from here');
     const paint = () => {
       const secs = Math.round((Date.now() - t0) / 1000);
       const hidden = document.visibilityState === 'hidden';
-      badge.set(`@${handle} · ${effectiveMode}${hidden ? ' · paused (tab hidden)' : ''}\n${sink.posts.size} posts · ${Math.floor(secs / 60)}m ${secs % 60}s · ${where()}${note ? `\n${note}` : ''}`);
+      badge.set(`@${handle} · ${effectiveMode} · ${liveSource()}${hidden ? ' · paused (tab hidden)' : ''}\n${sink.posts.size} posts · ${Math.floor(secs / 60)}m ${secs % 60}s · ${where()}${note ? `\n${note}` : ''}`);
     };
     elapsedTimer = window.setInterval(paint, 1000);
     status('running', note);
