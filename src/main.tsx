@@ -474,7 +474,16 @@ function App() {
               <div className="pb-4">
                 <div className="card overflow-hidden text-xs">
                   <div className="panel-head text-[11px]">
-                    <div className="font-semibold text-emerald-500">🐛 Debug Console <span className="font-normal text-slate-400">({log.length})</span></div>
+                    <div className="font-semibold text-emerald-500 min-w-0 flex flex-wrap items-center gap-x-3">
+                      <span>🐛 Debug Console <span className="font-normal text-slate-400">({log.length})</span></span>
+                      {runStatus?.state === 'running' && <span className="font-normal text-slate-600 dark:text-slate-300" data-sync-status>⏳ Syncing @{runStatus.handle} ({runStatus.mode}): {runStatus.seen} posts so far{runStatus.message ? ` · ${runStatus.message}` : ''}</span>}
+                      {outboxCount > 0 && <span className="font-normal text-slate-600 dark:text-slate-300">📥 {outboxCount} captured posts waiting{canStore ? ', storing…' : ''}</span>}
+                      {handle && (
+                        <span className="font-normal text-emerald-600 dark:text-emerald-400" data-synced-line>
+                  {fromSheet ? <>☁️ Synced to Google Sheets • tab: <span className="font-mono">{tabOf(handle)}</span></> : posts.length ? '💾 local copy' : '—'}{lastRun ? ` • last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.mode}, ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')} (${lastRun.source || '?'}${lastRun.source === 'dom' ? ': fallback, press 🔄 with the current script' : ''})` : ''}
+                        </span>
+                      )}
+                    </div>
                     <button className="btn sm" onClick={() => setLog([])}>Clear</button>
                   </div>
                   {log.length ? (
@@ -530,13 +539,10 @@ function App() {
         </div>
 
         {/* inbox from the userscript */}
-        {(outboxCount > 0 || runStatus?.state === 'running') && (
+        {outboxCount > 0 && !canStore && (
           <section className="card mb-4 px-3 py-2 text-sm flex flex-wrap items-center justify-between gap-2 animate-fade-in">
-            <div>
-              {runStatus?.state === 'running' && <div>⏳ Syncing @{runStatus.handle} ({runStatus.mode}): {runStatus.seen} posts so far{runStatus.message ? ` · ${runStatus.message}` : ''}</div>}
-              {outboxCount > 0 && <div>📥 {outboxCount} captured posts waiting{canStore ? ', storing…' : ' (connect Google and set the spreadsheet to store them)'}</div>}
-            </div>
-            {outboxCount > 0 && !canStore && <button className="btn sm primary" onClick={() => { void connect(true); }}>Connect Google</button>}
+            <div>📥 {outboxCount} captured posts waiting: connect Google and set the spreadsheet to store them</div>
+            <button className="btn sm primary" onClick={() => { void connect(true); }}>Connect Google</button>
           </section>
         )}
 
@@ -548,11 +554,7 @@ function App() {
                 {feed.length} / {posts.length}
               </h3>
               {busy && <span className="text-[10px] text-slate-500 dark:text-slate-400 animate-pulse" data-busy>⏳ {busy}</span>}
-              {handle && (
-                <div className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                  {fromSheet ? <>☁️ Synced to Google Sheets • tab: <span className="font-mono">{tabOf(handle)}</span></> : posts.length ? '💾 local copy' : '—'}{lastRun ? ` • last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.mode}, ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')} (${lastRun.source || '?'}${lastRun.source === 'dom' ? ': fallback, press 🔄 with the current script' : ''})` : ''}
-                </div>
-              )}
+
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
               {hasFilters(table) && <button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [] }))} data-clear-filters>Clear filters</button>}
