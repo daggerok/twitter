@@ -139,7 +139,30 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
     }
 
     idle = sink.posts.size > before ? 0 : idle + 1;
-    if (idle >= s.idleScrolls) return result('end_of_timeline');
+    if (idle >= s.idleScrolls) {
+      // the next page of a real timeline can take X a while (and a "Retry" card): before calling it the end,
+      // three times scroll to the very bottom and wait 10 s for more; the owner's 2.3.7 run stopped at 495 posts
+      let grew = false;
+      for (let i = 0; i < 3 && !grew; i += 1) {
+        o.onProgress(sink.posts.size, 0, `end of the timeline? waiting for more (${i + 1}/3)`);
+        window.scrollTo(0, document.body.scrollHeight);
+        await sleep(10_000);
+        if (o.isStopped()) return result('stopped');
+        const btn = retryButton();
+        if (btn) { btn.click(); await sleep(4000); }
+        const late = feed.take();
+        stop = ingest(late, true);
+        if (stop) return result(stop);
+        if (!late.length) {
+          const dom = scanDom().filter((p) => !seenIds.has(p.id));
+          stop = ingest(dom, false);
+          if (stop) return result(stop);
+        }
+        grew = sink.posts.size > before;
+      }
+      if (!grew) return result('end_of_timeline');
+      idle = 0;
+    }
     if (scrolls % s.restEvery === 0) {
       o.onProgress(sink.posts.size, 0, 'resting');
       await sleep(rand(s.restMinSec, s.restMaxSec) * 1000);
