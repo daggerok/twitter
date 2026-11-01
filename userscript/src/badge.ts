@@ -5,6 +5,7 @@ import type { RunMode } from './gm';
 export type BadgeActions = {
   start: (mode: RunMode) => void;
   stop: () => void;
+  watch: () => void;
   settings: () => void;
   downloadJson: () => void;
   debug: () => void;
@@ -67,6 +68,7 @@ export class Badge {
     };
     mk('new', 'Sync new', '', () => this.actions.start('incremental'));
     mk('full', 'Full sync', 'sec', () => this.actions.start('full'));
+    mk('watch', 'Watch', 'sec', () => this.actions.watch());
     mk('stop', 'Stop', 'stop', () => this.actions.stop());
     mk('json', 'JSON', 'sec', () => this.actions.downloadJson());
     mk('settings', '⚙', 'sec', () => this.actions.settings());
@@ -87,6 +89,7 @@ export class Badge {
     if (!this.root) return;
     this.buttons.new.disabled = running;
     this.buttons.full.disabled = running;
+    this.buttons.watch.disabled = running;
     this.buttons.stop.disabled = !running;
   }
 
@@ -96,6 +99,16 @@ export class Badge {
 
   set(text: string): void {
     if (this.status) this.status.textContent = text;
+  }
+
+  /** The Watch line under the status: empty hides it. */
+  setWatch(text: string): void {
+    if (!this.root) return;
+    let el = this.root.querySelector<HTMLDivElement>('.w');
+    if (!el) { el = document.createElement('div'); el.className = 's w'; this.status?.after(el); }
+    el.textContent = text;
+    el.style.display = text ? '' : 'none';
+    if (this.buttons.watch) this.buttons.watch.textContent = text ? 'Watching ✓' : 'Watch';
   }
 }
 

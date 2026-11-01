@@ -9,7 +9,7 @@
 import { handleFromPath, sameHandle, type Post } from '../../shared/post';
 import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
-import { gmMenu, hasGM, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
+import { gmDel, gmGet, gmMenu, gmSet, hasGM, KEYS, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
 import { diag, installInterceptor } from './intercept';
 import { parseTimeline, parseUser, type AccountInfo } from './parse';
 import { runSync, TimelineFeed } from './scroll';
@@ -46,9 +46,35 @@ function onX(): void {
   let stopRequested = false;
   let lastRunPosts: Post[] = [];
   let elapsedTimer = 0;
+  // Watch: the profile is reloaded every watchEveryMin minutes and the new posts synced, until Stop (kept in GM storage
+  // so it survives the reload; X does not push new posts into an open profile page)
+  type Watch = { handle: string; since: string };
+  const watching = (): Watch | null => { const w = gmGet<Watch | null>(KEYS.watch, null); return w && sameHandle(w.handle, handleFromPath(location.pathname) || '') ? w : null; };
+  let watchTimer = 0;
+  let watchCountdown = 0;
+  const scheduleWatch = () => {
+    const w = watching();
+    if (!w) return;
+    const every = loadSettings().watchEveryMin;
+    const due = Date.now() + every * 60_000;
+    const tick = () => {
+      const left = Math.max(0, due - Date.now());
+      if (left <= 0) { location.reload(); return; }
+      badge.setWatch(`watching since ${w.since.slice(11, 16)} · next check in ${Math.ceil(left / 60_000)} min`);
+    };
+    window.clearInterval(watchCountdown);
+    watchCountdown = window.setInterval(tick, 10_000);
+    tick();
+  };
   const badge = new Badge({
     start: (mode) => { void start(mode); },
-    stop: () => { stopRequested = true; badge.set('stopping after this scroll…'); },
+    stop: () => { stopRequested = true; gmDel(KEYS.watch); window.clearInterval(watchCountdown); window.clearTimeout(watchTimer); badge.setWatch(''); badge.set(running ? 'stopping after this scroll…' : 'watch off'); },
+    watch: () => {
+      const h = handleFromPath(location.pathname);
+      if (!h || running) return;
+      gmSet(KEYS.watch, { handle: h, since: new Date().toISOString() });
+      void start('incremental');
+    },
     settings: () => openSettings(() => badge.set('settings saved')),
     debug: () => downloadJson(`x-sync-debug-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`, {
       version: VERSION, url: location.href, handle: currentHandle, account, intercepted, running,
@@ -140,6 +166,7 @@ function onX(): void {
     badge.setRunning(false);
     badge.setJsonAvailable(lastRunPosts.length > 0);
     badge.set(`@${handle} · done: ${result.stop.replace(/_/g, ' ')}\n${sink.posts.size} posts (${result.source}) · ${where()}${note ? `\n${note}` : ''}\n${sink.writer && !writeError ? 'open the viewer to see them' : 'open the viewer to store them'}`);
+    scheduleWatch();
   }
 
   const boot = () => {
@@ -149,6 +176,7 @@ function onX(): void {
     gmMenu('X sync: settings', () => openSettings(() => badge.set('settings saved')));
     const hashMode = readHashMode();
     if (hashMode) setTimeout(() => { void start(hashMode); }, 2500); // let the first timeline request answer
+    else if (watching()) watchTimer = window.setTimeout(() => { void start('incremental'); }, 2500); // a watched profile just reloaded itself
     // X is a single page app: watch the url
     let lastPath = location.pathname;
     setInterval(() => {

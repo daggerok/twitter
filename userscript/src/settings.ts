@@ -11,6 +11,7 @@ export type Settings = {
   restMinSec: number;
   restMaxSec: number;
   idleScrolls: number;   // stop after this many scrolls without a new post
+  watchEveryMin: number; // Watch: reload the profile and sync the new posts every N minutes
   withReplies: boolean;  // the viewer opens /with_replies instead of the posts tab
 };
 
@@ -24,6 +25,7 @@ export const DEFAULTS: Settings = {
   restMinSec: 5,
   restMaxSec: 12,
   idleScrolls: 8,
+  watchEveryMin: 10,
   withReplies: false,
 };
 
@@ -46,6 +48,7 @@ export function normalize(raw: unknown): Settings {
     restMinSec: clampNum(r.restMinSec, 0, 600, DEFAULTS.restMinSec),
     restMaxSec: clampNum(r.restMaxSec, 0, 600, DEFAULTS.restMaxSec),
     idleScrolls: clampNum(r.idleScrolls, 2, 100, DEFAULTS.idleScrolls),
+    watchEveryMin: clampNum(r.watchEveryMin, 1, 1440, DEFAULTS.watchEveryMin),
     withReplies: r.withReplies === true,
   };
   if (s.delayMaxMs < s.delayMinMs) s.delayMaxMs = s.delayMinMs;
