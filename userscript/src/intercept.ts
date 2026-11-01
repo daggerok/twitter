@@ -16,6 +16,18 @@ import { graphqlOperation, TIMELINE_OPERATIONS } from './parse';
 import { gmAddScript, pageWindow } from './gm';
 
 export type PayloadHandler = (operation: string, json: unknown) => void;
+
+/** What the two channels saw: the badge's Debug button downloads it, so a run that fell back to the DOM reader can be explained. */
+export const diag = {
+  injected: false,          // the page script element could be added
+  pageHello: false,         // the page script ran (it posts __hello when installed)
+  direct: false,            // unsafeWindow.fetch was patched from the sandbox
+  messages: {} as Record<string, number>,  // op:status -> count of responses reported
+  payloads: 0,              // responses parsed as json and handed to the parser
+  parsed: {} as Record<string, number>,    // op -> posts the parser found
+  sample: '',               // first 1,500 chars of the first timeline response (the owner's own data, never stored)
+  errors: [] as string[],
+};
 export type StatusHandler = (operation: string, status: number) => void;
 
 const WANTED = Array.from(TIMELINE_OPERATIONS).concat(['UserByScreenName']);
@@ -29,6 +41,7 @@ function pageCode(wanted: string[]): string {
   var opOf = function (url) { var m = /\\/i\\/api\\/graphql\\/[^/]+\\/([A-Za-z0-9_]+)/.exec(String(url || '')); return m && wanted.indexOf(m[1]) >= 0 ? m[1] : null; };
   var urlOf = function (input) { try { return typeof input === 'string' ? input : input && input.url ? input.url : input && input.href ? input.href : String(input); } catch (e) { return ''; } };
   var post = function (op, status, text) { try { window.postMessage({ source: 'xsync-net', op: op, status: status, text: text }, location.origin); } catch (e) {} };
+  post('__hello', 0, '');
   var f = window.fetch;
   if (typeof f === 'function') {
     window.fetch = function (input, init) {
@@ -66,6 +79,9 @@ export function installInterceptor(onPayload: PayloadHandler, onStatus: StatusHa
   const win = pageWindow();
   const seen = new Map<string, number>(); // op+length -> time, to drop the duplicate of a payload both channels saw
   const report = (op: string, status: number, text: string) => {
+    if (op === '__hello') { diag.pageHello = true; return; }
+    diag.messages[`${op}:${status}`] = (diag.messages[`${op}:${status}`] || 0) + 1;
+    if (!diag.sample && text && op !== 'UserByScreenName') diag.sample = text.slice(0, 1500);
     onStatus(op, status);
     if (!text) return;
     const key = `${op}:${text.length}`;
@@ -74,14 +90,15 @@ export function installInterceptor(onPayload: PayloadHandler, onStatus: StatusHa
     if (now - last < 5000) return;
     seen.set(key, now);
     if (seen.size > 200) { const first = seen.keys().next().value; if (first !== undefined) seen.delete(first); }
-    try { onPayload(op, JSON.parse(text)); } catch { /* not json */ }
+    try { onPayload(op, JSON.parse(text)); diag.payloads += 1; } catch (e) { diag.errors.push(`${op}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200)); }
   };
 
   // 1. the page script: its messages come back through the window
   let injected = false;
   try {
     injected = gmAddScript(pageCode(WANTED));
-  } catch { injected = false; }
+  } catch (e) { injected = false; diag.errors.push(`inject: ${e instanceof Error ? e.message : String(e)}`); }
+  diag.injected = injected;
   window.addEventListener('message', (event: MessageEvent) => {
     if (event.origin !== location.origin) return;
     const d = event.data as { source?: string; op?: string; status?: number; text?: string } | null;
@@ -107,6 +124,7 @@ export function installInterceptor(onPayload: PayloadHandler, onStatus: StatusHa
       };
       direct = true;
     }
-  } catch { /* fetch not writable */ }
+  } catch (e) { diag.errors.push(`direct: ${e instanceof Error ? e.message : String(e)}`); }
+  diag.direct = direct;
   return injected || direct;
 }

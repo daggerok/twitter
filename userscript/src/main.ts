@@ -10,7 +10,7 @@ import { handleFromPath, sameHandle, type Post } from '../../shared/post';
 import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
 import { gmMenu, hasGM, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
-import { installInterceptor } from './intercept';
+import { diag, installInterceptor } from './intercept';
 import { parseTimeline, parseUser, type AccountInfo } from './parse';
 import { runSync, TimelineFeed } from './scroll';
 import { loadSettings } from './settings';
@@ -36,6 +36,8 @@ function onX(): void {
     if (op === 'UserByScreenName') { account = parseUser(json) || account; return; }
     const handle = handleFromPath(location.pathname) || '';
     const r = parseTimeline(json, handle);
+    diag.parsed[op] = (diag.parsed[op] || 0) + r.posts.length;
+    if (r.errors) diag.errors.push(`${op}: ${r.errors} entries threw`);
     if (r.account && (!account || account.handle === r.account.handle)) account = r.account;
     if (r.posts.length) feed.onTimeline(r.posts);
   }, (_op, status) => feed.onStatus(status));
@@ -48,6 +50,10 @@ function onX(): void {
     start: (mode) => { void start(mode); },
     stop: () => { stopRequested = true; badge.set('stopping after this scroll…'); },
     settings: () => openSettings(() => badge.set('settings saved')),
+    debug: () => downloadJson(`x-sync-debug-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`, {
+      version: VERSION, url: location.href, handle: currentHandle, account, intercepted, running,
+      settings: loadSettings(), apiPayloads: feed.apiPayloads, gm: hasGM(), ...diag,
+    }),
     downloadJson: () => downloadJson(`x-${currentHandle || 'posts'}-${new Date().toISOString().slice(0, 10)}.json`, { version: VERSION, handle: currentHandle, account, posts: lastRunPosts }),
   }, VERSION);
 
