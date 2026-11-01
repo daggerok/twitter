@@ -7,6 +7,7 @@ export type BadgeActions = {
   stop: () => void;
   settings: () => void;
   downloadJson: () => void;
+  debug: () => void;
 };
 
 const HOST_ID = 'xsync-badge';
@@ -69,6 +70,7 @@ export class Badge {
     mk('stop', 'Stop', 'stop', () => this.actions.stop());
     mk('json', 'JSON', 'sec', () => this.actions.downloadJson());
     mk('settings', '⚙', 'sec', () => this.actions.settings());
+    mk('debug', 'Debug', 'sec', () => this.actions.debug());
     root.appendChild(bar);
     document.body.appendChild(root);
     this.root = root;
