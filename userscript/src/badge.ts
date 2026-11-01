@@ -70,7 +70,8 @@ export class Badge {
     this.buttons.new.title = 'Sync the new posts (incremental)';
     mk('full', 'Full', 'sec', () => this.actions.start('full'));
     this.buttons.full.title = 'Full sync: the whole timeline again';
-    mk('watch', 'Watch', 'sec', () => this.actions.watch());
+    mk('watch', '👀', 'sec', () => this.actions.watch());
+    this.buttons.watch.title = 'Watch: reload the profile every N minutes (⚙) and sync the new posts, until 🛑';
     mk('stop', '🛑', 'stop', () => this.actions.stop());
     this.buttons.stop.title = 'Stop (and end Watch)';
     mk('json', '{}', 'sec', () => this.actions.downloadJson());
@@ -114,7 +115,7 @@ export class Badge {
     if (!el) { el = document.createElement('div'); el.className = 's w'; this.status?.after(el); }
     el.textContent = text;
     el.style.display = text ? '' : 'none';
-    if (this.buttons.watch) this.buttons.watch.textContent = text ? 'Watching ✓' : 'Watch';
+    if (this.buttons.watch) this.buttons.watch.textContent = text ? '👀 ✓' : '👀';
   }
 }
 
