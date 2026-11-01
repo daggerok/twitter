@@ -21,6 +21,10 @@ const css = `
 #${HOST_ID} button{cursor:pointer;border:1px solid #38444d;background:#1d9bf0;color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600}
 #${HOST_ID} button.sec{background:transparent;color:#e7e9ea}
 #${HOST_ID} button.stop{background:#f4212e}
+#${HOST_ID} button.full{background:#00ba7c}
+#${HOST_ID} button.watch{background:#ffd400;color:#0f1419}
+#${HOST_ID} button.json{background:transparent;color:#00ba7c;font-weight:800}
+#${HOST_ID} button.grey{background:#536471}
 #${HOST_ID} button:disabled{opacity:.5;cursor:default}
 #${HOST_ID} .x{cursor:pointer;color:#8b98a5;font-size:14px;background:none;border:0;padding:0 2px}
 #${HOST_ID}.min .s,#${HOST_ID}.min .b{display:none}
@@ -68,16 +72,16 @@ export class Badge {
     };
     mk('new', 'New', '', () => this.actions.start('incremental'));
     this.buttons.new.title = 'Sync the new posts (incremental)';
-    mk('full', 'Full', 'sec', () => this.actions.start('full'));
+    mk('full', 'Full', 'full', () => this.actions.start('full'));
     this.buttons.full.title = 'Full sync: the whole timeline again';
-    mk('watch', '👀', 'sec', () => this.actions.watch());
+    mk('watch', '👀', 'watch', () => this.actions.watch());
     this.buttons.watch.title = 'Watch: reload the profile every N minutes (⚙) and sync the new posts, until 🛑';
     mk('stop', '🛑', 'stop', () => this.actions.stop());
     this.buttons.stop.title = 'Stop (and end Watch)';
-    mk('json', '{}', 'sec', () => this.actions.downloadJson());
+    mk('json', '{}', 'json', () => this.actions.downloadJson());
     this.buttons.json.title = 'Download the posts of the last run as JSON';
     mk('settings', '⚙', 'sec', () => this.actions.settings());
-    mk('debug', '🐞', 'sec', () => this.actions.debug());
+    mk('debug', '🐞', 'grey', () => this.actions.debug());
     this.buttons.debug.title = 'Download the diagnostics of the interceptor (a small JSON)';
     this.buttons.settings.title = 'Settings';
     root.appendChild(bar);
