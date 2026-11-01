@@ -11,7 +11,7 @@ export type MediaKind = 'photo' | 'video' | 'gif' | 'media' | '!photo' | '!video
 export const MEDIA_KINDS: { key: MediaKind; label: string }[] = [
   { key: 'photo', label: '📷 Photo' }, { key: '!photo', label: '📷 !Photo (no photo)' },
   { key: 'video', label: '🎬 Video' }, { key: '!video', label: '🎬 !Video (no video)' },
-  { key: 'gif', label: 'GIF' }, { key: '!gif', label: '!GIF (no gif)' },
+  { key: 'gif', label: '🎞 GIF' }, { key: '!gif', label: '🎞 !GIF (no gif)' },
   { key: 'media', label: '🖼 Media (any)' }, { key: '!media', label: '🖼 !Media (text only)' },
 ];
 /** media: the ticked entries of the dropdown, [] = every post */

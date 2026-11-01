@@ -730,7 +730,7 @@ function Settings(p: SettingsProps) {
 
 // ---- 4. Post card ------------------------------------------------------------------------------------
 
-const MEDIA_ICON: Record<string, string> = { photo: '📷', video: '🎬', gif: 'GIF' };
+const MEDIA_ICON: Record<string, string> = { photo: '📷', video: '🎬', gif: '🎞' }; // 🎞 film frames: a moving picture, the gif
 const TYPE_HELP: Record<string, string> = {
   post: 'post: the account wrote it',
   reply: 'reply: an answer under someone else\'s post',
