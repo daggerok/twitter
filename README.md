@@ -15,18 +15,19 @@ x.com lets nobody read a timeline from outside: the posts exist only in your own
 ## How it works, in detail
 
 ```
-x.com (logged in)                       daggerok.github.io/twitter (viewer)          Google
-+---------------------------+           +---------------------------------+          +---------------+
-| userscript x-sync.user.js |  GM store | the same userscript: bridge     | Sheets   | your          |
-| fetch/XHR interceptor ->  | --------> | postMessage -> page             | API v4   | spreadsheet   |
-| GraphQL parser -> posts   |  outbox   | viewer: merge, write, ack       | -------> | X-<handle>    |
-| auto-scroll + badge       | <-------- | meta: newest stored id          | GIS OAuth| tabs          |
-+---------------------------+  meta     +---------------------------------+          +---------------+
+x.com (logged in)                            daggerok.github.io/twitter (viewer)              Google
++--------------------------------+          +------------------------------------+           +--------------+
+| userscript x-sync.user.js      | GM store | the same userscript: bridge        | Sheets    | your         |
+| page-injected fetch/XHR hook   | <------- | token, spreadsheet id (DOM attr)   | API v4    | spreadsheet  |
+| GraphQL parser -> posts        | -------> | status, runs, outbox (fallback)    | --------> | X-<handle>   |
+| auto-scroll + badge            |          | viewer: shows the tab, hides posts | GIS OAuth | tabs         |
+| writes the tab, 50 posts a time| -----------------------------------------------------------> |              |
++--------------------------------+          +------------------------------------+           +--------------+
 ```
 
-- A static site cannot read x.com (same origin policy, X blocks frames), so collection runs in a Tampermonkey userscript on x.com. It wraps `fetch` and `XMLHttpRequest` of the page at `document-start` and parses the GraphQL timeline responses X itself loads (`UserTweets`, `UserTweetsAndReplies`, `UserMedia`), matching the operation name only, never a query id. When no response was seen for 10 s it falls back to the rendered `article[data-testid="tweet"]` cards (fewer fields)
-- The userscript also runs on the viewer origin. Tampermonkey storage is shared between both pages of one script, so the posts captured on x.com reach the viewer with no server: `GM_setValue` outbox on x.com, `postMessage` bridge on the viewer, ack when stored. The viewer sends back the newest stored id per account, which is where an incremental run stops
-- Storage is the daggerok/youtube way: Google Identity Services in the browser, only the public OAuth Client ID and the spreadsheet id in localStorage, the token in memory (silent renewal, one retry on a 401), the Sheets API called directly. One tab `X-<handle>` per account, header row frozen, one row per post, newest first. Writes overwrite rows 2..n+1 in one PUT and then clear the tail, so a failed write leaves the old rows in place
+- A static site cannot read x.com (same origin policy, X blocks frames), so collection runs in a Tampermonkey userscript on x.com. At `document-start` it injects a small hook into the page itself (`GM_addElement`, which Tampermonkey lets through x.com's CSP) that wraps the page's `fetch` and `XMLHttpRequest` and posts every GraphQL timeline response (`UserTweets`, `UserTweetsAndReplies`, `UserMedia`) back as a window message; the parser matches the operation name only, never a query id. When no response was seen for 10 s it falls back to the rendered `article[data-testid="tweet"]` cards (fewer fields, the badge and the viewer say `source: dom`). The 🐞 button downloads what the hook saw
+- The userscript also runs on the viewer origin, and Tampermonkey storage is shared between both pages of one script. The viewer puts its Google token, its expiry and the spreadsheet id into a DOM attribute of its page; the script keeps them in that storage, so on x.com the script writes the account's tab itself, 50 posts a time (new rows appended, known rows rewritten with fresh counts; the badge shows `N in the sheet`). Without a fresh token the posts wait in the storage and the viewer stores them when opened. Status and run records travel the same way, by `postMessage` on the viewer page
+- Storage is the daggerok/youtube way: Google Identity Services in the browser, only the public OAuth Client ID and the spreadsheet id in localStorage, the token in memory (silent renewal, one retry on a 401), the Sheets API called directly. One tab `X-<handle>` per account (the handle's case as X shows it, looked up case-insensitively), header row frozen, one row per post. The viewer's full writes overwrite rows 2..n+1 in one PUT and then clear only the rows that exist past the end
 - Without the userscript on the viewer's browser (another machine), the badge on x.com has a {} button (JSON) and the viewer an Import JSON button
 
 ## Getting started, for a human who has never heard of userscripts
@@ -89,7 +90,7 @@ bun run userscript       # the userscript alone
 
 Layout: `src/` the viewer (React 19, Parcel, Tailwind 4, no tsconfig), `userscript/src/` the Tampermonkey script bundled by `scripts/build-userscript.ts` with `Bun.build` (header in `userscript/header.ts`), `shared/post.ts` the record and sheet row layout both use
 
-Manual end to end check: install the script, set the Client ID and spreadsheet, Full of a small account, rows appear in the tab; run Sync new again, zero new rows and `last_seen_at` refreshed; the feed filters and exports them
+Manual end to end check: install the script, set the Client ID and spreadsheet, Full on a small account with the badge saying `source: graphql`, rows appear in the tab as it goes; press New again, zero new rows and `last_seen_at` refreshed; the feed filters and exports them
 
 ## Known limits
 
