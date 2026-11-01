@@ -72,7 +72,9 @@ export class Badge {
     mk('stop', 'Stop', 'stop', () => this.actions.stop());
     mk('json', 'JSON', 'sec', () => this.actions.downloadJson());
     mk('settings', '⚙', 'sec', () => this.actions.settings());
-    mk('debug', 'Debug', 'sec', () => this.actions.debug());
+    mk('debug', '🐞', 'sec', () => this.actions.debug());
+    this.buttons.debug.title = 'Download the diagnostics of the interceptor (a small JSON)';
+    this.buttons.settings.title = 'Settings';
     root.appendChild(bar);
     document.body.appendChild(root);
     this.root = root;
