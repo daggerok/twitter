@@ -550,7 +550,7 @@ function App() {
               {busy && <span className="text-[10px] text-slate-500 dark:text-slate-400 animate-pulse" data-busy>⏳ {busy}</span>}
               {handle && (
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                  {fromSheet ? <>☁️ Synced to Google Sheets • tab: <span className="font-mono">{tabOf(handle)}</span></> : posts.length ? '💾 local copy' : '—'}{lastRun ? ` • last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')}` : ''}
+                  {fromSheet ? <>☁️ Synced to Google Sheets • tab: <span className="font-mono">{tabOf(handle)}</span></> : posts.length ? '💾 local copy' : '—'}{lastRun ? ` • last sync ${fmtDate(lastRun.finished_at)}: ${lastRun.mode}, ${lastRun.posts_seen} seen, ${lastRun.stop_reason.replace(/_/g, ' ')} (${lastRun.source || '?'}${lastRun.source === 'dom' ? ': fallback, press 🔄 with the current script' : ''})` : ''}
                 </div>
               )}
             </div>
