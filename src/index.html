@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- X's video CDN answers 403 when the Referer is this site (checked with curl: 200 without, 403 with), so the page sends none -->
+  <meta name="referrer" content="no-referrer" />
   <meta name="description" content="Follow X (Twitter) accounts into your own Google Sheet: a Tampermonkey userscript collects the posts of a profile in your logged-in browser, this viewer stores them in Google Sheets and shows them with filters, search and export. No X API, no server." />
   <title>X Feed Sheets</title>
   <link rel="icon" type="image/x-icon" href="./favicon.ico">
