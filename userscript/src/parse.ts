@@ -103,7 +103,7 @@ export function userOf(tweet: Obj): UserInfo {
   const handle = str(get(u, 'core', 'screen_name')) || str(get(u, 'legacy', 'screen_name'));
   const name = str(get(u, 'core', 'name')) || str(get(u, 'legacy', 'name'));
   return {
-    handle: handle.toLowerCase(),
+    handle,
     screen: handle,
     name,
     id: str(get(u, 'rest_id')),
@@ -211,7 +211,7 @@ export function postOf(result: unknown, pinned: boolean, seenAt: string): Post |
     lang: str(get(legacy, 'lang')),
     url: `https://x.com/${user.handle || 'i'}/status/${id}`,
     in_reply_to_id: str(get(legacy, 'in_reply_to_status_id_str')),
-    in_reply_to_handle: str(get(legacy, 'in_reply_to_screen_name')).toLowerCase(),
+    in_reply_to_handle: str(get(legacy, 'in_reply_to_screen_name')),
     conversation_id: str(get(legacy, 'conversation_id_str')),
     quoted_id,
     reposted_id,
@@ -246,7 +246,7 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
     try {
       if (promoted) { skipped += 1; return; }
       const p = postOf(result, pinned, seenAt);
-      if (!p || (want && p.handle !== want) || ids.has(p.id)) { skipped += 1; return; }
+      if (!p || (want && p.handle.toLowerCase() !== want) || ids.has(p.id)) { skipped += 1; return; }
       ids.add(p.id);
       posts.push(p);
       if (!account && p.handle) {
@@ -268,7 +268,7 @@ export function parseUser(json: unknown): AccountInfo | null {
   const screen = str(get(u, 'core', 'screen_name')) || str(get(u, 'legacy', 'screen_name'));
   if (!screen) return null;
   return {
-    handle: screen.toLowerCase(),
+    handle: screen,
     display_handle: screen,
     user_id: str(u.rest_id),
     display_name: str(get(u, 'core', 'name')) || str(get(u, 'legacy', 'name')),

@@ -122,7 +122,7 @@ export function postsFromJson(text: string): Post[] {
     if (typeof p.id !== 'string' || !p.id || typeof p.handle !== 'string') return;
     out.push({
       id: p.id,
-      handle: p.handle.toLowerCase(),
+      handle: p.handle,
       author_name: typeof p.author_name === 'string' ? p.author_name : '',
       created_at: typeof p.created_at === 'string' ? p.created_at : '',
       type: typeof p.type === 'string' && isPostType(p.type) ? p.type : 'post',
