@@ -12,7 +12,7 @@
 //    did not reach the page's fetch
 // 2. a direct patch of unsafeWindow.fetch and XMLHttpRequest, when the script runs in the page context
 // =========================================================================
-import { graphqlOperation, TIMELINE_OPERATIONS } from './parse';
+import { graphqlOperation, isTimelineOperation, TIMELINE_OPERATION_RE } from './parse';
 import { gmAddScript, pageWindow } from './gm';
 
 export type PayloadHandler = (operation: string, json: unknown) => void;
@@ -31,14 +31,16 @@ export const diag = {
 };
 export type StatusHandler = (operation: string, status: number) => void;
 
-const WANTED = Array.from(TIMELINE_OPERATIONS).concat(['UserByScreenName']);
+/** Wanted responses: every timeline operation (classic or 2026 names) and the account query. */
+const isWanted = (op: string): boolean => op === 'UserByScreenName' || isTimelineOperation(op);
 
 /** The code that runs inside the page: no imports, nothing but what the page already has. */
-function pageCode(wanted: string[]): string {
+function pageCode(): string {
   return `(function () {
   if (window.__xsyncNet) return;
   window.__xsyncNet = true;
-  var wanted = ${JSON.stringify(wanted)};
+  var wantedRe = new RegExp(${JSON.stringify(TIMELINE_OPERATION_RE.source)});
+  var wanted = { indexOf: function (name) { return name === 'UserByScreenName' || wantedRe.test(name) ? 0 : -1; } };
   var anyOp = function (url) { var m = /\\/i\\/api\\/graphql\\/[^/]+\\/([A-Za-z0-9_]+)/.exec(String(url || '')); return m ? m[1] : null; };
   // every GraphQL operation name is reported once as __op (the 🐞 file lists them, so a renamed timeline operation shows up)
   var opOf = function (url) { var name = anyOp(url); if (name) post('__op', 0, name); return name && wanted.indexOf(name) >= 0 ? name : null; };
@@ -100,7 +102,7 @@ export function installInterceptor(onPayload: PayloadHandler, onStatus: StatusHa
   // 1. the page script: its messages come back through the window
   let injected = false;
   try {
-    injected = gmAddScript(pageCode(WANTED));
+    injected = gmAddScript(pageCode());
   } catch (e) { injected = false; diag.errors.push(`inject: ${e instanceof Error ? e.message : String(e)}`); }
   diag.injected = injected;
   window.addEventListener('message', (event: MessageEvent) => {
@@ -118,7 +120,7 @@ export function installInterceptor(onPayload: PayloadHandler, onStatus: StatusHa
       win.fetch = function (this: unknown, input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
         const res = origFetch.call(this, input, init);
         const op = graphqlOperation(urlOf(input));
-        if (op && WANTED.includes(op)) {
+        if (op && isWanted(op)) {
           res.then((r) => {
             if (!r.ok) { report(op, r.status, ''); return; }
             r.clone().text().then((text) => report(op, r.status, text)).catch(() => { /* consumed */ });

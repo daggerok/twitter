@@ -3,7 +3,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { graphqlOperation, parseTimeline, parseUser } from './parse';
+import { graphqlOperation, isTimelineOperation, parseTimeline, parseUser } from './parse';
 
 const fixture: unknown = JSON.parse(readFileSync(join(__dirname, 'fixtures', 'user-tweets.json'), 'utf8'));
 
@@ -105,5 +105,32 @@ describe('parseUser and urls', () => {
     expect(graphqlOperation('https://x.com/i/api/graphql/E3opETHurmVJflFsUBVuUQ/UserTweets?variables=%7B%7D')).toBe('UserTweets');
     expect(graphqlOperation('https://x.com/i/api/graphql/abc/UserTweetsAndReplies')).toBe('UserTweetsAndReplies');
     expect(graphqlOperation('https://x.com/i/api/2/notifications/all.json')).toBeNull();
+  });
+
+  test('isTimelineOperation: the classic names and the 2026 *Timeline ones, never the side queries', () => {
+    ['UserTweets', 'UserTweetsAndReplies', 'UserMedia', 'TweetDetail', 'UserRepliesTimeline', 'UserTweetsTimeline', 'UserMediaTimeline', 'UserHighlightsTimeline']
+      .forEach((op) => expect(isTimelineOperation(op)).toBe(true));
+    ['UserByScreenName', 'ViewerBadgeCounts', 'ProfileSpotlightsQuery', 'SidebarUserRecommendations', 'DataSaverMode', 'UsersByRestIds', 'ExploreSidebar']
+      .forEach((op) => expect(isTimelineOperation(op)).toBe(false));
+  });
+});
+
+describe('the 2026 payload spelling (user_result, timeline_response, __typename)', () => {
+  const tweet = (id: string, text: string) => ({ __typename: 'Tweet', rest_id: id, core: { user_results: { result: { rest_id: '1', core: { screen_name: 'I_Am_The_ICT', name: 'ICT' } } } }, views: { count: '12' }, legacy: { full_text: text, created_at: 'Fri Oct 30 08:16:00 +0000 2026', lang: 'en', conversation_id_str: id, favorite_count: 3 } });
+  const json = { data: { user_result: { result: { timeline_response: { timeline: { instructions: [
+    { __typename: 'TimelinePinEntry', entry: { entryId: 'tweet-1', content: { __typename: 'TimelineTimelineItem', content: { __typename: 'TimelineTweet', tweet_results: { result: tweet('1', 'pinned') } } } } },
+    { __typename: 'TimelineAddEntries', entries: [
+      { entryId: 'tweet-2', content: { __typename: 'TimelineTimelineItem', content: { __typename: 'TimelineTweet', tweet_results: { result: tweet('2', 'plain') } } } },
+      { entryId: 'conv-3', content: { __typename: 'TimelineTimelineModule', items: [{ entryId: 'conv-3-tweet-3', item: { content: { __typename: 'TimelineTweet', tweet_results: { result: tweet('3', 'in a module') } } } }] } },
+      { entryId: 'cursor-bottom', content: { __typename: 'TimelineTimelineCursor', cursorType: 'Bottom', value: 'next' } },
+    ] },
+  ] } } } } } };
+  test('every post is found, pinned flagged, the cursor read, the account seen', () => {
+    const r = parseTimeline(json, 'i_am_the_ict', SEEN);
+    expect(r.posts.map((p) => p.id)).toEqual(['1', '2', '3']);
+    expect(r.posts[0].is_pinned).toBe(true);
+    expect(r.posts[1].views).toBe(12);
+    expect(r.cursorBottom).toBe('next');
+    expect(r.account?.display_handle).toBe('I_Am_The_ICT');
   });
 });
