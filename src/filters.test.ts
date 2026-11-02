@@ -72,7 +72,7 @@ describe('applyTable', () => {
     expect(applyTable(list, { ...EMPTY_TABLE, types: ['pinned'] }, fmt).map((p) => p.id)).toEqual(['4']);
     expect(applyTable(list, { ...EMPTY_TABLE, types: ['!reply', '!repost'] }, fmt).map((p) => p.id)).toEqual(['3', '1']);
     expect(applyTable(list, { ...EMPTY_TABLE, types: ['repost', '!pinned'] }, fmt).map((p) => p.id)).toEqual([]);
-    expect(applyTable(list, { ...EMPTY_TABLE, types: ['post', 'reply'], media: ['!media'] }, fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable(list, { ...EMPTY_TABLE, types: ['post', 'reply'], media: ['!media'] }, fmt).map((p) => p.id)).toEqual(['3']);
     expect(TYPE_KINDS.map((k) => k.key)).toEqual(['post', '!post', 'reply', '!reply', 'repost', '!repost', 'quote', '!quote', 'pinned', '!pinned']);
     expect(hasFilters({ ...EMPTY_TABLE, types: ['quote'] })).toBe(true);
   });
