@@ -6,7 +6,7 @@
 // Stop reasons: stopped (the Stop button), caught_up (incremental: an id <= the newest stored one),
 // end_of_timeline (idleScrolls scrolls without a new post), max_posts and max_minutes (only when set, off by
 // default: the owner wants a run to go on until the timeline ends or Stop is pressed), rate_limited
-// (HTTP 429 or the "Something went wrong" card after one Retry), left_profile (the url changed).
+// (HTTP 429 or the "Something went wrong" card three times in a row, Retry clicked each time), left_profile (the url changed).
 // =========================================================================
 import { compareIds, handleFromPath, sameHandle, type Post } from '../../shared/post';
 import { scanDom } from './dom-fallback';
@@ -34,14 +34,27 @@ async function whileVisible(): Promise<void> {
   while (document.visibilityState === 'hidden') await sleep(500);
 }
 
+// X renders the "Something went wrong" card in the viewer's language (the owner's UI is Russian: "Что-то пошло не так",
+// "Повторить попытку"), so the Retry button is found by its known labels and, failing that, by its place: a short
+// button with an icon in the primary column after the last post card, outside every article.
+const RETRY_LABELS = /^(retry|try again|повторить попытку|повторить|reintentar|réessayer|erneut versuchen|riprova|tentar novamente|opnieuw proberen|spróbuj ponownie|yeniden dene|försök igen|prøv igen|再試行|重试|다시 시도)$/i;
+
 function retryButton(): HTMLElement | null {
-  const buttons = Array.from(document.querySelectorAll<HTMLElement>('[role="button"]'));
-  return buttons.find((b) => /^(retry|try again)$/i.test((b.textContent || '').trim())) || null;
+  const column = document.querySelector<HTMLElement>('[data-testid="primaryColumn"]') || document.body;
+  const buttons = Array.from(column.querySelectorAll<HTMLElement>('[role="button"]')).filter((b) => !b.closest('article'));
+  const byLabel = buttons.find((b) => RETRY_LABELS.test((b.textContent || '').trim()));
+  if (byLabel) return byLabel;
+  const articles = column.querySelectorAll('article');
+  const last = articles[articles.length - 1];
+  if (!last) return null;
+  return buttons.find((b) => {
+    const text = (b.textContent || '').trim();
+    return text.length > 0 && text.length <= 40 && !!b.querySelector('svg') && !b.querySelector('a[href]')
+      && (last.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  }) || null;
 }
 
-function errorCardShown(): boolean {
-  return /something went wrong/i.test(document.body.innerText.slice(0, 20_000)) && !!retryButton();
-}
+const errorCardShown = (): boolean => retryButton() !== null;
 
 export class TimelineFeed {
   private queue: Post[] = [];
@@ -79,7 +92,7 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
   let idle = 0;
   let sawFromApi = 0;
   let sawFromDom = 0;
-  let retried = false;
+  let retries = 0;          // consecutive Retry clicks, reset when posts arrive
   const seenIds = new Set<string>();
   const result = (stop: StopReason): RunResult => ({
     stop,
@@ -119,10 +132,13 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
     await sleep(rand(s.delayMinMs, s.delayMaxMs));
 
     if (feed.takeRateLimited() || errorCardShown()) {
-      if (retried) return result('rate_limited');
-      retried = true;
-      o.onProgress(sink.posts.size, 0, 'rate limited: waiting 60 s, then Retry once');
+      // deep in a long timeline X answers a page with the error card now and then: wait and click Retry, up to
+      // three times in a row (the counter resets as soon as posts arrive again)
+      if (retries >= 3) return result('rate_limited');
+      retries += 1;
+      o.onProgress(sink.posts.size, 0, `rate limited: waiting 60 s, then Retry (${retries}/3)`);
       await sleep(60_000);
+      if (o.isStopped()) return result('stopped');
       const btn = retryButton();
       if (btn) btn.click();
       await sleep(rand(s.delayMinMs, s.delayMaxMs));
@@ -138,6 +154,7 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
       if (stop) return result(stop);
     }
 
+    if (sink.posts.size > before) retries = 0;
     idle = sink.posts.size > before ? 0 : idle + 1;
     if (idle >= s.idleScrolls) {
       // the next page of a real timeline can take X a while (and a "Retry" card): before calling it the end,
