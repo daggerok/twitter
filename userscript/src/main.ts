@@ -69,9 +69,11 @@ function onX(): void {
   const badge = new Badge({
     start: (mode) => { void start(mode); },
     stop: () => { stopRequested = true; gmDel(KEYS.watch); window.clearInterval(watchCountdown); window.clearTimeout(watchTimer); badge.setWatch(''); badge.set(running ? 'stopping after this scroll…' : 'watch off'); },
+    // 👀 is a toggle: on = watch this profile (an incremental run now, then a reload every N minutes), off = end it
     watch: () => {
       const h = handleFromPath(location.pathname);
       if (!h || running) return;
+      if (watching()) { gmDel(KEYS.watch); window.clearInterval(watchCountdown); window.clearTimeout(watchTimer); badge.setWatch(''); badge.set('watch off'); return; }
       gmSet(KEYS.watch, { handle: h, since: new Date().toISOString() });
       void start('incremental');
     },

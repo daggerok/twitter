@@ -22,7 +22,8 @@ const css = `
 #${HOST_ID} button.sec{background:transparent;color:#e7e9ea}
 #${HOST_ID} button.stop{background:#f4212e}
 #${HOST_ID} button.full{background:#00ba7c}
-#${HOST_ID} button.watch{background:#ffd400;color:#0f1419}
+#${HOST_ID} button.watch{background:#ffd400;color:#0f1419;opacity:.4}
+#${HOST_ID} button.watch.on{opacity:1}
 #${HOST_ID} button.json{background:transparent;color:#00ba7c;font-weight:800}
 #${HOST_ID} button.grey{background:#536471}
 #${HOST_ID} button:disabled{opacity:.5;cursor:default}
@@ -75,7 +76,7 @@ export class Badge {
     mk('full', 'Full', 'full', () => this.actions.start('full'));
     this.buttons.full.title = 'Full sync: the whole timeline again';
     mk('watch', '👀', 'watch', () => this.actions.watch());
-    this.buttons.watch.title = 'Watch: reload the profile every N minutes (⚙) and sync the new posts, until 🛑';
+    this.buttons.watch.title = 'Watch (toggle): reload the profile every N minutes (⚙) and sync the new posts; click again or 🛑 to end it';
     mk('stop', '🛑', 'stop', () => this.actions.stop());
     this.buttons.stop.title = 'Stop (and end Watch)';
     mk('json', '{}', 'json', () => this.actions.downloadJson());
@@ -119,7 +120,7 @@ export class Badge {
     if (!el) { el = document.createElement('div'); el.className = 's w'; this.status?.after(el); }
     el.textContent = text;
     el.style.display = text ? '' : 'none';
-    if (this.buttons.watch) this.buttons.watch.textContent = text ? '👀 ✓' : '👀';
+    if (this.buttons.watch) this.buttons.watch.classList.toggle('on', text !== '');
   }
 }
 
