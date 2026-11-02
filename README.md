@@ -90,7 +90,7 @@ bun run userscript       # the userscript alone
 
 Layout: `src/` the viewer (React 19, Parcel, Tailwind 4, no tsconfig), `userscript/src/` the Tampermonkey script bundled by `scripts/build-userscript.ts` with `Bun.build` (header in `userscript/header.ts`), `shared/post.ts` the record and sheet row layout both use
 
-Manual end to end check: install the script, set the Client ID and spreadsheet, Full on a small account with the badge saying `source: graphql`, rows appear in the tab as it goes; press New again, zero new rows and `last_seen_at` refreshed; the feed filters and exports them
+Manual end to end check: install the script, set the Client ID and spreadsheet, ↻ (Full) on a small account with the badge saying `source: graphql`, rows appear in the tab as it goes; press New again, zero new rows and `last_seen_at` refreshed; the feed filters and exports them
 
 ## Known limits
 

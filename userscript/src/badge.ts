@@ -19,7 +19,7 @@ const css = `
 #${HOST_ID} .t{font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 #${HOST_ID} .s{margin-top:6px;white-space:pre-line;color:#8b98a5}
 #${HOST_ID} .b{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-#${HOST_ID} button{cursor:pointer;border:1px solid #38444d;background:#1d9bf0;color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600}
+#${HOST_ID} button{cursor:pointer;border:1px solid #38444d;background:#1d9bf0;color:#fff;border-radius:50%;width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;font-weight:700}
 #${HOST_ID} button.sec{background:transparent;color:#e7e9ea}
 #${HOST_ID} button.stop{background:#f4212e}
 #${HOST_ID} button.full{background:#00ba7c}
@@ -72,10 +72,11 @@ export class Badge {
       this.buttons[key] = b;
       bar.appendChild(b);
     };
-    mk('new', 'New', '', () => this.actions.start('incremental'));
-    this.buttons.new.title = 'Sync the new posts (incremental)';
-    mk('full', 'Full', 'full', () => this.actions.start('full'));
-    this.buttons.full.title = 'Full sync: the whole timeline again';
+    // every button is a circle with an icon; the title is the tooltip on hover
+    mk('new', '＋', '', () => this.actions.start('incremental'));
+    this.buttons.new.title = 'New: sync the new posts only (incremental)';
+    mk('full', '↻', 'full', () => this.actions.start('full'));
+    this.buttons.full.title = 'Full: the whole timeline again, down to the oldest post';
     mk('watch', '👀', 'watch', () => this.actions.watch());
     this.buttons.watch.title = 'Watch (toggle): reload the profile every N minutes (⚙) and sync the new posts; click again or 🛑 to end it';
     mk('stop', '🛑', 'stop', () => this.actions.stop());
@@ -85,7 +86,7 @@ export class Badge {
     mk('settings', '⚙', 'sec', () => this.actions.settings());
     mk('debug', '🐞', 'grey', () => this.actions.debug());
     this.buttons.debug.title = 'Download the diagnostics of the interceptor (a small JSON)';
-    this.buttons.settings.title = 'Settings';
+    this.buttons.settings.title = 'Settings of a run (delays, rests, Watch interval)';
     root.appendChild(bar);
     document.body.appendChild(root);
     this.root = root;
