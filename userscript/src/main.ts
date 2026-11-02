@@ -60,7 +60,7 @@ function onX(): void {
     const tick = () => {
       const left = Math.max(0, due - Date.now());
       if (left <= 0) { location.reload(); return; }
-      badge.setWatch(`watching since ${w.since.slice(11, 16)} · next check in ${Math.ceil(left / 60_000)} min`);
+      badge.setWatch(`watching since ${w.since.slice(11, 16)}\nnext check in ${Math.ceil(left / 60_000)} min`);
     };
     window.clearInterval(watchCountdown);
     watchCountdown = window.setInterval(tick, 10_000);
@@ -133,11 +133,12 @@ function onX(): void {
     const status = (state: 'running' | 'paused' | 'done', message: string, stop: StopReason | '' = '') =>
       setStatus({ state, handle, mode: effectiveMode, seen: sink.posts.size, fresh: sink.posts.size, started_at: startedAt, message: `${message ? `${message} · ` : ''}source: ${liveSource()}`, stop_reason: stop });
     let note = effectiveMode === 'full' && mode === 'incremental' ? 'nothing stored yet: full run' : '';
-    const where = () => (sink.writer ? `${stored} in the sheet${writeError ? ' · write error, rest waits for the viewer' : ''}` : creds ? `sheet unreachable: ${writeError.slice(0, 60)}` : 'no Google token yet: open the viewer once, then the sheet is written from here');
+    // the badge text: one fact per line (owner: developer friendly, no ' · ' chains)
+    const where = () => (sink.writer ? `${stored} in the sheet${writeError ? '\nwrite error, rest waits for the viewer' : ''}` : creds ? `sheet unreachable: ${writeError.slice(0, 60)}` : 'no Google token yet\nopen the viewer once, then the sheet is written from here');
     const paint = () => {
       const secs = Math.round((Date.now() - t0) / 1000);
       const hidden = document.visibilityState === 'hidden';
-      badge.set(`@${handle} · ${effectiveMode} · ${liveSource()}${hidden ? ' · paused (tab hidden)' : ''}\n${sink.posts.size} posts · ${Math.floor(secs / 60)}m ${secs % 60}s · ${where()}${note ? `\n${note}` : ''}`);
+      badge.set(`@${handle}\nrunning: ${effectiveMode} (${liveSource()})${hidden ? '\npaused (tab hidden)' : ''}\n${sink.posts.size} posts, ${Math.floor(secs / 60)}m ${secs % 60}s\n${where()}${note ? `\n${note}` : ''}`);
     };
     elapsedTimer = window.setInterval(paint, 1000);
     status('running', note);
@@ -167,7 +168,7 @@ function onX(): void {
     running = false;
     badge.setRunning(false);
     badge.setJsonAvailable(lastRunPosts.length > 0);
-    badge.set(`@${handle} · done: ${result.stop.replace(/_/g, ' ')}\n${sink.posts.size} posts (${result.source}) · ${where()}${note ? `\n${note}` : ''}\n${sink.writer && !writeError ? 'open the viewer to see them' : 'open the viewer to store them'}`);
+    badge.set(`@${handle}\ndone: ${result.stop.replace(/_/g, ' ')}\n${sink.posts.size} posts (${result.source})\n${where()}${note ? `\n${note}` : ''}\n${sink.writer && !writeError ? 'open the viewer to see them' : 'open the viewer to store them'}`);
     scheduleWatch();
   }
 
