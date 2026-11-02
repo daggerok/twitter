@@ -2,7 +2,7 @@
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
 import { samplePost } from '../shared/post.test';
-import { applyTable, columnText, EMPTY_TABLE, formatCount, hasFilters, linkify, matchFilter, postsFromJson, toCsv, youtubeId } from './filters';
+import { applyTable, columnText, EMPTY_TABLE, formatCount, hasFilters, linkify, matchFilter, postsFromJson, toCsv, TYPE_KINDS, youtubeId } from './filters';
 
 const fmt = (iso: string) => iso.slice(0, 16).replace('T', ', ');
 const posts = [
@@ -66,6 +66,17 @@ describe('applyTable', () => {
     expect(hasFilters(EMPTY_TABLE)).toBe(false);
     expect(hasFilters(withFilter('post', 'x'))).toBe(true);
   });
+  test('type dropdown: kinds, pinned, the ! twins, any mix', () => {
+    const list = [...posts, samplePost({ id: '4', type: 'repost', is_pinned: true })];
+    expect(applyTable(list, { ...EMPTY_TABLE, types: ['reply'] }, fmt).map((p) => p.id)).toEqual(['2']);
+    expect(applyTable(list, { ...EMPTY_TABLE, types: ['pinned'] }, fmt).map((p) => p.id)).toEqual(['4']);
+    expect(applyTable(list, { ...EMPTY_TABLE, types: ['!reply', '!repost'] }, fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(applyTable(list, { ...EMPTY_TABLE, types: ['repost', '!pinned'] }, fmt).map((p) => p.id)).toEqual([]);
+    expect(applyTable(list, { ...EMPTY_TABLE, types: ['post', 'reply'], media: ['!media'] }, fmt).map((p) => p.id)).toEqual(['3', '1']);
+    expect(TYPE_KINDS.map((k) => k.key)).toEqual(['post', '!post', 'reply', '!reply', 'repost', '!repost', 'quote', '!quote', 'pinned', '!pinned']);
+    expect(hasFilters({ ...EMPTY_TABLE, types: ['quote'] })).toBe(true);
+  });
+
   test('columnText: type names pinned, media names the kinds and youtube', () => {
     const p = samplePost({ is_pinned: true, media: [{ type: 'video', url: 'v' }, { type: 'gif', url: 'g' }], links: ['https://www.youtube.com/watch?v=dQw4w9WgXcQ'] });
     expect(columnText(p, 'type', fmt)).toBe('post pinned');

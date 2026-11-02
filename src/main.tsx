@@ -18,7 +18,7 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type Rea
 import { createRoot } from 'react-dom/client';
 import { byNewest, mergePosts, sameHandle, type Media, type Post } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
-import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, youtubeId, youtubeLinks, type ColKey, type MediaKind, type TableState } from './filters';
+import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, TYPE_KINDS, youtubeId, youtubeLinks, type ColKey, type MediaKind, type TableState, type TypeKind } from './filters';
 import { isDark, isNight, isThemeMode, nextMode, themeIcon, themeTitle, type ThemeMode } from './theme';
 import { fetchEmail, GoogleSession } from './gis';
 import type { GoogleCreds } from '../shared/post';
@@ -107,7 +107,8 @@ function App() {
     COLS.forEach((c) => { const v = t.filters && typeof t.filters[c] === 'string' ? t.filters[c] : ''; filters[c] = v; });
     const sort = t.sort && COLS.includes(t.sort.key) && (t.sort.dir === 'asc' || t.sort.dir === 'desc') ? t.sort : EMPTY_TABLE.sort;
     const media = Array.isArray(t.media) ? t.media.filter((k): k is MediaKind => MEDIA_KINDS.some((m) => m.key === k)) : [];
-    return { filters, sort, media };
+    const types = Array.isArray(t.types) ? t.types.filter((k): k is TypeKind => TYPE_KINDS.some((m) => m.key === k)) : [];
+    return { filters, sort, media, types };
   });
   const [shown, setShown] = useState(PAGE_SIZE);
   const [scaleSlider, setScaleSlider] = useState(() => { const n = Number(lsGet(SCALE_KEY)); return Number.isFinite(n) && lsGet(SCALE_KEY) !== null ? Math.min(100, Math.max(0, n)) : DEFAULT_SCALE_SLIDER; });
@@ -409,18 +410,20 @@ function App() {
   const feed = useMemo(() => applyTable(posts, table, fmtDate), [posts, table]);
   const setFilter = (c: ColKey, v: string) => setTable((t) => ({ ...t, filters: { ...t.filters, [c]: v } }));
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
-  const [ddAt, setDdAt] = useState<{ x: number; y: number } | null>(null); // the media dropdown is fixed-positioned: the table wrapper would clip it
+  // the Type and Media dropdowns are fixed-positioned (the table wrapper would clip them); one is open at a time
+  const [dd, setDd] = useState<{ col: 'type' | 'media'; x: number; y: number } | null>(null);
   const ddRef = useRef<HTMLDetailsElement>(null);
-  // a click anywhere else, or Escape, closes the media dropdown
+  // a click anywhere else, or Escape, closes the open dropdown
   useEffect(() => {
-    if (!ddAt) return undefined;
+    if (!dd) return undefined;
     const away = (e: MouseEvent) => { const el = ddRef.current; if (el && e.target instanceof Node && !el.contains(e.target)) el.open = false; };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && ddRef.current) ddRef.current.open = false; };
     document.addEventListener('mousedown', away, true);
     document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('mousedown', away, true); document.removeEventListener('keydown', esc); };
-  }, [ddAt]);
+  }, [dd]);
   const toggleMedia = (k: MediaKind) => setTable((t) => ({ ...t, media: t.media.includes(k) ? t.media.filter((x) => x !== k) : [...t.media, k] }));
+  const toggleType = (k: TypeKind) => setTable((t) => ({ ...t, types: t.types.includes(k) ? t.types.filter((x) => x !== k) : [...t.types, k] }));
   const sortBy = (c: ColKey) => setTable((t) => ({ ...t, sort: { key: c, dir: t.sort.key === c && t.sort.dir === 'desc' ? 'asc' : 'desc' } }));
   const visible = feed.slice(0, shown);
   // infinite scroll: the next 50 cards mount when the middle of the last page comes near the viewport, so the end is never reached
@@ -560,7 +563,7 @@ function App() {
 
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              {hasFilters(table) && <button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [] }))} data-clear-filters>Clear filters</button>}
+              {hasFilters(table) && <button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [], types: [] }))} data-clear-filters>Clear filters</button>}
               <span className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
                 <input type="range" min="0" max="100" value={scaleSlider} onChange={(e) => setScaleSlider(Number(e.target.value))} className="scale-slider w-20" title={`Scale: ${Math.round(scale * 100)}%`} />
@@ -574,11 +577,11 @@ function App() {
               <table className="w-full text-left border-collapse" style={{ fontSize: `${Math.round(14 * scale)}px` }}>
                 <thead>
                   <tr className="text-slate-500 dark:text-slate-400">
-                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-28', 'post|reply|repost|quote, pinned'], ['media', 'Media', 'w-44', 'photo, video, gif, youtube, media, text only'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', 'part of the link, e.g. status/17 or x.com/name'], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
+                    {([['datetime', 'Datetime', 'w-44', 'e.g. 10/16/2022, 2022*15:00'], ['type', 'Type', 'w-36', ''], ['media', 'Media', 'w-44', 'photo, video, gif, youtube, media, text only'], ['post', 'Post', '', 'words in order: a*b, either: a|b'], ['stats', 'Stats', 'w-44 hidden lg:table-cell', ''], ['url', 'URL', 'w-24', 'part of the link, e.g. status/17 or x.com/name'], ['hidden', 'Hidden', 'w-24', 'hidden or visible']] as [string, string, string, string][]).map(([key, label, w, hint]) => {
                       const col = COLS.includes(key as ColKey) ? (key as ColKey) : null;
                       const active = col && table.sort.key === col;
                       return (
-                        <th key={key} className={`px-4 align-top sticky top-0 ${key === 'media' && ddAt ? 'z-30' : 'z-20'} bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(10 * scale)}px` }}>
+                        <th key={key} className={`px-4 align-top sticky top-0 ${dd && key === dd.col ? 'z-30' : 'z-20'} bg-white dark:bg-slate-800 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_rgba(71,85,105,.6)] ${w}`} style={{ fontSize: `${Math.round(11 * scale)}px`, paddingTop: `${Math.round(10 * scale)}px`, paddingBottom: `${Math.round(10 * scale)}px` }}>
                           {col ? (
                             <button type="button" className={`flex items-center gap-1 font-semibold uppercase tracking-wider text-left transition-colors hover:text-emerald-500 ${active ? 'text-emerald-500' : ''}`} onClick={() => sortBy(col)} title={`Sort by ${label}`} data-sort={active ? table.sort.dir : 'none'}>
                               {label} <span className="text-[10px]">{active ? (table.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>
@@ -586,18 +589,28 @@ function App() {
                           ) : <span className="font-semibold uppercase tracking-wider">{label}</span>}
                           {col && (
                             <div className="mt-1.5 flex items-center gap-1">
-                              {col !== 'media' && <input className="filter-inp" placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />}
-                              {col === 'media' && (
-                                <details ref={ddRef} className="setup block w-full" data-media-dd onToggle={(e) => { const el = e.currentTarget; if (el.open) { const r = el.getBoundingClientRect(); setDdAt({ x: r.left, y: r.bottom + 4 }); } else setDdAt(null); }}>
-                                  <summary className={`filter-inp dd-sum ${table.media.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title="Media: tick what the post must have (Photo, Video, GIF, Media = any) or must not have (the ! twins); nothing ticked = every post">{table.media.length ? table.media.join(' ') : 'Filter…'} <span className="float-right">▾</span></summary>
-                                  <div className="fixed z-50 card p-2 shadow-xl min-w-52 space-y-1 normal-case tracking-normal font-normal" style={{ left: ddAt?.x ?? 0, top: ddAt?.y ?? 0, fontSize: `${Math.round(12 * scale)}px` }}>
-                                    {MEDIA_KINDS.map((m) => (
-                                      <label key={m.key} className="flex items-center gap-2 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={table.media.includes(m.key)} onChange={() => toggleMedia(m.key)} data-media-kind={m.key} /> {m.label}</label>
-                                    ))}
-                                    <button type="button" className="btn sm w-full justify-center" onClick={() => setTable((t) => ({ ...t, media: [] }))} disabled={!table.media.length}>All</button>
-                                  </div>
-                                </details>
-                              )}
+                              {col !== 'media' && col !== 'type' && <input className="filter-inp" placeholder="Filter…" title={hint ? `${hint}. AND: a*b or a&b (in order), OR: a|b, no quotes, spaces count` : undefined} value={table.filters[col]} onChange={(e) => setFilter(col, e.target.value)} data-filter={col} />}
+                              {(col === 'media' || col === 'type') && (() => {
+                                const ticked: string[] = col === 'media' ? table.media : table.types;
+                                const kinds: { key: string; label: string }[] = col === 'media' ? MEDIA_KINDS : TYPE_KINDS;
+                                const toggle = (k: string) => (col === 'media' ? toggleMedia(k as MediaKind) : toggleType(k as TypeKind));
+                                const clear = () => setTable((t) => (col === 'media' ? { ...t, media: [] } : { ...t, types: [] }));
+                                const help = col === 'media'
+                                  ? 'Media: tick what the post must have (Photo, Video, GIF, Media = any) or must not have (the ! twins); nothing ticked = every post'
+                                  : 'Type: tick the kinds to show (Post, Reply, Repost, Quote, Pinned) or to leave out (the ! twins); nothing ticked = every post';
+                                const open = dd?.col === col;
+                                return (
+                                  <details ref={open ? ddRef : undefined} className="setup block w-full" data-dd={col} {...{ [`data-${col}-dd`]: true }} onToggle={(e) => { const el = e.currentTarget; if (el.open) { document.querySelectorAll<HTMLDetailsElement>('details[data-dd]').forEach((o) => { if (o !== el) o.open = false; }); const r = el.getBoundingClientRect(); setDd({ col, x: r.left, y: r.bottom + 4 }); } else setDd((d) => (d?.col === col ? null : d)); }}>
+                                    <summary className={`filter-inp dd-sum ${ticked.length ? 'text-emerald-600 dark:text-emerald-400 border-emerald-400' : ''}`} title={help}>{ticked.length ? ticked.join(' ') : 'Filter…'} <span className="float-right">▾</span></summary>
+                                    <div className="fixed z-50 card p-2 shadow-xl min-w-52 space-y-1 normal-case tracking-normal font-normal" style={{ left: open ? dd.x : 0, top: open ? dd.y : 0, fontSize: `${Math.round(12 * scale)}px` }}>
+                                      {kinds.map((m) => (
+                                        <label key={m.key} className="flex items-center gap-2 cursor-pointer whitespace-nowrap"><input type="checkbox" checked={ticked.includes(m.key)} onChange={() => toggle(m.key)} {...{ [`data-${col}-kind`]: m.key }} /> {m.label}</label>
+                                      ))}
+                                      <button type="button" className="btn sm w-full justify-center" onClick={clear} disabled={!ticked.length}>All</button>
+                                    </div>
+                                  </details>
+                                );
+                              })()}
                             </div>
                           )}
                         </th>

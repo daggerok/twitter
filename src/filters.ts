@@ -1,7 +1,7 @@
 /// <reference lib="esnext" />
 // Pure helpers of the viewer: the column filters and sorting of the table (the youtube syntax), CSV export, the JSON
 // import of the userscript, link splitting.
-import { byNewest, isPostType, POST_HEADERS, toRow, type Post } from '../shared/post';
+import { byNewest, isPostType, POST_HEADERS, POST_TYPES, toRow, type Post, type PostType } from '../shared/post';
 
 export type ColKey = 'datetime' | 'type' | 'media' | 'post' | 'stats' | 'url' | 'hidden';
 export const COLS: ColKey[] = ['datetime', 'type', 'media', 'post', 'stats', 'url', 'hidden'];
@@ -14,19 +14,31 @@ export const MEDIA_KINDS: { key: MediaKind; label: string }[] = [
   { key: 'gif', label: '🎞 GIF' }, { key: '!gif', label: '🎞 !GIF (no gif)' },
   { key: 'media', label: '🖼 Media (any)' }, { key: '!media', label: '🖼 !Media (text only)' },
 ];
-/** media: the ticked entries of the dropdown, [] = every post */
-export type TableState = { filters: Record<ColKey, string>; sort: { key: ColKey; dir: SortDir }; media: MediaKind[] };
-export const EMPTY_TABLE: TableState = { filters: { datetime: '', type: '', media: '', post: '', stats: '', url: '', hidden: '' }, sort: { key: 'datetime', dir: 'desc' }, media: [] };
+/** The Type dropdown: every post type plus pinned, each with its `!` twin; the same OR / AND rule as the media kinds. */
+export type TypeKind = PostType | 'pinned' | `!${PostType}` | '!pinned';
+const TYPE_LABEL: Record<PostType | 'pinned', string> = { post: '📝 Post', reply: '↩ Reply', repost: '🔁 Repost', quote: '💬 Quote', pinned: '📌 Pinned' };
+export const TYPE_KINDS: { key: TypeKind; label: string }[] = ([...POST_TYPES, 'pinned'] as (PostType | 'pinned')[]).flatMap((k) => [
+  { key: k, label: TYPE_LABEL[k] },
+  { key: `!${k}` as TypeKind, label: `${TYPE_LABEL[k].split(' ')[0]} !${TYPE_LABEL[k].split(' ')[1]} (not ${k})` },
+]);
+/** media and types: the ticked entries of the dropdowns, [] = every post */
+export type TableState = { filters: Record<ColKey, string>; sort: { key: ColKey; dir: SortDir }; media: MediaKind[]; types: TypeKind[] };
+export const EMPTY_TABLE: TableState = { filters: { datetime: '', type: '', media: '', post: '', stats: '', url: '', hidden: '' }, sort: { key: 'datetime', dir: 'desc' }, media: [], types: [] };
 
 const hasKind = (p: Post, kind: string): boolean => (kind === 'media' ? p.media.length > 0 : p.media.some((m) => m.type === kind));
+const hasType = (p: Post, kind: string): boolean => (kind === 'pinned' ? p.is_pinned : p.type === kind);
 
-export function matchMedia(p: Post, kinds: MediaKind[]): boolean {
+/** Ticked kinds against a post: positives are OR-ed, `!` negatives are AND-ed, nothing ticked matches. */
+function matchKinds(kinds: string[], has: (kind: string) => boolean): boolean {
   if (!kinds.length) return true;
   const positives = kinds.filter((k) => !k.startsWith('!'));
   const negatives = kinds.filter((k) => k.startsWith('!')).map((k) => k.slice(1));
-  if (positives.length && !positives.some((k) => hasKind(p, k))) return false;
-  return negatives.every((k) => !hasKind(p, k));
+  if (positives.length && !positives.some(has)) return false;
+  return negatives.every((k) => !has(k));
 }
+
+export const matchMedia = (p: Post, kinds: MediaKind[]): boolean => matchKinds(kinds, (k) => hasKind(p, k));
+export const matchType = (p: Post, kinds: TypeKind[]): boolean => matchKinds(kinds, (k) => hasType(p, k));
 
 const MEDIA_WORD: Record<string, string> = { photo: '📷 photo', video: '🎬 video', gif: 'gif' };
 
@@ -88,7 +100,7 @@ const sortValue = (p: Post, key: ColKey, fmtDate: (iso: string) => string): stri
 /** Filter every column, then sort (ties by newest). */
 export function applyTable(posts: Post[], s: TableState, fmtDate: (iso: string) => string): Post[] {
   const active = COLS.filter((c) => s.filters[c].trim() !== '');
-  const out = posts.filter((p) => matchMedia(p, s.media) && active.every((c) => matchFilter(columnText(p, c, fmtDate), s.filters[c])));
+  const out = posts.filter((p) => matchMedia(p, s.media) && matchType(p, s.types) && active.every((c) => matchFilter(columnText(p, c, fmtDate), s.filters[c])));
   const dir = s.sort.dir === 'asc' ? 1 : -1;
   return out.sort((a, b) => {
     const x = sortValue(a, s.sort.key, fmtDate);
@@ -99,7 +111,7 @@ export function applyTable(posts: Post[], s: TableState, fmtDate: (iso: string) 
   });
 }
 
-export const hasFilters = (s: TableState): boolean => s.media.length > 0 || COLS.some((c) => s.filters[c].trim() !== '');
+export const hasFilters = (s: TableState): boolean => s.media.length > 0 || s.types.length > 0 || COLS.some((c) => s.filters[c].trim() !== '');
 
 const csvCell = (v: string): string => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
