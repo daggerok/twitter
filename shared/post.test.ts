@@ -14,6 +14,7 @@ export const samplePost = (over: Partial<Post> = {}): Post => ({
   url: 'https://x.com/someone/status/1700000000000000001',
   in_reply_to_id: '',
   in_reply_to_handle: '',
+  in_reply_to_text: '',
   conversation_id: '1700000000000000001',
   quoted_id: '',
   reposted_id: '',
@@ -34,9 +35,9 @@ export const samplePost = (over: Partial<Post> = {}): Post => ({
 });
 
 describe('sheet rows', () => {
-  test('26 columns, A..Z', () => {
-    expect(POST_HEADERS.length).toBe(26);
-    expect(LAST_COL).toBe('Z');
+  test('27 columns, A..AA', () => {
+    expect(POST_HEADERS.length).toBe(27);
+    expect(LAST_COL).toBe('AA');
     expect(toRow(samplePost()).length).toBe(POST_HEADERS.length);
   });
 

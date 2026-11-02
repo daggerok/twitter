@@ -34,7 +34,9 @@ function onX(): void {
   let account: AccountInfo | null = null;
   const intercepted = installInterceptor((op, json) => {
     if (op === 'UserByScreenName') { account = parseUser(json) || account; return; }
-    const handle = handleFromPath(location.pathname) || '';
+    // while a run goes, payloads are read for the run's account, whatever page X navigated to meanwhile
+    const handle = (running && currentHandle) || handleFromPath(location.pathname) || '';
+    if (!handle) return;
     const r = parseTimeline(json, handle);
     diag.parsed[op] = (diag.parsed[op] || 0) + r.posts.length;
     if (r.errors) diag.errors.push(`${op}: ${r.errors} entries threw`);

@@ -33,8 +33,8 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   const id = m[2];
   const social = article.querySelector('[data-testid="socialContext"]');
   const socialText = (social && social.textContent) || '';
-  const isRepost = /repost|retweet/i.test(socialText);
-  const isPinned = /pinned/i.test(socialText);
+  const isRepost = /repost|retweet|репост|ретвит/i.test(socialText);
+  const isPinned = /pinned|закреп/i.test(socialText);
   if (handle && author.toLowerCase() !== handle.toLowerCase() && !isRepost) return null;
   const time = article.querySelector('time');
   const created = (time && time.getAttribute('datetime')) || '';
@@ -58,7 +58,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   const links = Array.from(article.querySelectorAll<HTMLAnchorElement>('[data-testid="tweetText"] a[href^="http"]'))
     .map((a) => a.href).filter((h) => !/^https?:\/\/(x|twitter)\.com\//i.test(h));
   const replyTo = Array.from(article.querySelectorAll('a[href^="/"]')).map((a) => a.getAttribute('href') || '')
-    .find((h) => !!h && !h.includes('/status/') && /^\/[A-Za-z0-9_]{1,15}$/.test(h) && article.textContent?.includes('Replying to'));
+    .find((h) => !!h && !h.includes('/status/') && /^\/[A-Za-z0-9_]{1,15}$/.test(h) && /Replying to|В ответ/i.test(article.textContent || ''));
   const type: PostType = isRepost ? 'repost' : replyTo && !isPinned ? 'reply' : article.querySelector('[data-testid="quoteTweet"], div[role="link"] time') ? 'quote' : 'post'; // a quoted post is a nested div[role=link] card with its own time; the post's own timestamp is an a[role=link], never a quote
   const owner = handle || author;
   return {
@@ -72,6 +72,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     url: `https://x.com/${isRepost ? owner : author}/status/${id}`,
     in_reply_to_id: '',
     in_reply_to_handle: type === 'reply' && replyTo ? replyTo.slice(1) : '',
+    in_reply_to_text: '',
     conversation_id: '',
     quoted_id: '',
     reposted_id: isRepost ? id : '',

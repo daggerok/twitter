@@ -74,7 +74,9 @@ The shell is the daggerok/youtube one, one account at a time: the field holds th
 
 ## Sheet columns
 
-`id, handle, author_name, created_at, type, text, lang, url, in_reply_to_id, in_reply_to_handle, conversation_id, quoted_id, reposted_id, reposted_handle, media, links, likes, reposts, replies, quotes, bookmarks, views, is_pinned, first_seen_at, last_seen_at, hidden`
+`id, handle, author_name, created_at, type, text, lang, url, in_reply_to_id, in_reply_to_handle, conversation_id, quoted_id, reposted_id, reposted_handle, media, links, likes, reposts, replies, quotes, bookmarks, views, is_pinned, first_seen_at, last_seen_at, hidden, in_reply_to_text`
+
+Only the account's own posts are stored: a reply's `in_reply_to_text` holds what the other person wrote (taken from the conversation shown on `/with_replies`), the feed shows it as a quote above the account's answer and drops the leading @mentions of the answer, like X does. Posts by other people never enter the tab, whatever page x.com shows during a run.
 
 Ids are written as text (`valueInputOption=RAW`) because they exceed the safe integer range; `media` and `links` are JSON arrays; a long post takes its `note_tweet` text; `t.co` links are expanded; a repost carries the original author and text; cells are cut at 50,000 characters with `…[truncated]`
 

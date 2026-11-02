@@ -221,6 +221,7 @@ export function postOf(result: unknown, pinned: boolean, seenAt: string): Post |
     url: `https://x.com/${user.handle || 'i'}/status/${id}`,
     in_reply_to_id: str(get(legacy, 'in_reply_to_status_id_str')),
     in_reply_to_handle: str(get(legacy, 'in_reply_to_screen_name')),
+    in_reply_to_text: '',
     conversation_id: str(get(legacy, 'conversation_id_str')),
     quoted_id,
     reposted_id,
@@ -248,6 +249,7 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
   const want = handle.toLowerCase().replace(/^@/, '');
   const posts: Post[] = [];
   const ids = new Set<string>();
+  const seen = new Map<string, Post>(); // every tweet of the payload, other authors too: the parents of the replies
   let skipped = 0;
   let errors = 0;
   let account: AccountInfo | null = null;
@@ -255,6 +257,7 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
     try {
       if (promoted) { skipped += 1; return; }
       const p = postOf(result, pinned, seenAt);
+      if (p && !seen.has(p.id)) seen.set(p.id, p);
       if (!p || (want && p.handle.toLowerCase() !== want) || ids.has(p.id)) { skipped += 1; return; }
       ids.add(p.id);
       posts.push(p);
@@ -266,6 +269,12 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
     } catch {
       errors += 1;
     }
+  });
+  // a reply shown with its conversation: keep what the other person wrote (the owner reads the account's answer in context)
+  posts.forEach((p) => {
+    if (p.type !== 'reply' || !p.in_reply_to_id) return;
+    const parent = seen.get(p.in_reply_to_id);
+    if (parent && parent.handle.toLowerCase() !== p.handle.toLowerCase()) p.in_reply_to_text = parent.text;
   });
   return { posts, skipped, errors, cursorBottom: bottomCursor(json), account };
 }

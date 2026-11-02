@@ -105,7 +105,8 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
   // the first payload of a profile was answered before the run started: read the cards already on screen
   const firstDom = scanDom();
   const initial = feed.take();
-  const ingest = (posts: Post[], fromApi: boolean): StopReason | null => {
+  const ingest = (captured: Post[], fromApi: boolean): StopReason | null => {
+    const posts = captured.filter((p) => sameHandle(p.handle, o.handle)); // never another author (a post page opened mid-run)
     if (!posts.length) return null;
     if (fromApi) sawFromApi += posts.length; else sawFromDom += posts.length;
     const fresh = sink.add(posts);
