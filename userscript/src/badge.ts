@@ -13,8 +13,9 @@ export type BadgeActions = {
 
 const HOST_ID = 'xsync-badge';
 
+// right:84px keeps clear of X's own floating buttons in the bottom right corner (compose, Grok)
 const css = `
-#${HOST_ID}{position:fixed;right:12px;bottom:12px;z-index:2147483000;font:12px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#e7e9ea;background:#15202b;border:1px solid #38444d;border-radius:12px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.45);min-width:220px;max-width:300px}
+#${HOST_ID}{position:fixed;right:84px;bottom:16px;z-index:2147483000;font:12px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#e7e9ea;background:#15202b;border:1px solid #38444d;border-radius:12px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.45);min-width:300px;max-width:340px}
 #${HOST_ID} .t{font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 #${HOST_ID} .s{margin-top:6px;white-space:pre-line;color:#8b98a5}
 #${HOST_ID} .b{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
