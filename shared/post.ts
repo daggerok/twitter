@@ -22,6 +22,7 @@ export type Post = {
   url: string;             // https://x.com/<handle>/status/<id>
   in_reply_to_id: string;
   in_reply_to_handle: string;
+  in_reply_to_text: string; // what the other person wrote (replies only, from the conversation module; '' when unknown)
   conversation_id: string;
   quoted_id: string;
   reposted_id: string;
@@ -44,11 +45,16 @@ export const POST_HEADERS = [
   'id', 'handle', 'author_name', 'created_at', 'type', 'text', 'lang', 'url',
   'in_reply_to_id', 'in_reply_to_handle', 'conversation_id', 'quoted_id', 'reposted_id', 'reposted_handle',
   'media', 'links', 'likes', 'reposts', 'replies', 'quotes', 'bookmarks', 'views',
-  'is_pinned', 'first_seen_at', 'last_seen_at', 'hidden',
+  'is_pinned', 'first_seen_at', 'last_seen_at', 'hidden', 'in_reply_to_text',
 ] as const;
 
 /** Column letter of the last header: A1 ranges of a posts tab are `A:${LAST_COL}`. */
-export const LAST_COL = String.fromCharCode(64 + POST_HEADERS.length);
+export function columnLetter(n: number): string {
+  let s = '';
+  for (let i = n; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
+  return s;
+}
+export const LAST_COL = columnLetter(POST_HEADERS.length);
 
 export const POST_TYPES: PostType[] = ['post', 'reply', 'repost', 'quote'];
 
@@ -65,7 +71,7 @@ export function toRow(p: Post): string[] {
     p.in_reply_to_id, p.in_reply_to_handle, p.conversation_id, p.quoted_id, p.reposted_id, p.reposted_handle,
     clampCell(JSON.stringify(p.media)), clampCell(JSON.stringify(p.links)),
     String(p.likes), String(p.reposts), String(p.replies), String(p.quotes), String(p.bookmarks), String(p.views),
-    p.is_pinned ? 'TRUE' : 'FALSE', p.first_seen_at, p.last_seen_at, p.hidden ? 'TRUE' : 'FALSE',
+    p.is_pinned ? 'TRUE' : 'FALSE', p.first_seen_at, p.last_seen_at, p.hidden ? 'TRUE' : 'FALSE', clampCell(p.in_reply_to_text),
   ];
 }
 
@@ -129,6 +135,7 @@ export function fromRow(row: unknown[]): Post | null {
     first_seen_at: cell(row, 23) || created,
     last_seen_at: cell(row, 24) || cell(row, 23) || created,
     hidden: cell(row, 25).toUpperCase() === 'TRUE',
+    in_reply_to_text: cell(row, 26),
   };
 }
 
@@ -159,7 +166,7 @@ export function mergePosts(stored: Post[], captured: Post[]): { posts: Post[]; i
     const old = byId.get(p.id);
     if (old) {
       // hidden belongs to the owner (set in the viewer): a capture never resets it
-      byId.set(p.id, { ...old, ...p, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden });
+      byId.set(p.id, { ...old, ...p, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden, in_reply_to_text: p.in_reply_to_text || old.in_reply_to_text });
       updated += 1;
     } else {
       byId.set(p.id, p);

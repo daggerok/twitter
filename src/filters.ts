@@ -55,7 +55,7 @@ export function columnText(p: Post, col: ColKey, fmtDate: (iso: string) => strin
     case 'datetime': return fmtDate(p.created_at).toLowerCase();
     case 'type': return [p.type, p.is_pinned ? 'pinned' : ''].filter(Boolean).join(' ').toLowerCase();
     case 'media': return [...p.media.map((m) => MEDIA_WORD[m.type] || m.type), youtubeLinks(p).length ? '▶ youtube' : '', p.media.length || youtubeLinks(p).length ? 'media' : 'text only'].filter(Boolean).join(' ').toLowerCase();
-    case 'post': return [p.text, p.type === 'repost' ? `repost of @${p.reposted_handle}` : '', p.type === 'reply' ? `to @${p.in_reply_to_handle}` : '', p.author_name, `@${p.handle}`, p.links.join(' ')].filter(Boolean).join(' ').toLowerCase();
+    case 'post': return [p.text, p.in_reply_to_text, p.type === 'repost' ? `repost of @${p.reposted_handle}` : '', p.type === 'reply' ? `to @${p.in_reply_to_handle}` : '', p.author_name, `@${p.handle}`, p.links.join(' ')].filter(Boolean).join(' ').toLowerCase();
     case 'stats': return `replies ${p.replies} reposts ${p.reposts} likes ${p.likes} views ${p.views} bookmarks ${p.bookmarks}`;
     case 'url': return p.url.toLowerCase();
     case 'hidden': return p.hidden ? 'hidden' : 'visible';
@@ -143,6 +143,7 @@ export function postsFromJson(text: string): Post[] {
       url: typeof p.url === 'string' && p.url ? p.url : `https://x.com/${p.handle}/status/${p.id}`,
       in_reply_to_id: typeof p.in_reply_to_id === 'string' ? p.in_reply_to_id : '',
       in_reply_to_handle: typeof p.in_reply_to_handle === 'string' ? p.in_reply_to_handle : '',
+      in_reply_to_text: typeof p.in_reply_to_text === 'string' ? p.in_reply_to_text : '',
       conversation_id: typeof p.conversation_id === 'string' ? p.conversation_id : '',
       quoted_id: typeof p.quoted_id === 'string' ? p.quoted_id : '',
       reposted_id: typeof p.reposted_id === 'string' ? p.reposted_id : '',

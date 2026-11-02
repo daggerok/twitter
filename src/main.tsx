@@ -223,7 +223,8 @@ function App() {
   }, [say]);
 
   /** Posts of an account after a read or a write: cached, shown when it is the current one, newest id to the userscript. */
-  const publish = useCallback((h: string, list: Post[], sheet: boolean) => {
+  const publish = useCallback((h: string, own: Post[], sheet: boolean) => {
+    const list = own.filter((p) => sameHandle(p.handle, h)); // rows of another author (a leak of older userscripts) stay out of the feed
     cachePosts(h, list);
     sendMeta(h, newestIdOf(list), list.length);
     if (sameHandle(h, handleRef.current)) { setPosts(list); setFromSheet(sheet); }
@@ -267,7 +268,7 @@ function App() {
     const r = await withSheet(`Storing ${captured.length} posts of @${h}`, async (token, id) => {
       const tab = await ensureTab(token, id, tabOf(h));
       const stored = await readPosts(token, id, tab);
-      const merged = mergePosts(stored, captured);
+      const merged = mergePosts(stored.filter((p) => sameHandle(p.handle, h)), captured.filter((p) => sameHandle(p.handle, h)));
       await writePosts(token, id, tab, merged.posts);
       return merged;
     });
@@ -824,7 +825,9 @@ function useHoverPreview() {
 
 /** One post as a table row, the youtube inventory look: date, type, text, stats, Open, the crossed eye. */
 function PostRow({ post: p, scale, onOpenMedia, onToggleHidden, sentinel }: { post: Post; scale: number; onOpenMedia: (items: LightboxItem[], index: number) => void; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
-  const parts = useMemo(() => linkify(p.text), [p.text]);
+  // a reply: X hides the leading @mentions in its UI, so does the feed; the other person's words go above as a quote
+  const shownText = p.type === 'reply' ? p.text.replace(/^(@\w+\s*)+/, '') : p.text;
+  const parts = useMemo(() => linkify(shownText), [shownText]);
   const preview = useHoverPreview();
   const py = `${Math.round(10 * scale)}px`;
   const small = `${Math.round(11 * scale)}px`;
@@ -867,6 +870,9 @@ function PostRow({ post: p, scale, onOpenMedia, onToggleHidden, sentinel }: { po
       </td>
       <td className="px-4 align-top" style={{ paddingTop: py, paddingBottom: py }}>
         {(context || p.type === 'repost') && <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: small }}>{context}{p.type === 'repost' && p.author_name ? ` · ${p.author_name}` : ''}</div>}
+        {p.type === 'reply' && p.in_reply_to_text && (
+          <blockquote className="reply-quote border-l-2 border-slate-300 dark:border-slate-600 pl-2 mb-1 text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-snug" style={{ fontSize: small }} title={`What @${p.in_reply_to_handle} wrote`}>@{p.in_reply_to_handle}: {p.in_reply_to_text}</blockquote>
+        )}
         <div className="post-text leading-snug">
           {parts.map((x, i) => (x.kind === 'link' ? <a key={i} href={x.value} target="_blank" rel="noreferrer">{x.value}</a> : <span key={i}>{x.value}</span>))}
           {!p.text && <span className="text-slate-400 cursor-help" onMouseEnter={mediaOnly ? preview.enter : undefined} onMouseLeave={preview.leave}>{mediaOnly ? '(media only, see the Media column)' : '(no text)'}</span>}

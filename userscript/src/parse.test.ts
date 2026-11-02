@@ -134,3 +134,23 @@ describe('the 2026 payload spelling (user_result, timeline_response, __typename)
     expect(r.account?.display_handle).toBe('I_Am_The_ICT');
   });
 });
+
+describe('the other person in a reply', () => {
+  const user = (h: string) => ({ core: { user_results: { result: { rest_id: h, core: { screen_name: h, name: h } } } } });
+  const tw = (id: string, h: string, text: string, extra: Record<string, unknown> = {}) => ({ __typename: 'Tweet', rest_id: id, ...user(h), legacy: { full_text: text, created_at: 'Fri Oct 30 08:16:00 +0000 2026', conversation_id_str: '1', ...extra } });
+  const item = (t: unknown) => ({ item: { content: { __typename: 'TimelineTweet', tweet_results: { result: t } } } });
+  const json = { data: { user_result: { result: { timeline_response: { timeline: { instructions: [{ __typename: 'TimelineAddEntries', entries: [
+    { entryId: 'conv-1', content: { __typename: 'TimelineTimelineModule', items: [
+      item(tw('1', 'Other', 'What do you think?')),
+      item(tw('2', 'Acc', '@Other I think so', { in_reply_to_status_id_str: '1', in_reply_to_screen_name: 'Other' })),
+      item(tw('3', 'Acc', '@Acc and more', { in_reply_to_status_id_str: '2', in_reply_to_screen_name: 'Acc' })),
+    ] } },
+  ] }] } } } } } };
+  test('the parent text of a reply to someone else is kept, a self-thread parent is not, the other author is never a post', () => {
+    const r = parseTimeline(json, 'acc', SEEN);
+    expect(r.posts.map((p) => p.id)).toEqual(['2', '3']);
+    expect(r.posts[0].in_reply_to_text).toBe('What do you think?');
+    expect(r.posts[1].in_reply_to_text).toBe('');
+    expect(r.skipped).toBe(1);
+  });
+});
