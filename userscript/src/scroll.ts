@@ -162,7 +162,12 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
       let grew = false;
       for (let i = 0; i < 3 && !grew; i += 1) {
         o.onProgress(sink.posts.size, 0, `end of the timeline? waiting for more (${i + 1}/3)`);
+        // the nudge that opening DevTools gives X by accident: a screen up, back to the bottom, a resize event -
+        // the virtual list re-renders and asks for the next page again
+        window.scrollBy(0, -window.innerHeight);
+        await sleep(1000);
         window.scrollTo(0, document.body.scrollHeight);
+        window.dispatchEvent(new Event('resize'));
         await sleep(10_000);
         if (o.isStopped()) return result('stopped');
         const btn = retryButton();
