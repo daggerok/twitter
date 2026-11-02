@@ -6,7 +6,7 @@
 // Stop reasons: stopped (the Stop button), caught_up (incremental: an id <= the newest stored one),
 // end_of_timeline (idleScrolls scrolls without a new post), max_posts and max_minutes (only when set, off by
 // default: the owner wants a run to go on until the timeline ends or Stop is pressed), rate_limited
-// (HTTP 429 or the "Something went wrong" card three times in a row, Retry clicked each time), left_profile (the url changed).
+// (no longer produced: on HTTP 429 or the "Something went wrong" card the run waits and clicks Retry until posts return), left_profile (the url changed).
 // =========================================================================
 import { compareIds, handleFromPath, sameHandle, type Post } from '../../shared/post';
 import { scanDom } from './dom-fallback';
@@ -37,6 +37,7 @@ async function whileVisible(): Promise<void> {
 // X renders the "Something went wrong" card in the viewer's language (the owner's UI is Russian: "Что-то пошло не так",
 // "Повторить попытку"), so the Retry button is found by its known labels and, failing that, by its place: a short
 // button with an icon in the primary column after the last post card, outside every article.
+const RETRY_WAIT_MIN = [1, 2, 5, 10, 15];
 const RETRY_LABELS = /^(retry|try again|повторить попытку|повторить|reintentar|réessayer|erneut versuchen|riprova|tentar novamente|opnieuw proberen|spróbuj ponownie|yeniden dene|försök igen|prøv igen|再試行|重试|다시 시도)$/i;
 
 function retryButton(): HTMLElement | null {
@@ -132,18 +133,21 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
     await sleep(rand(s.delayMinMs, s.delayMaxMs));
 
     if (feed.takeRateLimited() || errorCardShown()) {
-      // deep in a long timeline X answers a page with the error card now and then: wait and click Retry, up to
-      // three times in a row (the counter resets as soon as posts arrive again)
-      if (retries >= 3) return result('rate_limited');
+      // deep in a long timeline X answers with HTTP 429 or the error card: the run never gives up on it (the
+      // owner: keep clicking Retry until the posts come back or Stop is pressed); the wait grows 1, 2, 5, 10,
+      // then 15 minutes between clicks, so a 15-minute rate-limit window passes with a couple of requests
+      const minutes = RETRY_WAIT_MIN[Math.min(retries, RETRY_WAIT_MIN.length - 1)];
       retries += 1;
-      o.onProgress(sink.posts.size, 0, `rate limited: waiting 60 s, then Retry (${retries}/3)`);
-      await sleep(60_000);
-      if (o.isStopped()) return result('stopped');
+      o.onProgress(sink.posts.size, 0, `rate limited: waiting ${minutes} min, then Retry (attempt ${retries})`);
+      const until = Date.now() + minutes * 60_000;
+      while (Date.now() < until) {
+        await sleep(1000);
+        if (o.isStopped()) return result('stopped');
+      }
       const btn = retryButton();
       if (btn) btn.click();
       await sleep(rand(s.delayMinMs, s.delayMaxMs));
     }
-
     const fromApi = feed.take();
     stop = ingest(fromApi, true);
     if (stop) return result(stop);
