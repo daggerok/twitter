@@ -823,6 +823,14 @@ function useHoverPreview() {
   return { at, enter, leave };
 }
 
+/** The YouTube logo (the red rounded rectangle with the white play triangle), the Media badge of a post that links a YouTube video: no word, the owner wants the logo only. */
+const YouTubeLogo = () => (
+  <svg viewBox="0 0 24 24" width="1.45em" height="1.05em" role="img" aria-label="YouTube" style={{ display: 'inline-block', verticalAlign: '-0.2em' }}>
+    <rect x="1" y="3.5" width="22" height="17" rx="5" fill="#ff0000" />
+    <path d="M9.75 8.25v7.5l6.5-3.75z" fill="#ffffff" />
+  </svg>
+);
+
 /** One post as a table row, the youtube inventory look: date, type, text, stats, Open, the crossed eye. */
 function PostRow({ post: p, scale, onOpenMedia, onToggleHidden, sentinel }: { post: Post; scale: number; onOpenMedia: (items: LightboxItem[], index: number) => void; onToggleHidden: () => void; sentinel?: RefObject<HTMLTableRowElement | null> }) {
   // a reply: X hides the leading @mentions in its UI, so does the feed; the other person's words go above as a quote
@@ -859,7 +867,7 @@ function PostRow({ post: p, scale, onOpenMedia, onToggleHidden, sentinel }: { po
         {items.length > 0 ? (
           <span className="media-badge text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-2" style={{ fontSize: small }} onMouseEnter={preview.enter} onMouseLeave={preview.leave} title="Click to open full size; rest the mouse a second for a preview">
             {Array.from(media.entries()).map(([k, n]) => <button key={k} type="button" onClick={() => onOpenMedia(items, firstOf(k))} data-open-media={k}>{MEDIA_ICON[k] || k}{n > 1 ? ` ×${n}` : ''}</button>)}
-            {yt.length > 0 && <button type="button" onClick={() => onOpenMedia(items, firstOf('youtube'))} data-open-media="youtube">▶ YouTube{yt.length > 1 ? ` ×${yt.length}` : ''}</button>}
+            {yt.length > 0 && <button type="button" onClick={() => onOpenMedia(items, firstOf('youtube'))} data-open-media="youtube" title={`YouTube video${yt.length > 1 ? `s (${yt.length})` : ''}: click to play`}><YouTubeLogo />{yt.length > 1 ? ` ×${yt.length}` : ''}</button>}
           </span>
         ) : <span className="text-slate-300 dark:text-slate-600" style={{ fontSize: small }}>—</span>}
         {preview.at && p.media.length > 0 && (
