@@ -11,7 +11,7 @@ import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
 import { gmDel, gmGet, gmMenu, gmSet, hasGM, KEYS, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
 import { diag, installInterceptor } from './intercept';
-import { parseTimeline, parseUser, type AccountInfo } from './parse';
+import { isTimelineOperation, parseTimeline, parseUser, type AccountInfo } from './parse';
 import { runSync, TimelineFeed } from './scroll';
 import { loadSettings } from './settings';
 import { openSettings } from './settings-ui';
@@ -156,6 +156,12 @@ function onX(): void {
       note = `error: ${e instanceof Error ? e.message : String(e)}`;
     }
     window.clearInterval(elapsedTimer);
+    // 0 posts and not stopped by hand: say what the interceptor and the page gave, so the owner's screenshot explains it
+    if (!sink.posts.size && result.stop !== 'stopped') {
+      const ops = Object.keys(diag.ops).filter((op) => isTimelineOperation(op) || /timeline|tweet/i.test(op));
+      const cards = document.querySelectorAll('article').length;
+      note = `why 0: api answers ${diag.payloads}, with posts ${feed.apiPayloads}${diag.pageHello ? '' : ', page hook silent'}\nops: ${ops.length ? ops.slice(0, 5).join(', ') : 'none'}\ncards on the page: ${cards}\npress 🐞 and send the file`;
+    }
     sink.flush();
     await sink.done();
     rememberNewestId(handle, sink.newestId);

@@ -24,10 +24,11 @@ function countOf(article: Element, testId: string): number {
 }
 
 export function postFromArticle(article: Element, handle: string, seenAt: string): Post | null {
-  const link = Array.from(article.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]')).find((a) => /^\/[^/]+\/status\/\d+$/.test(new URL(a.href, location.href).pathname));
+  // the timestamp link `/<user>/status/<id>`; a photo or video link of the card (`/status/<id>/photo/1`) names the same post
+  const link = Array.from(article.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]')).find((a) => /^\/[^/]+\/status\/\d+(?:\/|$)/.test(new URL(a.href, location.href).pathname));
   if (!link) return null;
   const path = new URL(link.href, location.href).pathname;
-  const m = /^\/([^/]+)\/status\/(\d+)$/.exec(path);
+  const m = /^\/([^/]+)\/status\/(\d+)(?:\/|$)/.exec(path);
   if (!m) return null;
   const author = m[1];
   const id = m[2];
@@ -95,7 +96,9 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
 export function scanDom(seenAt = new Date().toISOString()): Post[] {
   const handle = handleFromPath(location.pathname) || '';
   const out: Post[] = [];
-  document.querySelectorAll('article[data-testid="tweet"]').forEach((a) => {
+  // X names a post card article[data-testid="tweet"]; when that test id goes, every article is tried
+  const cards = document.querySelectorAll('article[data-testid="tweet"]');
+  (cards.length ? cards : document.querySelectorAll('article')).forEach((a) => {
     try {
       const p = postFromArticle(a, handle, seenAt);
       if (p) out.push(p);
