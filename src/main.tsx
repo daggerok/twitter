@@ -556,14 +556,18 @@ function App() {
         {/* feed of the current account */}
         <section className="card overflow-hidden shadow-lg feed flex-1 min-h-64 flex flex-col">
           <div className="panel-head">
-            <div className="min-w-0 flex flex-wrap items-baseline gap-x-2">
+            <div className="flex-1 basis-0 min-w-0 flex flex-wrap items-baseline gap-x-2">
               <h3 className="font-bold text-emerald-500" style={{ fontSize: `${Math.round(16 * scale)}px` }}>
                 {feed.length} / {posts.length}
               </h3>
               {busy && <span className="text-[10px] text-slate-500 dark:text-slate-400 animate-pulse" data-busy>⏳ {busy}</span>}
 
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
+            {/* how many rows wait below the rendered page: in the middle of the header, between the count and the text size */}
+            <div className="flex-none text-center text-xs text-slate-400 whitespace-nowrap">
+              {feed.length > shown && <span data-more={feed.length - shown}>{feed.length - shown} more below…</span>}
+            </div>
+            <div className="flex-1 basis-0 flex items-center justify-end gap-3">
               {hasFilters(table) && <button className="btn sm" onClick={() => setTable((t) => ({ ...t, filters: { ...EMPTY_TABLE.filters }, media: [], types: [] }))} data-clear-filters>Clear filters</button>}
               <span className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-500 dark:text-slate-400">A</span>
@@ -632,7 +636,6 @@ function App() {
               </table>
             </div>
           )}
-          {feed.length > shown && <div className="text-center text-xs text-slate-400 py-2" data-more={feed.length - shown}>{feed.length - shown} more below…</div>}
           </div>
         </section>
       </div>
