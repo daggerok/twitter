@@ -113,6 +113,35 @@ export function dateFromId(id: string): string {
   return Number.isFinite(ms) && ms > 1288834974657 ? new Date(ms).toISOString() : '';
 }
 
+/** Which profile tab a path shows: X splits Posts, Replies and Reposts since Nov 2026; media and the rest count as all. */
+export type ProfileTab = 'posts' | 'replies' | 'reposts' | 'all';
+export function tabOfPath(pathname: string): ProfileTab {
+  const m = /^\/[A-Za-z0-9_]{1,15}(?:\/([a-z_]+))?\/?$/.exec(pathname);
+  if (!m) return 'all';
+  const sub = m[1] || '';
+  return sub === '' ? 'posts' : sub === 'with_replies' ? 'replies' : sub === 'reposts' ? 'reposts' : 'all';
+}
+
+/** A row worth stopping an incremental run at: it has text or media (a row the broken Nov 2026 DOM reader wrote has neither). */
+export const isComplete = (p: Post): boolean => p.text.trim() !== '' || p.media.length > 0;
+
+/**
+ * The newest stored id per profile tab, from complete, unpinned rows only: an incremental run on a tab stops at the
+ * newest post of that tab's kind, so a run on Replies never stops at a newer post that came from the Posts tab, and an
+ * empty row is passed and rewritten instead of being taken for "already stored".
+ */
+export function newestIds(posts: Post[]): Record<ProfileTab, string> {
+  const out: Record<ProfileTab, string> = { posts: '', replies: '', reposts: '', all: '' };
+  const kindOf = (p: Post): ProfileTab => (p.type === 'reply' ? 'replies' : p.type === 'repost' ? 'reposts' : 'posts');
+  posts.forEach((p) => {
+    if (p.is_pinned || !isComplete(p)) return;
+    const k = kindOf(p);
+    if (!out[k] || compareIds(p.id, out[k]) > 0) out[k] = p.id;
+    if (!out.all || compareIds(p.id, out.all) > 0) out.all = p.id;
+  });
+  return out;
+}
+
 export function fromRow(row: unknown[]): Post | null {
   const id = cell(row, 0).trim();
   if (!id) return null;

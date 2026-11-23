@@ -75,7 +75,9 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     .map((a) => a.href).filter((h) => !/^https?:\/\/(x|twitter)\.com\//i.test(h));
   const replyTo = Array.from(article.querySelectorAll('a[href^="/"]')).map((a) => a.getAttribute('href') || '')
     .find((h) => !!h && !h.includes('/status/') && /^\/[A-Za-z0-9_]{1,15}$/.test(h) && /Replying to|В ответ/i.test(article.textContent || ''));
-  const type: PostType = isRepost ? 'repost' : replyTo && !isPinned ? 'reply' : article.querySelector('[data-testid="quoteTweet"], div[role="link"] time') ? 'quote' : 'post'; // a quoted post is a nested div[role=link] card with its own time; the post's own timestamp is an a[role=link], never a quote
+  // since Nov 2026 the Replies tab lists replies only, so an own card there is a reply even when no "Replying to" line shows (a thread)
+  const onRepliesTab = /\/with_replies\/?$/.test(location.pathname);
+  const type: PostType = isRepost ? 'repost' : (replyTo || onRepliesTab) && !isPinned ? 'reply' : article.querySelector('[data-testid="quoteTweet"], div[role="link"] time') ? 'quote' : 'post'; // a quoted post is a nested div[role=link] card with its own time; the post's own timestamp is an a[role=link], never a quote
   const owner = handle || author;
   return {
     id,

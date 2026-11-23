@@ -7,7 +7,7 @@
 //   the viewer page hands it over (bridge.ts), the viewer writes it to Google Sheets and acks it
 // Nothing leaves the browser except the Sheets API calls.
 // =========================================================================
-import { compareIds, type Post } from '../../shared/post';
+import { compareIds, type Post, type ProfileTab } from '../../shared/post';
 import { gmGet, gmSet, KEYS, MAX_RUNS, newId, type Batch, type Run, type Status } from './gm';
 import type { DirectWriter } from './sheets-gm';
 
@@ -92,17 +92,21 @@ export function setStatus(s: Status): void {
   gmSet(KEYS.status, s);
 }
 
-/** The newest id the viewer told us about for a handle (`meta`), else what this script saw itself. */
-export function knownNewestId(handle: string): string {
-  const meta = gmGet<{ newestId?: string } | null>(KEYS.meta(handle), null);
-  const fromViewer = meta && typeof meta.newestId === 'string' ? meta.newestId : '';
-  const own = gmGet<string>(KEYS.seen(handle), '');
-  if (fromViewer && own) return compareIds(fromViewer, own) >= 0 ? fromViewer : own;
-  return fromViewer || own;
+/**
+ * Where an incremental run on a profile tab stops. The viewer's per-tab id (newest complete row of that tab's kind in
+ * the sheet) wins over this script's own memory of the tab, the higher of the two is taken; the old one-id-per-handle
+ * memory is no longer read (the broken Nov 2026 run left an id of empty rows in it). '' = nothing known: a full run.
+ */
+export function knownNewestId(handle: string, tab: ProfileTab): string {
+  const meta = gmGet<{ newestId?: string; newest?: Partial<Record<ProfileTab, string>> | null } | null>(KEYS.meta(handle), null);
+  const viewer = meta && meta.newest ? (meta.newest[tab] || meta.newest.all || '') : '';
+  const own = gmGet<string>(KEYS.seenTab(handle, tab), '');
+  if (viewer && own) return compareIds(viewer, own) >= 0 ? viewer : own;
+  return viewer || own;
 }
 
-export function rememberNewestId(handle: string, id: string): void {
+export function rememberNewestId(handle: string, tab: ProfileTab, id: string): void {
   if (!id) return;
-  const own = gmGet<string>(KEYS.seen(handle), '');
-  if (!own || compareIds(id, own) > 0) gmSet(KEYS.seen(handle), id);
+  const own = gmGet<string>(KEYS.seenTab(handle, tab), '');
+  if (!own || compareIds(id, own) > 0) gmSet(KEYS.seenTab(handle, tab), id);
 }

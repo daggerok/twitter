@@ -16,7 +16,7 @@
 // =========================================================================
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createRoot } from 'react-dom/client';
-import { byNewest, mergePosts, sameHandle, type Media, type Post } from '../shared/post';
+import { mergePosts, newestIds, sameHandle, type Media, type Post } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
 import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, TYPE_KINDS, youtubeId, youtubeLinks, type ColKey, type MediaKind, type TableState, type TypeKind } from './filters';
 import { isDark, isNight, isThemeMode, nextMode, themeIcon, themeTitle, type ThemeMode } from './theme';
@@ -66,10 +66,6 @@ const errorText = (e: unknown): string => (e instanceof Error ? e.message : Stri
 const fmtDate = (iso: string): string => {
   const t = Date.parse(iso);
   return Number.isFinite(t) ? new Date(t).toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : iso || '—';
-};
-const newestIdOf = (posts: Post[]): string => {
-  const p = posts.filter((x) => !x.is_pinned).sort(byNewest)[0];
-  return p ? p.id : '';
 };
 
 function download(name: string, text: string, type: string): void {
@@ -226,7 +222,7 @@ function App() {
   const publish = useCallback((h: string, own: Post[], sheet: boolean) => {
     const list = own.filter((p) => sameHandle(p.handle, h)); // rows of another author (a leak of older userscripts) stay out of the feed
     cachePosts(h, list);
-    sendMeta(h, newestIdOf(list), list.length);
+    sendMeta(h, newestIds(list), list.length);
     if (sameHandle(h, handleRef.current)) { setPosts(list); setFromSheet(sheet); }
   }, []);
 
@@ -343,7 +339,7 @@ function App() {
     const h = readField();
     if (!h) return;
     const list = h === handleRef.current ? posts : loadCachedPosts(h);
-    sendMeta(h, newestIdOf(list), list.length);
+    sendMeta(h, newestIds(list), list.length);
     const path = cfg.withReplies ? `/${h}/with_replies` : `/${h}`;
     say(`${mode === 'full' ? '🔄 Full sync' : '⬇ Sync new'} of @${h}: the profile opens on x.com, the badge there scrolls it`);
     window.open(`https://x.com${path}#xsync=${mode}`, '_blank', 'noopener');

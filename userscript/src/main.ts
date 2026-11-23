@@ -6,7 +6,7 @@
 //   hash `#xsync=full` / `#xsync=incremental` that the viewer opens the profile with
 // - the viewer (GitHub Pages or localhost): the postMessage bridge to Tampermonkey storage (bridge.ts)
 // =========================================================================
-import { handleFromPath, sameHandle, type Post } from '../../shared/post';
+import { handleFromPath, sameHandle, tabOfPath, type Post } from '../../shared/post';
 import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
 import { gmDel, gmGet, gmMenu, gmSet, hasGM, KEYS, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
@@ -112,7 +112,8 @@ function onX(): void {
     const sink = new Sink(handle, runId);
     const startedAt = new Date().toISOString();
     const t0 = Date.now();
-    const newestId = mode === 'incremental' ? knownNewestId(handle) : '';
+    const tab = tabOfPath(location.pathname);
+    const newestId = mode === 'incremental' ? knownNewestId(handle, tab) : '';
     // direct writes when the viewer shared a fresh Google token (Tampermonkey storage), else the outbox
     let stored = 0;
     let writeError = '';
@@ -164,7 +165,7 @@ function onX(): void {
     }
     sink.flush();
     await sink.done();
-    rememberNewestId(handle, sink.newestId);
+    rememberNewestId(handle, tab, sink.newestId);
     lastRunPosts = Array.from(sink.posts.values());
     const run: Run = {
       run_id: runId, handle, started_at: startedAt, finished_at: new Date().toISOString(), mode: effectiveMode,

@@ -101,6 +101,7 @@ export const KEYS = {
   watch: 'xsync.watch',
   meta: (handle: string) => `xsync.meta.${handle.toLowerCase()}`,
   seen: (handle: string) => `xsync.seen.${handle.toLowerCase()}`,
+  seenTab: (handle: string, tab: string) => `xsync.seen.${handle.toLowerCase()}.${tab}`,
 };
 
 export const MAX_RUNS = 50;
