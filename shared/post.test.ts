@@ -208,18 +208,18 @@ describe('the frontier sits below every recent empty row', () => {
   test('complete rows filled above a hole do not stop the next run: it goes below the oldest hole', () => {
     const rows = [
       samplePost({ id: '900', type: 'reply', text: 'filled by the last run', first_seen_at: seen }),
-      samplePost({ id: '800', type: 'post', text: '', first_seen_at: seen }),   // still empty
+      samplePost({ id: '800', type: 'post', text: '', created_at: '2026-11-20T10:00:00.000Z', first_seen_at: seen }),   // still empty
       samplePost({ id: '700', type: 'reply', text: 'older reply', first_seen_at: seen }),
-      samplePost({ id: '600', type: 'post', text: '', first_seen_at: seen }),   // a stored row the broken run blanked
+      samplePost({ id: '600', type: 'post', text: '', created_at: '2026-11-01T15:28:00.000Z', first_seen_at: seen }),   // a stored row the broken run blanked
       samplePost({ id: '500', type: 'reply', text: 'before the holes', first_seen_at: seen }),
       samplePost({ id: '400', type: 'post', text: 'a post', first_seen_at: seen }),
     ];
     expect(newestIds(rows, now)).toEqual({ posts: '400', replies: '500', reposts: '', all: '500' });
   });
-  test('an empty row first seen more than HOLE_DAYS ago no longer holds the frontier', () => {
+  test('an empty row of a post made more than HOLE_DAYS ago never holds the frontier, even when first seen today', () => {
     const rows = [
       samplePost({ id: '900', type: 'reply', text: 'r', first_seen_at: seen }),
-      samplePost({ id: '800', type: 'post', text: '', first_seen_at: '2026-09-01T00:00:00.000Z' }),
+      samplePost({ id: '800', type: 'post', text: '', created_at: '2024-05-01T00:00:00.000Z', first_seen_at: seen }),
     ];
     expect(newestIds(rows, now).replies).toBe('900');
   });

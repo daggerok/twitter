@@ -125,12 +125,12 @@ export function tabOfPath(pathname: string): ProfileTab {
 /** A row worth stopping an incremental run at: it has text or media (a row the broken Nov 2026 DOM reader wrote has neither). */
 export const isComplete = (p: Post): boolean => p.text.trim() !== '' || p.media.length > 0;
 
-/** Empty rows older than this many days no longer hold the frontier back (a deleted post may never come back). */
+/** Empty rows of posts older than this many days never hold the frontier back: only a recent post can be a hole a run must refill. */
 export const HOLE_DAYS = 30;
 
 /**
  * Where an incremental run on each profile tab may stop: the newest complete, unpinned row of that tab's kind that is
- * older than every empty row (a hole) first seen in the last HOLE_DAYS. So a run on Replies never stops at a newer post
+ * older than every empty row (a hole) of a post made in the last HOLE_DAYS. So a run on Replies never stops at a newer post
  * that came from the Posts tab, and a run goes on past complete rows until it has rewritten every hole below them (the
  * owner's 23 Nov run: a ＋ filled the first page, the next ＋ stopped on it and left the rows below it empty).
  */
@@ -141,8 +141,10 @@ export function newestIds(posts: Post[], now = Date.now()): Record<ProfileTab, s
   let hole = '';
   posts.forEach((p) => {
     if (p.is_pinned || isComplete(p)) return;
-    const seen = Date.parse(p.first_seen_at);
-    if (Number.isFinite(seen) && seen < since) return;
+    // by the post's own date, not first_seen_at: the whole archive was first seen in the same weeks (v2 started 2026-10-30),
+    // so an old post that is legitimately empty made 2.4.2 run back through October (owner, 23 Nov)
+    const made = Date.parse(p.created_at || dateFromId(p.id));
+    if (!Number.isFinite(made) || made < since) return;
     if (!hole || compareIds(p.id, hole) < 0) hole = p.id;
   });
   posts.forEach((p) => {
