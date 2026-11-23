@@ -5,16 +5,27 @@
 // or reposted ids, counts from the aria-labels of the action buttons. Rows read this way still carry
 // the id, handle, date, text, media and url, so the sheet stays usable until the parser is updated.
 // =========================================================================
-import { handleFromPath, type Media, type Post, type PostType } from '../../shared/post';
+import { dateFromId, handleFromPath, type Media, type Post, type PostType } from '../../shared/post';
 
+// English and Russian X: "12.5K", "1.2M", "6 тыс.", "1,2 млн"
 const countFromLabel = (label: string): number => {
-  const m = /([\d.,]+)\s*([KkMm]?)/.exec(label.replace(/ /g, ' '));
+  const m = /([\d.,]+)\s*([KkMm]|тыс|млн)?/.exec(label.replace(/[\u00a0\u202f]/g, ' '));
   if (!m) return 0;
-  const n = Number(m[1].replace(/,/g, ''));
+  const suffix = (m[2] || '').toLowerCase();
+  // a comma is a thousands separator in "1,234" and a decimal mark in Russian "1,2 млн"
+  const digits = suffix && /^\d+,\d{1,2}$/.test(m[1]) ? m[1].replace(',', '.') : m[1].replace(/,/g, '');
+  const n = Number(digits);
   if (!Number.isFinite(n)) return 0;
-  const mult = m[2].toUpperCase() === 'K' ? 1000 : m[2].toUpperCase() === 'M' ? 1_000_000 : 1;
+  const mult = suffix === 'k' || suffix === 'тыс' ? 1000 : suffix === 'm' || suffix === 'млн' ? 1_000_000 : 1;
   return Math.round(n * mult);
 };
+
+/** A count of the action bar: by its test id (until Nov 2026), else by the words of the button's aria-label. */
+function countByWords(article: Element, testId: string, words: RegExp): number {
+  if (article.querySelector(`[data-testid="${testId}"], [data-testid="un${testId}"]`)) return countOf(article, testId);
+  const el = Array.from(article.querySelectorAll('button[aria-label], [role="button"][aria-label]')).find((x) => words.test(x.getAttribute('aria-label') || ''));
+  return el ? countFromLabel(el.getAttribute('aria-label') || '') : 0;
+}
 
 function countOf(article: Element, testId: string): number {
   const el = article.querySelector(`[data-testid="${testId}"]`) || article.querySelector(`[data-testid="un${testId}"]`);
@@ -32,17 +43,21 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   if (!m) return null;
   const author = m[1];
   const id = m[2];
+  // the line above the author ("ICT reposted", "Pinned"): a test id until Nov 2026, else the card's first line before the author's name
   const social = article.querySelector('[data-testid="socialContext"]');
-  const socialText = (social && social.textContent) || '';
+  const firstLine = ((article as HTMLElement).innerText || article.textContent || '').split('\n')[0] || '';
+  const socialText = (social && social.textContent) || (/repost|retweet|репост|ретвит|pinned|закреп/i.test(firstLine) && firstLine.length < 80 ? firstLine : '');
   const isRepost = /repost|retweet|репост|ретвит/i.test(socialText);
   const isPinned = /pinned|закреп/i.test(socialText);
   if (handle && author.toLowerCase() !== handle.toLowerCase() && !isRepost) return null;
   const time = article.querySelector('time');
-  const created = (time && time.getAttribute('datetime')) || '';
-  const textEl = article.querySelector('[data-testid="tweetText"]');
+  const created = (time && time.getAttribute('datetime')) || dateFromId(id);
+  // the post text: data-testid="tweetText" until Nov 2026, now the first element with a lang attribute
+  const textEl = article.querySelector('[data-testid="tweetText"]') || article.querySelector('div[lang]');
   const text = textEl ? (textEl as HTMLElement).innerText.trim() : '';
   const media: Media[] = [];
-  article.querySelectorAll<HTMLImageElement>('[data-testid="tweetPhoto"] img').forEach((img) => {
+  const photos = article.querySelectorAll<HTMLImageElement>('[data-testid="tweetPhoto"] img');
+  (photos.length ? Array.from(photos) : Array.from(article.querySelectorAll<HTMLImageElement>('img')).filter((i) => /pbs\.twimg\.com\/(media|tweet_video_thumb)\//.test(i.src))).forEach((img) => {
     if (!img.src) return;
     const gif = gifFromThumb(img.src);
     media.push(gif ? { type: 'gif', url: gif } : { type: 'photo', url: img.src });
@@ -56,7 +71,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
       media.push({ type: gif ? 'gif' : 'video', url: src && !src.startsWith('blob:') ? src : `https://x.com/${author}/status/${id}/video/${i + 1}` });
     });
   }
-  const links = Array.from(article.querySelectorAll<HTMLAnchorElement>('[data-testid="tweetText"] a[href^="http"]'))
+  const links = Array.from((textEl || article).querySelectorAll<HTMLAnchorElement>('a[href^="http"]'))
     .map((a) => a.href).filter((h) => !/^https?:\/\/(x|twitter)\.com\//i.test(h));
   const replyTo = Array.from(article.querySelectorAll('a[href^="/"]')).map((a) => a.getAttribute('href') || '')
     .find((h) => !!h && !h.includes('/status/') && /^\/[A-Za-z0-9_]{1,15}$/.test(h) && /Replying to|В ответ/i.test(article.textContent || ''));
@@ -80,12 +95,12 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     reposted_handle: isRepost ? author : '',
     media,
     links,
-    likes: countOf(article, 'like'),
-    reposts: countOf(article, 'retweet'),
-    replies: countOf(article, 'reply'),
+    likes: countByWords(article, 'like', /like|нравится/i),
+    reposts: countByWords(article, 'retweet', /repost|retweet|репост/i),
+    replies: countByWords(article, 'reply', /repl|ответ/i),
     quotes: 0,
     bookmarks: countOf(article, 'bookmark'),
-    views: 0,
+    views: countFromLabel((article.querySelector('a[href$="/analytics"]') as HTMLElement | null)?.innerText || ''),
     is_pinned: isPinned,
     first_seen_at: seenAt,
     last_seen_at: seenAt,

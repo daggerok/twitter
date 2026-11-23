@@ -154,3 +154,83 @@ describe('the other person in a reply', () => {
     expect(r.skipped).toBe(1);
   });
 });
+
+describe('the Nov 2026 api (api.x.com, user_result_by_screen_name, details, counts, media_entities2)', () => {
+  const user = (h: string) => ({ core: { user_results: { result: { __typename: 'User', rest_id: `u-${h}`, core: { screen_name: h, name: h } } } } });
+  const ms = Date.parse('2026-11-20T15:00:00.000Z');
+  const tw = (id: string, h: string, text: string, extra: Record<string, unknown> = {}) => ({
+    __typename: 'Tweet', rest_id: id, ...user(h),
+    details: { created_at_ms: ms, full_text: text, display_text_range: [0, Array.from(text).length] },
+    counts: { favorite_count: 131, retweet_count: 2, reply_count: 14, quote_count: 1, bookmark_count: 3 },
+    legacy: { conversation_id_str: '10', lang: 'en' },
+    views: { count: '6000' }, url_entities: [], media_entities2: [],
+    ...extra,
+  });
+  const item = (t: unknown) => ({ __typename: 'TimelineTimelineItem', content: { __typename: 'TimelineTweet', tweet_results: { result: t } } });
+  const withMedia = tw('13', 'Acc', 'Look at this https://t.co/abc https://t.co/pic', {
+    details: { created_at_ms: ms, full_text: 'Look at this https://t.co/abc https://t.co/pic', display_text_range: [0, 29] },
+    url_entities: [{ url: 'https://t.co/abc', expanded_url: 'https://example.com/a', display_url: 'example.com/a' }],
+    media_entities2: [{ type: 'photo', media_url_https: 'https://pbs.twimg.com/media/p.jpg', indices: [30, 46] }],
+  });
+  const json = { data: { user_result_by_screen_name: { result: { __typename: 'User', profile_user_replies_timeline: { timeline: { instructions: [
+    { __typename: 'TimelinePinEntry', entry: { entry_id: 'tweet-12', content: item(tw('12', 'Acc', 'pinned one')) } },
+    { __typename: 'TimelineAddEntries', entries: [
+      { entry_id: 'conv-10', content: { __typename: 'TimelineTimelineModule', items: [
+        { entry_id: 'conv-10-tweet-10', item: item(tw('10', 'Other', 'What do you think?')) },
+        { entry_id: 'conv-10-tweet-11', item: item(tw('11', 'Acc', '@Other Happy Wife, Happy Home.', { reply_to_results: { rest_id: '10' }, reply_to_user_results: { result: { core: { screen_name: 'Other' } } } })) },
+      ] } },
+      { entry_id: 'tweet-13', content: item(withMedia) },
+      { entry_id: 'tweet-14', content: item(tw('14', 'Acc', 'RT @Other: original', { legacy: { conversation_id_str: '9', lang: 'en', retweeted_status_results: { result: tw('9', 'Other', 'the original text in full') } } })) },
+      { entry_id: 'tweet-15', content: item(tw('15', 'Acc', 'My take', { quoted_tweet_results: { result: tw('8', 'Other', 'quoted') } })) },
+      { entry_id: 'cursor-bottom-1', content: { __typename: 'TimelineTimelineCursor', cursor_type: 'Bottom', value: 'next-page' } },
+    ] },
+  ] } } } } } };
+  const r = parseTimeline(json, 'acc', SEEN);
+  const byId = new Map(r.posts.map((p) => [p.id, p]));
+
+  test('every post of the account is found, the other author only gives the quote, the cursor is read', () => {
+    expect(r.posts.map((p) => p.id).sort()).toEqual(['11', '12', '13', '14', '15']);
+    expect(r.errors).toBe(0);
+    expect(r.cursorBottom).toBe('next-page');
+    expect(byId.get('12')?.is_pinned).toBe(true);
+  });
+
+  test('date from created_at_ms, counts from counts, views, lang', () => {
+    const p = byId.get('11');
+    expect(p?.created_at).toBe('2026-11-20T15:00:00.000Z');
+    expect([p?.likes, p?.reposts, p?.replies, p?.quotes, p?.bookmarks, p?.views]).toEqual([131, 2, 14, 1, 3, 6000]);
+    expect(p?.lang).toBe('en');
+  });
+
+  test('a reply: parent id and handle from reply_to_results, the parent text kept', () => {
+    const p = byId.get('11');
+    expect(p?.type).toBe('reply');
+    expect(p?.in_reply_to_id).toBe('10');
+    expect(p?.in_reply_to_handle).toBe('Other');
+    expect(p?.in_reply_to_text).toBe('What do you think?');
+  });
+
+  test('media from media_entities2, its t.co cut by display_text_range, links expanded from url_entities', () => {
+    const p = byId.get('13');
+    expect(p?.text).toBe('Look at this https://example.com/a');
+    expect(p?.links).toEqual(['https://example.com/a']);
+    expect(p?.media).toEqual([{ type: 'photo', url: 'https://pbs.twimg.com/media/p.jpg' }]);
+  });
+
+  test('a repost from legacy.retweeted_status_results, a quote from quoted_tweet_results', () => {
+    expect(byId.get('14')?.type).toBe('repost');
+    expect(byId.get('14')?.reposted_id).toBe('9');
+    expect(byId.get('14')?.reposted_handle).toBe('Other');
+    expect(byId.get('14')?.text).toBe('the original text in full');
+    expect(byId.get('15')?.type).toBe('quote');
+    expect(byId.get('15')?.quoted_id).toBe('8');
+  });
+
+  test('the operation name of the api.x.com url', () => {
+    expect(graphqlOperation('https://api.x.com/graphql/AbC-12_x/UserRepliesTimeline?variables=%7B%7D')).toBe('UserRepliesTimeline');
+    expect(graphqlOperation('https://api.x.com/graphql/AbC/UserOriginalsTimeline')).toBe('UserOriginalsTimeline');
+    expect(isTimelineOperation('UserOriginalsTimeline')).toBe(true);
+    expect(isTimelineOperation('UserRepostsTimeline')).toBe(true);
+    expect(isTimelineOperation('whoToFollowListQuery')).toBe(false);
+  });
+});
