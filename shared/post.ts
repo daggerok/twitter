@@ -125,16 +125,29 @@ export function tabOfPath(pathname: string): ProfileTab {
 /** A row worth stopping an incremental run at: it has text or media (a row the broken Nov 2026 DOM reader wrote has neither). */
 export const isComplete = (p: Post): boolean => p.text.trim() !== '' || p.media.length > 0;
 
+/** Empty rows older than this many days no longer hold the frontier back (a deleted post may never come back). */
+export const HOLE_DAYS = 30;
+
 /**
- * The newest stored id per profile tab, from complete, unpinned rows only: an incremental run on a tab stops at the
- * newest post of that tab's kind, so a run on Replies never stops at a newer post that came from the Posts tab, and an
- * empty row is passed and rewritten instead of being taken for "already stored".
+ * Where an incremental run on each profile tab may stop: the newest complete, unpinned row of that tab's kind that is
+ * older than every empty row (a hole) first seen in the last HOLE_DAYS. So a run on Replies never stops at a newer post
+ * that came from the Posts tab, and a run goes on past complete rows until it has rewritten every hole below them (the
+ * owner's 23 Nov run: a ＋ filled the first page, the next ＋ stopped on it and left the rows below it empty).
  */
-export function newestIds(posts: Post[]): Record<ProfileTab, string> {
+export function newestIds(posts: Post[], now = Date.now()): Record<ProfileTab, string> {
   const out: Record<ProfileTab, string> = { posts: '', replies: '', reposts: '', all: '' };
   const kindOf = (p: Post): ProfileTab => (p.type === 'reply' ? 'replies' : p.type === 'repost' ? 'reposts' : 'posts');
+  const since = now - HOLE_DAYS * 86_400_000;
+  let hole = '';
+  posts.forEach((p) => {
+    if (p.is_pinned || isComplete(p)) return;
+    const seen = Date.parse(p.first_seen_at);
+    if (Number.isFinite(seen) && seen < since) return;
+    if (!hole || compareIds(p.id, hole) < 0) hole = p.id;
+  });
   posts.forEach((p) => {
     if (p.is_pinned || !isComplete(p)) return;
+    if (hole && compareIds(p.id, hole) >= 0) return;
     const k = kindOf(p);
     if (!out[k] || compareIds(p.id, out[k]) > 0) out[k] = p.id;
     if (!out.all || compareIds(p.id, out.all) > 0) out.all = p.id;

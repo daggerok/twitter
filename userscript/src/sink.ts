@@ -93,16 +93,15 @@ export function setStatus(s: Status): void {
 }
 
 /**
- * Where an incremental run on a profile tab stops. The viewer's per-tab id (newest complete row of that tab's kind in
- * the sheet) wins over this script's own memory of the tab, the higher of the two is taken; the old one-id-per-handle
- * memory is no longer read (the broken Nov 2026 run left an id of empty rows in it). '' = nothing known: a full run.
+ * Where an incremental run on a profile tab stops. The viewer's per-tab id wins whenever the viewer sent one: it is
+ * computed from the sheet and sits below every empty row, while this script's own memory only knows how far its last run
+ * got and would skip such holes. The own per-tab memory is used when the viewer was never opened; the old
+ * one-id-per-handle memory is no longer read. '' = nothing known: a full run.
  */
 export function knownNewestId(handle: string, tab: ProfileTab): string {
   const meta = gmGet<{ newestId?: string; newest?: Partial<Record<ProfileTab, string>> | null } | null>(KEYS.meta(handle), null);
-  const viewer = meta && meta.newest ? (meta.newest[tab] || meta.newest.all || '') : '';
-  const own = gmGet<string>(KEYS.seenTab(handle, tab), '');
-  if (viewer && own) return compareIds(viewer, own) >= 0 ? viewer : own;
-  return viewer || own;
+  if (meta && meta.newest) return meta.newest[tab] || meta.newest.all || gmGet<string>(KEYS.seenTab(handle, tab), '');
+  return gmGet<string>(KEYS.seenTab(handle, tab), '');
 }
 
 export function rememberNewestId(handle: string, tab: ProfileTab, id: string): void {

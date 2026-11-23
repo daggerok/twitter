@@ -194,7 +194,33 @@ describe('incremental runs per profile tab', () => {
       samplePost({ id: '400', type: 'post', text: 'pinned', is_pinned: true }),
       samplePost({ id: '150', type: 'repost', text: '', media: [{ type: 'photo', url: 'https://pbs.twimg.com/m.jpg' }] }),
     ];
-    expect(newestIds(rows)).toEqual({ posts: '250', replies: '200', reposts: '150', all: '250' });
+    const now = Date.parse('2026-11-23T12:00:00.000Z');
+    const fresh = '2026-11-23T10:00:00.000Z';
+    // the empty row 300 is a hole; every complete row here is below it, so the per-kind newest ids stay as they are
+    expect(newestIds(rows.map((p) => ({ ...p, first_seen_at: fresh })), now)).toEqual({ posts: '250', replies: '200', reposts: '150', all: '250' });
     expect(newestIds([])).toEqual({ posts: '', replies: '', reposts: '', all: '' });
+  });
+});
+
+describe('the frontier sits below every recent empty row', () => {
+  const now = Date.parse('2026-11-23T12:00:00.000Z');
+  const seen = '2026-11-23T10:00:00.000Z';
+  test('complete rows filled above a hole do not stop the next run: it goes below the oldest hole', () => {
+    const rows = [
+      samplePost({ id: '900', type: 'reply', text: 'filled by the last run', first_seen_at: seen }),
+      samplePost({ id: '800', type: 'post', text: '', first_seen_at: seen }),   // still empty
+      samplePost({ id: '700', type: 'reply', text: 'older reply', first_seen_at: seen }),
+      samplePost({ id: '600', type: 'post', text: '', first_seen_at: seen }),   // a stored row the broken run blanked
+      samplePost({ id: '500', type: 'reply', text: 'before the holes', first_seen_at: seen }),
+      samplePost({ id: '400', type: 'post', text: 'a post', first_seen_at: seen }),
+    ];
+    expect(newestIds(rows, now)).toEqual({ posts: '400', replies: '500', reposts: '', all: '500' });
+  });
+  test('an empty row first seen more than HOLE_DAYS ago no longer holds the frontier', () => {
+    const rows = [
+      samplePost({ id: '900', type: 'reply', text: 'r', first_seen_at: seen }),
+      samplePost({ id: '800', type: 'post', text: '', first_seen_at: '2026-09-01T00:00:00.000Z' }),
+    ];
+    expect(newestIds(rows, now).replies).toBe('900');
   });
 });
