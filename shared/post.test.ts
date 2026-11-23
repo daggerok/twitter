@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
-import { byNewest, compareIds, findTab, firstRowOfRange, fromRow, handleFromPath, handleOfTab, isCredsFresh, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, sameHandle, tabOf, toRow, type Post } from './post';
+import { byNewest, compareIds, dateFromId, findTab, firstRowOfRange, fromRow, handleFromPath, handleOfTab, isCredsFresh, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, sameHandle, tabOf, toRow, type Post } from './post';
 
 export const samplePost = (over: Partial<Post> = {}): Post => ({
   id: '1700000000000000001',
@@ -147,5 +147,35 @@ describe('sheet tab helpers', () => {
     expect(isCredsFresh({ token: 't', spreadsheetId: 's', expiresAt: now + 30_000, email: '' }, now)).toBe(false);
     expect(isCredsFresh({ token: '', spreadsheetId: 's', expiresAt: now + 120_000, email: '' }, now)).toBe(false);
     expect(isCredsFresh(null, now)).toBe(false);
+  });
+});
+
+describe('the November 2026 fixes', () => {
+  test('dateFromId reads the time a snowflake id carries, a non-snowflake gives nothing', () => {
+    const at = Date.parse('2026-11-20T15:00:00.123Z');
+    const id = (BigInt(at - 1288834974657) * BigInt(4194304) + BigInt(12345)).toString();
+    expect(dateFromId(id)).toBe('2026-11-20T15:00:00.123Z');
+    expect(dateFromId('12')).toBe('');
+    expect(dateFromId('abc')).toBe('');
+  });
+
+  test('a row without a date gets it from the id', () => {
+    const at = Date.parse('2026-11-20T15:00:00.000Z');
+    const id = (BigInt(at - 1288834974657) * BigInt(4194304)).toString();
+    const row = toRow(samplePost({ id, created_at: '' })) as unknown[];
+    expect(fromRow(row)?.created_at).toBe('2026-11-20T15:00:00.000Z');
+  });
+
+  test('a poorer capture never blanks what the sheet has: empty text, 0 views and no media keep the stored ones', () => {
+    const stored = samplePost({ text: 'full text', views: 500, lang: 'en', media: [{ type: 'photo', url: 'https://pbs.twimg.com/a.jpg' }], likes: 10, hidden: true });
+    const poor = samplePost({ text: '', views: 0, lang: '', media: [], likes: 12, hidden: false });
+    const m = mergePosts([stored], [poor]).posts[0];
+    expect([m.text, m.views, m.lang, m.media.length, m.likes, m.hidden]).toEqual(['full text', 500, 'en', 1, 12, true]);
+    expect(mergePosts([samplePost({ type: 'reply' })], [samplePost({ type: 'post' })]).posts[0].type).toBe('reply');
+    expect(mergePosts([samplePost({ type: 'post' })], [samplePost({ type: 'quote' })]).posts[0].type).toBe('quote');
+  });
+
+  test('the reposts tab is a profile page', () => {
+    expect(handleFromPath('/I_Am_Someone/reposts')).toBe('I_Am_Someone');
   });
 });

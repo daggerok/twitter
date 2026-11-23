@@ -47,6 +47,16 @@ export function instructionsOf(json: unknown): unknown[] {
     get(json, 'data', 'timeline_response', 'instructions'),
   ];
   for (const c of candidates) if (Array.isArray(c)) return c;
+  // Nov 2026: data.user_result_by_screen_name.result.profile_user_{originals,replies,reposts,media}_timeline.timeline.instructions
+  const roots = [get(json, 'data', 'user_result_by_screen_name', 'result'), get(json, 'data', 'user_result', 'result'), get(json, 'data', 'user', 'result')];
+  for (const r of roots) {
+    if (!isObj(r)) continue;
+    for (const k of Object.keys(r)) {
+      if (!/timeline/i.test(k)) continue;
+      const ins = get(r[k], 'timeline', 'instructions');
+      if (Array.isArray(ins)) return ins;
+    }
+  }
   return [];
 }
 
@@ -88,7 +98,7 @@ export function bottomCursor(json: unknown): string | null {
     if ((get(ins, 'type') || get(ins, '__typename')) !== 'TimelineAddEntries') return;
     arr(get(ins, 'entries')).forEach((e) => {
       const c = get(e, 'content');
-      if (isObj(c) && (c.entryType || c.__typename) === 'TimelineTimelineCursor' && c.cursorType === 'Bottom') cursor = str(c.value) || null;
+      if (isObj(c) && (c.entryType || c.__typename) === 'TimelineTimelineCursor' && (c.cursorType || c.cursor_type) === 'Bottom') cursor = str(c.value) || null;
     });
   });
   return cursor;
@@ -134,8 +144,15 @@ function expandUrls(text: string, urls: unknown[]): { text: string; links: strin
   return { text: out, links };
 }
 
+/** The reposted original: `legacy.retweeted_status_result` until Oct 2026, `legacy.retweeted_status_results` since. */
+const repostedOf = (tweet: Obj): unknown => get(tweet, 'legacy', 'retweeted_status_results', 'result') ?? get(tweet, 'legacy', 'retweeted_status_result', 'result');
+/** The quoted post: `quoted_status_result` until Oct 2026, `quoted_tweet_results` since. */
+const quotedOf = (tweet: Obj): unknown => get(tweet, 'quoted_tweet_results', 'result') ?? get(tweet, 'quoted_status_result', 'result');
+/** A count: `counts.<name>` since Nov 2026, `legacy.<name>` before. */
+const countOf = (tweet: Obj, name: string): number => int(get(tweet, 'counts', name) ?? get(tweet, 'legacy', name));
+
 function mediaOf(tweet: Obj): { media: Media[]; mediaUrls: string[] } {
-  const items = arr(get(tweet, 'legacy', 'extended_entities', 'media'));
+  const items = Array.isArray(get(tweet, 'media_entities2')) ? arr(get(tweet, 'media_entities2')) : arr(get(tweet, 'legacy', 'extended_entities', 'media'));
   const media: Media[] = [];
   const mediaUrls: string[] = [];
   items.forEach((m) => {
@@ -164,8 +181,13 @@ function textOf(tweet: Obj): { text: string; links: string[] } {
   const note = get(tweet, 'note_tweet', 'note_tweet_results', 'result');
   const legacy = get(tweet, 'legacy');
   const noteText = str(get(note, 'text'));
-  const raw = noteText || str(get(legacy, 'full_text'));
-  const urls = noteText ? arr(get(note, 'entity_set', 'urls')) : arr(get(legacy, 'entities', 'urls'));
+  const detailsText = str(get(tweet, 'details', 'full_text'));
+  // Nov 2026: media carry no short url, the t.co of the media sits at the end of details.full_text past display_text_range
+  const range = arr(get(tweet, 'details', 'display_text_range'));
+  const end = int(range[1]);
+  const shown = detailsText && Array.isArray(get(tweet, 'media_entities2')) && arr(get(tweet, 'media_entities2')).length && end > 0 ? Array.from(detailsText).slice(0, end).join('') : detailsText;
+  const raw = noteText || shown || str(get(legacy, 'full_text'));
+  const urls = noteText ? arr(get(note, 'entity_set', 'urls')) : Array.isArray(get(tweet, 'url_entities')) ? arr(get(tweet, 'url_entities')) : arr(get(legacy, 'entities', 'urls'));
   const { text, links } = expandUrls(raw, urls);
   const { mediaUrls } = mediaOf(tweet);
   // X appends the t.co of attached media to the text; drop it, the media column has the real urls
@@ -174,11 +196,25 @@ function textOf(tweet: Obj): { text: string; links: string[] } {
   return { text: clean.trim(), links: links.filter((l) => !mediaUrls.includes(l)) };
 }
 
+/** The post a reply answers: `reply_to_results` / `reply_to_user_results` since Nov 2026, `legacy.in_reply_to_*` before. */
+function replyOf(tweet: Obj): { id: string; handle: string } {
+  const id = str(get(tweet, 'reply_to_results', 'rest_id')) || str(get(tweet, 'legacy', 'in_reply_to_status_id_str'));
+  const handle = str(get(tweet, 'reply_to_user_results', 'result', 'core', 'screen_name')) || str(get(tweet, 'legacy', 'in_reply_to_screen_name'));
+  return { id, handle };
+}
+
+/** Creation time: `details.created_at_ms` since Nov 2026, the `legacy.created_at` text before. */
+function createdOf(tweet: Obj): string {
+  const ms = int(get(tweet, 'details', 'created_at_ms'));
+  if (ms > 0) return new Date(ms).toISOString();
+  return isoFromXDate(str(get(tweet, 'legacy', 'created_at')));
+}
+
 export function classify(tweet: Obj): PostType {
   const legacy = get(tweet, 'legacy');
-  if (isObj(get(legacy, 'retweeted_status_result', 'result'))) return 'repost';
-  if (str(get(legacy, 'in_reply_to_status_id_str'))) return 'reply';
-  if (get(legacy, 'is_quote_status') === true || isObj(get(tweet, 'quoted_status_result', 'result'))) return 'quote';
+  if (isObj(repostedOf(tweet))) return 'repost';
+  if (replyOf(tweet).id) return 'reply';
+  if (get(legacy, 'is_quote_status') === true || isObj(quotedOf(tweet))) return 'quote';
   return 'post';
 }
 
@@ -196,31 +232,32 @@ export function postOf(result: unknown, pinned: boolean, seenAt: string): Post |
   let reposted_handle = '';
   if (type === 'repost') {
     // a repost's own text is "RT @x: ..." cut at 140 chars: take the original tweet's text instead
-    const orig = unwrapTweet(get(legacy, 'retweeted_status_result', 'result'));
+    const orig = unwrapTweet(repostedOf(tweet));
     reposted_id = orig ? str(orig.rest_id) : '';
     reposted_handle = orig ? userOf(orig).handle : '';
     text = orig ? textOf(orig) : textOf(tweet);
   } else {
     text = textOf(tweet);
   }
-  const quoted = unwrapTweet(get(tweet, 'quoted_status_result', 'result'));
+  const quoted = unwrapTweet(quotedOf(tweet));
   const quoted_id = (quoted ? str(quoted.rest_id) : '') || str(get(legacy, 'quoted_status_id_str'));
   if (quoted_id) {
     // X keeps the link of the quoted post at the end of the text; the UI shows the quote card instead
     text.text = text.text.replace(new RegExp(`\\s*https?:\\/\\/(x|twitter)\\.com\\/[^\\/\\s]+\\/status\\/${quoted_id}(\\?\\S*)?\\s*$`, 'i'), '').trim();
   }
-  const { media } = type === 'repost' ? mediaOf(unwrapTweet(get(legacy, 'retweeted_status_result', 'result')) || tweet) : mediaOf(tweet);
+  const { media } = type === 'repost' ? mediaOf(unwrapTweet(repostedOf(tweet)) || tweet) : mediaOf(tweet);
+  const reply = replyOf(tweet);
   return {
     id,
     handle: user.handle,
     author_name: user.name,
-    created_at: isoFromXDate(str(get(legacy, 'created_at'))),
+    created_at: createdOf(tweet),
     type,
     text: text.text,
     lang: str(get(legacy, 'lang')),
     url: `https://x.com/${user.handle || 'i'}/status/${id}`,
-    in_reply_to_id: str(get(legacy, 'in_reply_to_status_id_str')),
-    in_reply_to_handle: str(get(legacy, 'in_reply_to_screen_name')),
+    in_reply_to_id: type === 'reply' ? reply.id : '',
+    in_reply_to_handle: type === 'reply' ? reply.handle : '',
     in_reply_to_text: '',
     conversation_id: str(get(legacy, 'conversation_id_str')),
     quoted_id,
@@ -228,11 +265,11 @@ export function postOf(result: unknown, pinned: boolean, seenAt: string): Post |
     reposted_handle,
     media,
     links: text.links,
-    likes: int(get(legacy, 'favorite_count')),
-    reposts: int(get(legacy, 'retweet_count')),
-    replies: int(get(legacy, 'reply_count')),
-    quotes: int(get(legacy, 'quote_count')),
-    bookmarks: int(get(legacy, 'bookmark_count')),
+    likes: countOf(tweet, 'favorite_count'),
+    reposts: countOf(tweet, 'retweet_count'),
+    replies: countOf(tweet, 'reply_count'),
+    quotes: countOf(tweet, 'quote_count'),
+    bookmarks: countOf(tweet, 'bookmark_count'),
     views: int(get(tweet, 'views', 'count')),
     is_pinned: pinned,
     first_seen_at: seenAt,
@@ -294,9 +331,9 @@ export function parseUser(json: unknown): AccountInfo | null {
   };
 }
 
-/** Operation name of an X GraphQL url (`/i/api/graphql/<queryId>/UserTweets?...`), or null. */
+/** Operation name of an X GraphQL url (`x.com/i/api/graphql/<queryId>/UserTweets?...`, since Nov 2026 `api.x.com/graphql/<queryId>/UserOriginalsTimeline`), or null. */
 export function graphqlOperation(url: string): string | null {
-  const m = /\/i\/api\/graphql\/[^/]+\/([A-Za-z0-9_]+)/.exec(url);
+  const m = /\/graphql\/[^/?]+\/([A-Za-z0-9_]+)/.exec(url);
   return m ? m[1] : null;
 }
 

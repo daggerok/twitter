@@ -41,7 +41,7 @@ function pageCode(): string {
   window.__xsyncNet = true;
   var wantedRe = new RegExp(${JSON.stringify(TIMELINE_OPERATION_RE.source)});
   var wanted = { indexOf: function (name) { return name === 'UserByScreenName' || wantedRe.test(name) ? 0 : -1; } };
-  var anyOp = function (url) { var m = /\\/i\\/api\\/graphql\\/[^/]+\\/([A-Za-z0-9_]+)/.exec(String(url || '')); return m ? m[1] : null; };
+  var anyOp = function (url) { var m = /\\/graphql\\/[^/?]+\\/([A-Za-z0-9_]+)/.exec(String(url || '')); return m ? m[1] : null; };
   // every GraphQL operation name is reported once as __op (the 🐞 file lists them, so a renamed timeline operation shows up)
   var opOf = function (url) { var name = anyOp(url); if (name) post('__op', 0, name); return name && wanted.indexOf(name) >= 0 ? name : null; };
   var urlOf = function (input) { try { return typeof input === 'string' ? input : input && input.url ? input.url : input && input.href ? input.href : String(input); } catch (e) { return ''; } };

@@ -19,3 +19,11 @@ describe('dom fallback counts', () => {
     expect(countFromLabel('')).toBe(0);
   });
 });
+
+describe('dom fallback counts in Russian', () => {
+  test('тыс. and млн, a comma as the decimal mark', () => {
+    expect(countFromLabel('6 тыс.')).toBe(6000);
+    expect(countFromLabel('1,2 млн')).toBe(1_200_000);
+    expect(countFromLabel('131 отметка «Нравится». Нравится')).toBe(131);
+  });
+});

@@ -103,6 +103,16 @@ export function isPostType(s: string): s is PostType {
 }
 
 /** A sheet row back to a Post; `null` when the row has no id (an empty or hand-edited line). */
+/**
+ * The creation time X encodes in a post id (a snowflake: milliseconds since 2010-11-04T01:42:54.657Z in the bits above 22),
+ * '' for an id that is not one. Rows the DOM reader wrote without a date get it back from here.
+ */
+export function dateFromId(id: string): string {
+  if (!/^\d{15,20}$/.test(id)) return '';
+  const ms = Number(BigInt(id) / BigInt(4194304)) + 1288834974657;
+  return Number.isFinite(ms) && ms > 1288834974657 ? new Date(ms).toISOString() : '';
+}
+
 export function fromRow(row: unknown[]): Post | null {
   const id = cell(row, 0).trim();
   if (!id) return null;
@@ -112,7 +122,7 @@ export function fromRow(row: unknown[]): Post | null {
     id,
     handle: cell(row, 1),
     author_name: cell(row, 2),
-    created_at: created,
+    created_at: created || dateFromId(id),
     type: isPostType(type) ? type : 'post',
     text: cell(row, 5),
     lang: cell(row, 6),
@@ -166,7 +176,17 @@ export function mergePosts(stored: Post[], captured: Post[]): { posts: Post[]; i
     const old = byId.get(p.id);
     if (old) {
       // hidden belongs to the owner (set in the viewer): a capture never resets it
-      byId.set(p.id, { ...old, ...p, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden, in_reply_to_text: p.in_reply_to_text || old.in_reply_to_text });
+      // a poorer capture (the DOM reader has no lang, views or quoted id) never blanks a filled field: '' , [] and 0 keep the stored value
+      const next = { ...old } as Record<string, unknown>;
+      const prev = old as unknown as Record<string, unknown>;
+      Object.entries(p).forEach(([k, v]) => {
+        const had = prev[k];
+        const empty = v === '' || v === 0 || (Array.isArray(v) && v.length === 0);
+        const hadValue = had !== '' && had !== 0 && had !== undefined && !(Array.isArray(had) && had.length === 0);
+        if (!(empty && hadValue)) next[k] = v;
+      });
+      // a post never changes its kind; the DOM reader cannot tell a reply in a thread from a post, so 'post' keeps the stored kind
+      byId.set(p.id, { ...(next as unknown as Post), type: p.type === 'post' ? old.type : p.type, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden });
       updated += 1;
     } else {
       byId.set(p.id, p);
@@ -198,7 +218,7 @@ export function isoFromXDate(s: string): string {
 
 /** The handle of a profile url path, case kept: `/ElonMusk`, `/elonmusk/with_replies`, `/elonmusk/media`; null elsewhere. */
 export function handleFromPath(pathname: string): string | null {
-  const m = /^\/([A-Za-z0-9_]{1,15})(?:\/(?:with_replies|media|highlights|likes|articles))?\/?$/.exec(pathname);
+  const m = /^\/([A-Za-z0-9_]{1,15})(?:\/(?:with_replies|reposts|media|highlights|likes|articles))?\/?$/.exec(pathname);
   if (!m) return null;
   if (RESERVED.has(m[1].toLowerCase())) return null;
   return m[1];
