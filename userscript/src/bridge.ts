@@ -47,7 +47,8 @@ export function installViewerBridge(version: string): void {
       gmSet(KEYS.outbox, left);
       send({ type: 'outbox', batches: left });
     } else if (data.type === 'meta' && typeof data.handle === 'string' && typeof data.newestId === 'string') {
-      gmSet(KEYS.meta(data.handle), { newestId: data.newestId, count: Number(data.count) || 0, updatedAt: new Date().toISOString() });
+      const newest = (data as { newest?: unknown }).newest;
+      gmSet(KEYS.meta(data.handle), { newestId: data.newestId, newest: newest && typeof newest === 'object' ? newest : null, count: Number(data.count) || 0, updatedAt: new Date().toISOString() });
     }
   });
 

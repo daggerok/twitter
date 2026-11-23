@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
-import { byNewest, compareIds, dateFromId, findTab, firstRowOfRange, fromRow, handleFromPath, handleOfTab, isCredsFresh, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, sameHandle, tabOf, toRow, type Post } from './post';
+import { byNewest, compareIds, dateFromId, findTab, newestIds, tabOfPath, firstRowOfRange, fromRow, handleFromPath, handleOfTab, isCredsFresh, isoFromXDate, LAST_COL, mergePosts, POST_HEADERS, quoteTab, rangeOf, sameHandle, tabOf, toRow, type Post } from './post';
 
 export const samplePost = (over: Partial<Post> = {}): Post => ({
   id: '1700000000000000001',
@@ -177,5 +177,24 @@ describe('the November 2026 fixes', () => {
 
   test('the reposts tab is a profile page', () => {
     expect(handleFromPath('/I_Am_Someone/reposts')).toBe('I_Am_Someone');
+  });
+});
+
+describe('incremental runs per profile tab', () => {
+  test('tabOfPath: Posts, Replies, Reposts, the rest is all', () => {
+    expect(['/Acc', '/Acc/', '/Acc/with_replies', '/Acc/reposts', '/Acc/media', '/home/x/y'].map(tabOfPath)).toEqual(['posts', 'posts', 'replies', 'reposts', 'all', 'all']);
+  });
+
+  test('newestIds: per kind, complete unpinned rows only (an empty row of the broken run is passed)', () => {
+    const rows = [
+      samplePost({ id: '100', type: 'post', text: 'a' }),
+      samplePost({ id: '300', type: 'post', text: '', media: [] }),            // the broken run: no text, no media
+      samplePost({ id: '250', type: 'quote', text: 'q' }),
+      samplePost({ id: '200', type: 'reply', text: 'r' }),
+      samplePost({ id: '400', type: 'post', text: 'pinned', is_pinned: true }),
+      samplePost({ id: '150', type: 'repost', text: '', media: [{ type: 'photo', url: 'https://pbs.twimg.com/m.jpg' }] }),
+    ];
+    expect(newestIds(rows)).toEqual({ posts: '250', replies: '200', reposts: '150', all: '250' });
+    expect(newestIds([])).toEqual({ posts: '', replies: '', reposts: '', all: '' });
   });
 });

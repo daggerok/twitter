@@ -1,6 +1,6 @@
 /// <reference lib="esnext" />
 // Page side of the postMessage bridge to the userscript (see userscript/src/bridge.ts for the protocol).
-import type { Post } from '../shared/post';
+import type { Post, ProfileTab } from '../shared/post';
 
 export type Batch = { id: string; handle: string; run_id: string; posts: Post[]; created_at: string };
 export type Run = {
@@ -34,4 +34,5 @@ export function connectBridge(on: BridgeEvents): () => void {
 }
 
 export const ackBatches = (ids: string[]): void => post({ type: 'ack', ids });
-export const sendMeta = (handle: string, newestId: string, count: number): void => post({ type: 'meta', handle, newestId, count });
+/** The newest complete stored id per profile tab (`newest`), and the overall one as `newestId` for older userscripts. */
+export const sendMeta = (handle: string, newest: Record<ProfileTab, string>, count: number): void => post({ type: 'meta', handle, newestId: newest.all, newest, count });
