@@ -6,9 +6,9 @@
 // Stop reasons: stopped (the Stop button), caught_up (incremental: an id <= the newest stored one),
 // end_of_timeline (idleScrolls scrolls without a new post), max_posts and max_minutes (only when set, off by
 // default: the owner wants a run to go on until the timeline ends or Stop is pressed), rate_limited
-// (no longer produced: on HTTP 429 or the "Something went wrong" card the run waits and clicks Retry until posts return), left_profile (the url changed).
+// (no longer produced: on HTTP 429 or the "Something went wrong" card the run waits and clicks Retry until posts return), left_profile (another account or another profile tab opened).
 // =========================================================================
-import { compareIds, handleFromPath, sameHandle, type Post } from '../../shared/post';
+import { compareIds, handleFromPath, sameHandle, tabOfPath, type Post } from '../../shared/post';
 import { scanDom } from './dom-fallback';
 import type { RunMode, StopReason } from './gm';
 import type { Settings } from './settings';
@@ -95,6 +95,7 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
   let sawFromDom = 0;
   let retries = 0;          // consecutive Retry clicks, reset when posts arrive
   const seenIds = new Set<string>();
+  const startTab = tabOfPath(location.pathname); // Posts, Replies or Reposts: since Nov 2026 each is its own timeline
   const result = (stop: StopReason): RunResult => ({
     stop,
     source: sawFromApi && sawFromDom ? 'mixed' : sawFromApi ? 'graphql' : sawFromDom ? 'dom' : 'none',
@@ -124,7 +125,8 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
 
   while (true) {
     if (o.isStopped()) return result('stopped');
-    if (!sameHandle(handleFromPath(location.pathname) || '', o.handle)) return result('left_profile');
+    // another account, or another tab of the same profile (its timeline and frontier differ): the run ends, the next ＋ starts clean
+    if (!sameHandle(handleFromPath(location.pathname) || '', o.handle) || tabOfPath(location.pathname) !== startTab) return result('left_profile');
     if (s.maxMinutes > 0 && Date.now() - startedAt > s.maxMinutes * 60_000) return result('max_minutes');
     await whileVisible();
 
