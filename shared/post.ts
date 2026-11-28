@@ -39,7 +39,11 @@ export type Post = {
   first_seen_at: string;   // ISO, set once
   last_seen_at: string;    // ISO, every capture
   hidden: boolean;         // marked by the owner in the viewer (crossed eye): out of the feed, never reset by a capture
+  source?: PostSource;     // how this capture was read; never a sheet column, a row read back from the sheet has none
 };
+
+/** `graphql`: X's own answer (a request or the one rendered into the page), exact. `dom`: the rendered card, poorer and partly guessed. */
+export type PostSource = 'graphql' | 'dom';
 
 export const POST_HEADERS = [
   'id', 'handle', 'author_name', 'created_at', 'type', 'text', 'lang', 'url',
@@ -207,6 +211,37 @@ export function byNewest(a: Post, b: Post): number {
   return compareIds(b.id, a.id);
 }
 
+/** Fields a card read from the screen may never change once a row has them: it guesses the kind and sees rounded counts. */
+const EMPTY = (v: unknown): boolean => v === '' || v === 0 || v === undefined || (Array.isArray(v) && v.length === 0);
+
+/**
+ * One known post met again. Three cases by how the capture was read:
+ * - `graphql` (X's own answer): it is the truth. Its kind replaces the stored one (a row the card reader first stored as
+ *   `reply` on the Replies tab becomes the `post` it is) and a post that answers nobody loses the stored reply fields;
+ *   an empty text, a 0 count or no media still keep the stored value
+ * - `dom` (the rendered card): it only fills what the row lacks and moves last_seen_at. It never touches a filled field,
+ *   so "1K" views never replace 1,043 and a guessed kind never replaces the stored one
+ * - unknown (an imported file, an older outbox batch): as before, a filled field wins and `post` keeps the stored kind
+ * `hidden` belongs to the owner (set in the viewer) and first_seen_at is set once: no capture resets them.
+ */
+export function mergeOne(old: Post, p: Post): Post {
+  const next = { ...old } as Record<string, unknown>;
+  const prev = old as unknown as Record<string, unknown>;
+  const fillOnly = p.source === 'dom';
+  Object.entries(p).forEach(([k, v]) => {
+    if (k === 'source') return;
+    if (EMPTY(v) && !EMPTY(prev[k])) return;
+    if (fillOnly && !EMPTY(prev[k]) && k !== 'last_seen_at') return;
+    next[k] = v;
+  });
+  const merged = next as unknown as Post;
+  const type = p.source === 'graphql' ? p.type : fillOnly || p.type === 'post' ? old.type : p.type;
+  const out: Post = { ...merged, type, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden };
+  if (p.source === 'graphql' && type !== 'reply') { out.in_reply_to_id = ''; out.in_reply_to_handle = ''; out.in_reply_to_text = ''; }
+  delete out.source;
+  return out;
+}
+
 /**
  * Merge captured posts into the stored list: a known id keeps its first_seen_at and takes the fresh
  * counts, text and last_seen_at; a new id is added. Returns the merged list newest first and the counts.
@@ -219,21 +254,11 @@ export function mergePosts(stored: Post[], captured: Post[]): { posts: Post[]; i
   captured.forEach((p) => {
     const old = byId.get(p.id);
     if (old) {
-      // hidden belongs to the owner (set in the viewer): a capture never resets it
-      // a poorer capture (the DOM reader has no lang, views or quoted id) never blanks a filled field: '' , [] and 0 keep the stored value
-      const next = { ...old } as Record<string, unknown>;
-      const prev = old as unknown as Record<string, unknown>;
-      Object.entries(p).forEach(([k, v]) => {
-        const had = prev[k];
-        const empty = v === '' || v === 0 || (Array.isArray(v) && v.length === 0);
-        const hadValue = had !== '' && had !== 0 && had !== undefined && !(Array.isArray(had) && had.length === 0);
-        if (!(empty && hadValue)) next[k] = v;
-      });
-      // a post never changes its kind; the DOM reader cannot tell a reply in a thread from a post, so 'post' keeps the stored kind
-      byId.set(p.id, { ...(next as unknown as Post), type: p.type === 'post' ? old.type : p.type, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden });
+      byId.set(p.id, mergeOne(old, p));
       updated += 1;
     } else {
-      byId.set(p.id, p);
+      const { source: _source, ...row } = p;
+      byId.set(p.id, row);
       inserted += 1;
     }
   });

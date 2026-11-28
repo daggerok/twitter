@@ -175,6 +175,28 @@ describe('the November 2026 fixes', () => {
     expect(mergePosts([samplePost({ type: 'post' })], [samplePost({ type: 'quote' })]).posts[0].type).toBe('quote');
   });
 
+  test('a graphql capture is the truth: it repairs the kind and the counts of a row first read from the card', () => {
+    // the owner's 28 Nov rows: a thread's first post read from the Replies tab's cards was stored as a reply with 0 replies and "27K" views
+    const fromCard = samplePost({ type: 'reply', in_reply_to_handle: 'guessed', replies: 0, likes: 316, views: 27000 });
+    const exact = samplePost({ type: 'post', replies: 38, likes: 688, views: 51183, source: 'graphql' });
+    const m = mergePosts([fromCard], [exact]).posts[0];
+    expect([m.type, m.in_reply_to_handle, m.replies, m.likes, m.views]).toEqual(['post', '', 38, 688, 51183]);
+    expect('source' in m).toBe(false);
+    // a reply stays a reply and keeps what the other person wrote when this payload does not carry it
+    const reply = mergePosts([samplePost({ type: 'reply', in_reply_to_id: '9', in_reply_to_text: 'the question' })], [samplePost({ type: 'reply', in_reply_to_id: '9', source: 'graphql' })]).posts[0];
+    expect([reply.type, reply.in_reply_to_text]).toEqual(['reply', 'the question']);
+  });
+
+  test('a card capture only fills what a row lacks: it never replaces a kind, a count or a text', () => {
+    const exact = samplePost({ type: 'post', text: 'full text', replies: 38, likes: 688, views: 51183, lang: '', last_seen_at: '2026-11-28T10:00:00.000Z' });
+    const card = samplePost({ type: 'reply', text: 'full', replies: 0, likes: 1000, views: 51000, lang: 'en', in_reply_to_handle: 'guessed', last_seen_at: '2026-11-28T15:00:00.000Z', source: 'dom' });
+    const m = mergePosts([exact], [card]).posts[0];
+    expect([m.type, m.text, m.replies, m.likes, m.views, m.lang, m.in_reply_to_handle, m.last_seen_at]).toEqual(['post', 'full text', 38, 688, 51183, 'en', 'guessed', '2026-11-28T15:00:00.000Z']);
+    // a new id is stored as read, without the marker
+    const fresh = mergePosts([], [samplePost({ id: '1700000000000000002', source: 'dom' })]).posts[0];
+    expect('source' in fresh).toBe(false);
+  });
+
   test('the reposts tab is a profile page', () => {
     expect(handleFromPath('/I_Am_Someone/reposts')).toBe('I_Am_Someone');
   });

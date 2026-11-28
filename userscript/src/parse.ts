@@ -275,6 +275,7 @@ export function postOf(result: unknown, pinned: boolean, seenAt: string): Post |
     first_seen_at: seenAt,
     last_seen_at: seenAt,
     hidden: false,
+    source: 'graphql',
   };
 }
 
@@ -316,9 +317,9 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
   return { posts, skipped, errors, cursorBottom: bottomCursor(json), account };
 }
 
-/** `UserByScreenName` response -> account info (followers, display name, id). */
+/** `UserByScreenName` response (or the same answer rendered into the page: `user_result_by_screen_name`) -> account info. */
 export function parseUser(json: unknown): AccountInfo | null {
-  const u = get(json, 'data', 'user', 'result');
+  const u = get(json, 'data', 'user', 'result') ?? get(json, 'data', 'user_result_by_screen_name', 'result');
   if (!isObj(u)) return null;
   const screen = str(get(u, 'core', 'screen_name')) || str(get(u, 'legacy', 'screen_name'));
   if (!screen) return null;

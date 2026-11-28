@@ -57,26 +57,41 @@ function retryButton(): HTMLElement | null {
 
 const errorCardShown = (): boolean => retryButton() !== null;
 
+/** One profile tab of one account, the unit a run works on: `i_am_the_ict/replies`. '' for a page that is no profile. */
+export const pageKey = (pathname: string): string => {
+  const h = handleFromPath(pathname);
+  return h ? `${h.toLowerCase()}/${tabOfPath(pathname)}` : '';
+};
+
 export class TimelineFeed {
-  private queue: Post[] = [];
+  private queue: { page: string; posts: Post[] }[] = [];
   private rateLimited = false;
   lastApiAt = 0;
   apiPayloads = 0;
 
-  onTimeline(posts: Post[]): void {
-    this.queue.push(...posts);
+  /** `page`: the profile tab on screen when the answer came (`pageKey`), so a run never starts from another tab's posts. */
+  onTimeline(posts: Post[], page = ''): void {
+    this.queue.push({ page, posts });
     this.lastApiAt = Date.now();
     this.apiPayloads += 1;
+  }
+
+  /** Before a run: forget what arrived for other pages (X keeps a visited tab in memory and asks nothing when it is shown again). */
+  keepOnly(page: string): void {
+    this.queue = this.queue.filter((q) => q.page === page);
   }
 
   onStatus(status: number): void {
     if (status === 429) this.rateLimited = true;
   }
 
+  /** Posts that arrived and no run has taken yet. */
+  get waiting(): number { return this.queue.reduce((n, q) => n + q.posts.length, 0); }
+
   take(): Post[] {
     const q = this.queue;
     this.queue = [];
-    return q;
+    return q.flatMap((x) => x.posts);
   }
 
   takeRateLimited(): boolean {
