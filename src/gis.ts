@@ -1,8 +1,11 @@
 /// <reference lib="esnext" />
 // =========================================================================
 // Google Identity Services: the access token for the Sheets API, exactly as daggerok/youtube does it.
-// Only the public OAuth Client ID is stored (localStorage); the token stays in memory with its expiry,
-// a silent renewal (prompt: '') is deduplicated, and a 401 renews once and retries (withGoogleAuth).
+// The public OAuth Client ID is stored (localStorage). The Google sign-in is kept until the token expires, the
+// fidelity-accounts way (owner 2026-11-28: twitter asked for the Google sign-in on every load, fidelity-accounts did not):
+// the access token (about 1 hour, scope spreadsheets) and its expiry live in localStorage, so a reload reconnects with no
+// Google window; Disconnect and a 401 remove it. A deviation from the google-sheets-in-browser pattern (token in memory only).
+// A silent renewal (prompt: '', the last account as login_hint) is deduplicated, and a 401 renews once and retries.
 // =========================================================================
 export const SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'openid', 'email', 'profile'].join(' ');
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
@@ -13,7 +16,7 @@ type TokenClient = { requestAccessToken: (o: { prompt: string }) => void };
 type Gis = {
   accounts: {
     oauth2: {
-      initTokenClient: (o: { client_id: string; scope: string; callback: (r: TokenResponse) => void; error_callback?: (e: { type?: string; message?: string }) => void }) => TokenClient;
+      initTokenClient: (o: { client_id: string; scope: string; login_hint?: string; callback: (r: TokenResponse) => void; error_callback?: (e: { type?: string; message?: string }) => void }) => TokenClient;
       revoke: (token: string, done: () => void) => void;
     };
   };
@@ -58,7 +61,23 @@ export async function loadGis(): Promise<void> {
 
 export type Token = { value: string; expiresAt: number };
 
-export async function requestToken(clientId: string, interactive: boolean): Promise<Token> {
+export const TOKEN_KEY = 'xsync-google-token';
+const MARGIN_MS = 60_000;
+
+/** A saved token worth using: the right shape and more than a minute left. */
+export function usableToken(raw: unknown, now = Date.now()): Token | null {
+  const t = raw as { value?: unknown; expiresAt?: unknown } | null;
+  if (!t || typeof t.value !== 'string' || !t.value || typeof t.expiresAt !== 'number') return null;
+  return t.expiresAt - now > MARGIN_MS ? { value: t.value, expiresAt: t.expiresAt } : null;
+}
+
+const saveToken = (t: Token): void => { try { localStorage.setItem(TOKEN_KEY, JSON.stringify(t)); } catch { /* private window: memory only */ } };
+const forgetToken = (): void => { try { localStorage.removeItem(TOKEN_KEY); } catch { /* blocked storage */ } };
+const savedToken = (): Token | null => {
+  try { return usableToken(JSON.parse(localStorage.getItem(TOKEN_KEY) ?? 'null')); } catch { return null; }
+};
+
+export async function requestToken(clientId: string, interactive: boolean, hint = ''): Promise<Token> {
   await loadGis();
   const g = gis();
   if (!g) throw new Error('Google Identity Services unavailable');
@@ -66,6 +85,8 @@ export async function requestToken(clientId: string, interactive: boolean): Prom
     const client = g.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: SCOPES,
+      // the account connected last: the silent renewal needs no account chooser
+      login_hint: hint || undefined,
       callback: (r) => {
         if (r.error) return reject(new Error(r.error));
         if (!r.access_token) return reject(new Error('No access token'));
@@ -119,7 +140,15 @@ export class GoogleSession {
   private pending: Promise<Token> | null = null;
   disabled = false; // after Disconnect, until the next Connect
 
-  constructor(private readonly clientId: () => string) {}
+  constructor(private readonly clientId: () => string, private readonly hint: () => string = () => '') {}
+
+  /** On load: take the sign-in saved by an earlier visit when its token has not expired. True when connected by it. */
+  restore(): boolean {
+    if (this.disabled || this.token) return this.connected;
+    this.token = savedToken();
+    if (!this.token) forgetToken();
+    return !!this.token;
+  }
 
   get connected(): boolean { return !!this.token && !this.disabled; }
 
@@ -133,7 +162,7 @@ export class GoogleSession {
     if (this.disabled) throw new Error('Disconnected: press Connect Google');
     if (!force && this.token && Date.now() + 60_000 < this.token.expiresAt) return this.token.value;
     if (this.pending) return (await this.pending).value;
-    this.pending = requestToken(cid, interactive).then((t) => { this.token = t; return t; }).finally(() => { this.pending = null; });
+    this.pending = requestToken(cid, interactive, this.hint().trim()).then((t) => { this.token = t; saveToken(t); return t; }).finally(() => { this.pending = null; });
     try {
       return (await this.pending).value;
     } catch (e) {
@@ -149,6 +178,7 @@ export class GoogleSession {
     } catch (e) {
       if (!isAuthError(e)) throw e;
       this.token = null;
+      forgetToken();
       const fresh = await this.get(false, true);
       return op(fresh);
     }
@@ -157,6 +187,7 @@ export class GoogleSession {
   disconnect(): void {
     if (this.token) revokeToken(this.token.value);
     this.token = null;
+    forgetToken();
     this.disabled = true;
   }
 }
