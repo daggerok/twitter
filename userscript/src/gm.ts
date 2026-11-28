@@ -71,6 +71,13 @@ export function gmOnChange(key: string, cb: (value: unknown) => void): void {
   } catch { /* older managers: the viewer polls through hello instead */ }
 }
 
+declare function GM_notification(details: { title: string; text: string; timeout?: number }): void;
+
+/** A browser notification through Tampermonkey; `timeout` 0 keeps it until closed. Silently nothing where it is not granted. */
+export function gmNotify(title: string, text: string, timeout = 0): void {
+  try { if (typeof GM_notification === 'function') GM_notification({ title, text, timeout }); } catch { /* not available */ }
+}
+
 export function gmMenu(caption: string, cb: () => void): void {
   try {
     if (typeof GM_registerMenuCommand === 'function') GM_registerMenuCommand(caption, cb);

@@ -17,7 +17,9 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createRoot } from 'react-dom/client';
 import { mergePosts, newestIds, sameHandle, type Media, type Post } from '../shared/post';
-import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
+import { ackBatches, connectBridge, sendMeta, setNotify, type Batch, type Run, type Status } from './bridge';
+import { Notices } from './Notices';
+import { pushNotice, type Notice } from '../shared/notice';
 import { reloadDelay, type Written } from '../shared/written';
 import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, TYPE_KINDS, youtubeId, youtubeLinks, type ColKey, type MediaKind, type TableState, type TypeKind } from './filters';
 import { isDark, isNight, isThemeMode, nextMode, themeIcon, themeTitle, type ThemeMode } from './theme';
@@ -121,6 +123,9 @@ function App() {
   const [outbox, setOutbox] = useState<Batch[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [runStatus, setRunStatus] = useState<Status>(null);
+  const [notifyOn, setNotifyOn] = useState(false);          // 🔔 as the userscript keeps it (shared/notice.ts)
+  const [notices, setNotices] = useState<Notice[]>([]);     // the popups on screen, oldest first
+  const closeNotice = useCallback((n: Notice) => setNotices((l) => l.filter((x) => x !== n)), []);
   const [sheetTitle, setSheetTitle] = useState('');
   const cfgRef = useRef(cfg);
   cfgRef.current = cfg;
@@ -293,6 +298,8 @@ function App() {
     runs: (r) => setRuns(r),
     status: (s) => setRunStatus(s),
     written: (w) => onWritten.current(w),
+    notify: (on) => setNotifyOn(on),
+    notice: (n) => setNotices((l) => pushNotice(l, n)),
   }), []);
 
   // The userscript wrote rows to a tab from x.com (shared/written.ts): the tab on screen is reread, at most once a
@@ -469,6 +476,8 @@ function App() {
     <div className="h-dvh flex flex-col">
       {/* toolbar, the youtube one: field, settings, status dots, update, full refresh, cloud, attach, export, theme */}
       <div className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
+        {/* the 🔔 popups lie over the right end of the toolbar (src/Notices.tsx) */}
+        <Notices list={notices} onClose={closeNotice} />
         <div className="px-4">
           <div className="flex flex-col md:flex-row md:items-center gap-2 py-4">
             <div className="flex items-center gap-2 w-full md:flex-1 min-w-0">
@@ -560,7 +569,7 @@ function App() {
         <div id="settings-wrap" className={`slide-wrap shrink-0 ${showSettings ? 'open mb-4' : ''}`}>
           <div className="slide-inner">
             <Settings
-              cfg={cfg} setCfg={setCfg} connected={connected} email={email || cfg.lastAccountEmail} busy={isBusy} sheetTitle={sheetTitle} handle={handle}
+              cfg={cfg} setCfg={setCfg} notifyOn={notifyOn} userscript={scriptVersion || stamp} connected={connected} email={email || cfg.lastAccountEmail} busy={isBusy} sheetTitle={sheetTitle} handle={handle}
               onClose={() => setShowSettings(false)} onConnect={() => { void connect(true); }} onDisconnect={disconnect}
               onCreate={() => { void createSheet(); }} onList={() => { void listSheet(); }} onImport={() => fileInput.current?.click()} onExport={exportJson}
             />
@@ -674,7 +683,7 @@ function App() {
 // ---- 3. Settings (masked values with eye and copy, like youtube) -----------------------------------------
 
 type SettingsProps = {
-  cfg: Config; setCfg: (f: (c: Config) => Config) => void; connected: boolean; email: string; busy: boolean; sheetTitle: string; handle: string;
+  cfg: Config; setCfg: (f: (c: Config) => Config) => void; notifyOn: boolean; userscript: string; connected: boolean; email: string; busy: boolean; sheetTitle: string; handle: string;
   onClose: () => void; onConnect: () => void; onDisconnect: () => void; onCreate: () => void; onList: () => void; onImport: () => void; onExport: () => void;
 };
 
@@ -696,6 +705,16 @@ function MaskedField(p: { label: string; value: string; mask: (v: string) => str
         : <input className="inp masked text-xs" value={p.value ? p.mask(p.value) : ''} onFocus={() => setShow(true)} onChange={() => { /* editing happens in the shown state */ }} placeholder={p.placeholder} readOnly />}
       {p.hint && <div className="text-[10px] text-slate-400 mt-1">{p.hint}</div>}
     </div>
+  );
+}
+
+/** 🔔 on, 🔕 off: one button whose icon is the state (the fidelity-accounts NotifyButton). Needs the userscript, which sends them. */
+function NotifyButton({ on, userscript }: { on: boolean; userscript: string }) {
+  const text = !userscript ? 'Install the userscript first' : on ? 'Notifications on. Click to switch them off' : 'Notifications off. Click to switch them on';
+  return (
+    <button type="button" className="tb" data-notify={on ? 'on' : 'off'} disabled={!userscript} title={text} aria-label={text} aria-pressed={on} onClick={() => setNotify(!on)}>
+      <span aria-hidden="true">{on ? '🔔' : '🔕'}</span>
+    </button>
   );
 }
 
@@ -761,6 +780,11 @@ function Settings(p: SettingsProps) {
           <a className="btn sm" href={USERSCRIPT_URL}>Install userscript</a>
           <button className="btn sm" onClick={p.onImport} title="A JSON file downloaded from the badge on x.com">Import JSON</button>
           <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 ml-auto"><input type="checkbox" checked={p.cfg.withReplies} onChange={(e) => p.setCfg((c) => ({ ...c, withReplies: e.target.checked }))} /> sync replies too</label>
+        </div>
+        {/* 🔔 the same switch as the bell of the badge on x.com, kept in the script's storage (shared/notice.ts); off by default */}
+        <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400" data-setting="notify">
+          <NotifyButton on={p.notifyOn} userscript={p.userscript} />
+          <span>{p.userscript ? 'Notifications of the userscript: when a run ends or a write to the sheet fails' : 'Notifications need the userscript: install it first'}</span>
         </div>
         <div className="text-[10px] text-slate-400">Current account tab (auto): <span className="font-mono">{p.handle ? tabOf(p.handle) : '—'}</span></div>
       </div>
