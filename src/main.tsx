@@ -7,7 +7,7 @@
 //   ↻ reload every account from the sheet, 📥 CSV, 📄 Import JSON, 🌙 / ☀ theme
 // - Settings: Google OAuth Client ID and the spreadsheet (masked with dots, eye and copy buttons like youtube),
 //   Connected as d••••k@gmail.com, Create spreadsheet, Find accounts in the sheet, Install userscript, setup steps.
-//   Client ID and spreadsheet id stay in localStorage, the Google token only in memory (src/gis.ts)
+//   Client ID and spreadsheet id stay in localStorage, the Google token too until it expires (src/gis.ts)
 // - Accounts: one Google Sheet tab `X-<handle>` per account; ⬇ Sync new / 🔄 Full sync open the profile on x.com
 //   with `#xsync=incremental|full`, the userscript scrolls it and leaves the posts in Tampermonkey storage; the same
 //   userscript on this page hands them over (src/bridge.ts) and they are merged into the tab (mergePosts)
@@ -125,7 +125,7 @@ function App() {
   cfgRef.current = cfg;
   const handleRef = useRef(handle);
   handleRef.current = handle;
-  const session = useRef(new GoogleSession(() => cfgRef.current.clientId));
+  const session = useRef(new GoogleSession(() => cfgRef.current.clientId, () => cfgRef.current.lastAccountEmail));
   const storing = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const sentinel = useRef<HTMLTableRowElement>(null);
@@ -194,9 +194,12 @@ function App() {
     say('🔌 Disconnected from Google');
   }, [say]);
 
-  // zero-click: a browser that was connected before renews the token silently on load
+  // zero-click: a browser that was connected before keeps its sign-in until the token expires (no Google window at all),
+  // after that the token is renewed silently on load
   useEffect(() => {
-    if (cfg.clientId && cfg.lastAccountEmail && !connected && !session.current.disabled) void connect(false);
+    if (!cfg.clientId || !cfg.lastAccountEmail || connected || session.current.disabled) return;
+    if (session.current.restore()) { setConnected(true); setEmail(cfg.lastAccountEmail); say('✅ Connected to Google (saved sign-in)'); return; }
+    void connect(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
