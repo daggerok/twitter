@@ -1,6 +1,7 @@
 /// <reference lib="esnext" />
 // Page side of the postMessage bridge to the userscript (see userscript/src/bridge.ts for the protocol).
 import type { Post, ProfileTab } from '../shared/post';
+import { freshWritten, type Written } from '../shared/written';
 
 export type Batch = { id: string; handle: string; run_id: string; posts: Post[]; created_at: string };
 export type Run = {
@@ -14,6 +15,7 @@ export type BridgeEvents = {
   outbox: (batches: Batch[]) => void;
   runs: (runs: Run[]) => void;
   status: (status: Status) => void;
+  written: (written: Written) => void; // the userscript just wrote rows to a tab from x.com
 };
 
 const post = (msg: Record<string, unknown>): void => window.postMessage({ source: 'xsync-page', ...msg }, location.origin);
@@ -21,12 +23,13 @@ const post = (msg: Record<string, unknown>): void => window.postMessage({ source
 export function connectBridge(on: BridgeEvents): () => void {
   const listener = (event: MessageEvent) => {
     if (event.origin !== location.origin) return;
-    const d = event.data as { source?: string; type?: string; version?: string; batches?: Batch[]; runs?: Run[]; status?: Status } | null;
+    const d = event.data as { source?: string; type?: string; version?: string; batches?: Batch[]; runs?: Run[]; status?: Status; written?: unknown } | null;
     if (!d || d.source !== 'xsync-script') return;
     if (d.type === 'hello') on.hello(typeof d.version === 'string' ? d.version : '?');
     else if (d.type === 'outbox') on.outbox(Array.isArray(d.batches) ? d.batches : []);
     else if (d.type === 'runs') on.runs(Array.isArray(d.runs) ? d.runs : []);
     else if (d.type === 'status') on.status(d.status || null);
+    else if (d.type === 'written') { const w = freshWritten(d.written, Date.now()); if (w) on.written(w); }
   };
   window.addEventListener('message', listener);
   post({ type: 'hello' });

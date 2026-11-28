@@ -5,11 +5,12 @@
 //   page -> script  { source: 'xsync-page',   type: 'hello' }                      -> script answers hello + outbox + runs + status
 //   page -> script  { source: 'xsync-page',   type: 'ack',  ids: [batchId, ...] }  -> those batches leave the outbox
 //   page -> script  { source: 'xsync-page',   type: 'meta', handle, newestId, count } -> stored for incremental runs
-//   script -> page  { source: 'xsync-script', type: 'hello' | 'outbox' | 'runs' | 'status', ... }
+//   script -> page  { source: 'xsync-script', type: 'hello' | 'outbox' | 'runs' | 'status' | 'written', ... }
 // Both sides accept a message only from their own origin (`event.origin === location.origin`) with the source tag.
 // =========================================================================
 import { gmGet, gmOnChange, gmSet, GOOGLE_KEY, KEYS, pageWindow, type Batch, type Run, type Status } from './gm';
 import { isCredsFresh, type GoogleCreds } from '../../shared/post';
+import { WRITTEN_KEY } from '../../shared/written';
 
 type PageMessage =
   | { source: 'xsync-page'; type: 'hello' }
@@ -68,6 +69,8 @@ export function installViewerBridge(version: string): void {
   pullCreds();
   setInterval(pullCreds, 2000);
 
+  // a batch just written to a tab from x.com (shared/written.ts): passed on as it comes, never the stored one on hello
+  gmOnChange(WRITTEN_KEY, (written) => send({ type: 'written', written }));
   gmOnChange(KEYS.outbox, pushOutbox);
   gmOnChange(KEYS.runs, pushRuns);
   gmOnChange(KEYS.status, pushStatus);

@@ -18,6 +18,7 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type Rea
 import { createRoot } from 'react-dom/client';
 import { mergePosts, newestIds, sameHandle, type Media, type Post } from '../shared/post';
 import { ackBatches, connectBridge, sendMeta, type Batch, type Run, type Status } from './bridge';
+import { reloadDelay, type Written } from '../shared/written';
 import { applyTable, COLS, EMPTY_TABLE, formatCount, hasFilters, linkify, MEDIA_KINDS, postsFromJson, toCsv, TYPE_KINDS, youtubeId, youtubeLinks, type ColKey, type MediaKind, type TableState, type TypeKind } from './filters';
 import { isDark, isNight, isThemeMode, nextMode, themeIcon, themeTitle, type ThemeMode } from './theme';
 import { fetchEmail, GoogleSession } from './gis';
@@ -291,7 +292,29 @@ function App() {
     outbox: (b) => setOutbox(b),
     runs: (r) => setRuns(r),
     status: (s) => setRunStatus(s),
+    written: (w) => onWritten.current(w),
   }), []);
+
+  // The userscript wrote rows to a tab from x.com (shared/written.ts): the tab on screen is reread, at most once a
+  // minute while a run goes on writing and once more after its last batch; one log line says what came since the last reread
+  const lastReload = useRef(0);
+  const reloadTimer = useRef(0);
+  const sinceReload = useRef({ inserted: 0, updated: 0 });
+  const onWritten = useRef<(w: Written) => void>(() => { /* set below, once loadFromSheet exists */ });
+  onWritten.current = (w) => {
+    if (!sameHandle(w.handle, handleRef.current) || !connected || !sid) return;
+    sinceReload.current = { inserted: sinceReload.current.inserted + w.inserted, updated: sinceReload.current.updated + w.updated };
+    if (reloadTimer.current) return; // a reread is already waiting: it takes these rows too
+    reloadTimer.current = window.setTimeout(() => {
+      reloadTimer.current = 0;
+      lastReload.current = Date.now();
+      const got = sinceReload.current;
+      sinceReload.current = { inserted: 0, updated: 0 };
+      const h = handleRef.current;
+      void loadFromSheet(h, true).then((list) => { if (list) say(`☁️ @${h}: the sheet was updated from x.com (${got.inserted} new, ${got.updated} updated), ${list.length} posts shown`); });
+    }, reloadDelay(Date.now(), lastReload.current) || 1);
+  };
+  useEffect(() => () => window.clearTimeout(reloadTimer.current), []);
 
   const storeOutbox = useCallback(async () => {
     if (storing.current || !outbox.length) return;
@@ -321,7 +344,8 @@ function App() {
     const last = runs.filter((r) => r.handle === handleRef.current && r.finished_at).sort((a, b) => (a.finished_at < b.finished_at ? 1 : -1))[0];
     if (!last || last.run_id === seenRun.current) return;
     seenRun.current = last.run_id;
-    if (connected && sid && last.stored_in_sheet) void loadFromSheet(handleRef.current, true);
+    // a userscript older than 2.5.0 leaves no mark per batch: the end of its run is the only sign
+    if (connected && sid && last.stored_in_sheet && !reloadTimer.current && Date.now() - lastReload.current > 5_000) void loadFromSheet(handleRef.current, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runs]);
 
