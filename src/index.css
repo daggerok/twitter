@@ -168,3 +168,26 @@ details.setup[open] > summary .chev{transform:rotate(90deg)}
 .inp.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:500}
 .masked{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;color:#059669}
 .dark .masked{color:#34d399}
+
+/* ---- the 🔔 popups (src/Notices.tsx, the fidelity-accounts ones): over the right end of the toolbar, in its surface ---- */
+.notices{position:absolute;right:1rem;top:.875rem;z-index:60;display:flex;flex-direction:column;gap:.5rem;width:min(26rem,calc(100% - 2rem));pointer-events:none}
+@keyframes notice-in{from{opacity:0;transform:translateY(-.5rem)}to{opacity:1;transform:none}}
+.notice{pointer-events:auto;display:flex;align-items:flex-start;gap:.75rem;min-height:2.5rem;padding:.5rem .875rem;border:1px solid #10b981;border-radius:.75rem;background:#fff;color:#1e293b;font-size:.875rem;line-height:1.25rem;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);animation:notice-in .3s ease-out;transition:opacity .3s ease-in,transform .3s ease-in}
+.notice.error{border-color:#e11d48}
+.notice.out{opacity:0;transform:translateY(-.5rem)}
+.notice-dot{flex:none;width:.5rem;height:.5rem;margin-top:.375rem;border-radius:9999px;background:#10b981}
+.notice.error .notice-dot{background:#e11d48}
+.notice-lines{display:flex;flex-direction:column;flex:1;min-width:0;overflow-wrap:anywhere}
+.notice-title{font-weight:700;color:#0f172a}
+.notice-line{color:#475569}
+.notice-close{flex:none;display:grid;place-items:center;padding:.125rem;border:0;background:transparent;color:#64748b;transition:color .15s}
+.notice-close:hover{color:#0f172a}
+.dark .notice{background:#0f172a;color:#f1f5f9;border-color:#34d399}
+.dark .notice.error{border-color:#fb7185}
+.dark .notice-dot{background:#34d399}
+.dark .notice.error .notice-dot{background:#fb7185}
+.dark .notice-title{color:#fff}
+.dark .notice-line{color:#cbd5e1}
+.dark .notice-close{color:#94a3b8}
+.dark .notice-close:hover{color:#fff}
+@media (prefers-reduced-motion:reduce){.notice{animation:none;transition:none}}

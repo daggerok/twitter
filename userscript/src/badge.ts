@@ -6,6 +6,7 @@ export type BadgeActions = {
   start: (mode: RunMode) => void;
   stop: () => void;
   watch: () => void;
+  notify: () => void;
   settings: () => void;
   downloadJson: () => void;
   debug: () => void;
@@ -81,6 +82,8 @@ export class Badge {
     this.buttons.watch.title = 'Watch (toggle): reload the profile every N minutes (⚙) and sync the new posts; click again or 🛑 to end it';
     mk('stop', '🛑', 'stop', () => this.actions.stop());
     this.buttons.stop.title = 'Stop (and end Watch)';
+    // 🔔 on, 🔕 off: the same switch as Notifications in the viewer's Setup (shared/notice.ts)
+    mk('notify', '🔕', 'sec', () => this.actions.notify());
     mk('json', '{}', 'json', () => this.actions.downloadJson());
     this.buttons.json.title = 'Download the posts of the last run as JSON';
     mk('settings', '⚙', 'sec', () => this.actions.settings());
@@ -105,6 +108,15 @@ export class Badge {
     this.buttons.full.disabled = running;
     this.buttons.watch.disabled = running;
     this.buttons.stop.disabled = !running;
+  }
+
+  /** 🔔 on, 🔕 off. */
+  notifying(on: boolean): void {
+    const btn = this.buttons.notify;
+    if (!btn) return;
+    btn.textContent = on ? '🔔' : '🔕';
+    btn.title = on ? 'Notifications: on. Click to switch them off' : 'Notifications: off. Click to get one when a run ends or a write fails';
+    btn.dataset.notifying = on ? 'yes' : 'no';
   }
 
   setJsonAvailable(available: boolean): void {

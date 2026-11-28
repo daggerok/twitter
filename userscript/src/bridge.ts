@@ -5,16 +5,19 @@
 //   page -> script  { source: 'xsync-page',   type: 'hello' }                      -> script answers hello + outbox + runs + status
 //   page -> script  { source: 'xsync-page',   type: 'ack',  ids: [batchId, ...] }  -> those batches leave the outbox
 //   page -> script  { source: 'xsync-page',   type: 'meta', handle, newestId, count } -> stored for incremental runs
-//   script -> page  { source: 'xsync-script', type: 'hello' | 'outbox' | 'runs' | 'status' | 'written', ... }
+//   page -> script  { source: 'xsync-page',   type: 'notify', on }                 -> the 🔔 switch (shared/notice.ts)
+//   script -> page  { source: 'xsync-script', type: 'hello' | 'outbox' | 'runs' | 'status' | 'notify' | 'notice' | 'written', ... }
 // Both sides accept a message only from their own origin (`event.origin === location.origin`) with the source tag.
 // =========================================================================
-import { gmGet, gmOnChange, gmSet, GOOGLE_KEY, KEYS, pageWindow, type Batch, type Run, type Status } from './gm';
+import { NOTICE_KEY, NOTIFY_KEY, VIEWER_BEAT_MS, VIEWER_KEY } from '../../shared/notice';
+import { gmDel, gmGet, gmOnChange, gmSet, GOOGLE_KEY, KEYS, pageWindow, type Batch, type Run, type Status } from './gm';
 import { isCredsFresh, type GoogleCreds } from '../../shared/post';
 import { WRITTEN_KEY } from '../../shared/written';
 
 type PageMessage =
   | { source: 'xsync-page'; type: 'hello' }
   | { source: 'xsync-page'; type: 'ack'; ids: string[] }
+  | { source: 'xsync-page'; type: 'notify'; on: boolean }
   | { source: 'xsync-page'; type: 'meta'; handle: string; newestId: string; count: number };
 
 // Tampermonkey hands the script a wrapped `window` in some modes: messages go through and come from the real page window,
@@ -32,6 +35,7 @@ export function installViewerBridge(version: string): void {
   const pushOutbox = () => send({ type: 'outbox', batches: gmGet<Batch[]>(KEYS.outbox, []) });
   const pushRuns = () => send({ type: 'runs', runs: gmGet<Run[]>(KEYS.runs, []) });
   const pushStatus = () => send({ type: 'status', status: gmGet<Status | null>(KEYS.status, null) });
+  const pushNotify = () => send({ type: 'notify', on: gmGet<boolean>(NOTIFY_KEY, false) === true });
 
   pageWindow().addEventListener('message', (event: MessageEvent) => {
     if (event.origin !== location.origin) return;
@@ -42,6 +46,10 @@ export function installViewerBridge(version: string): void {
       pushOutbox();
       pushRuns();
       pushStatus();
+      pushNotify();
+    } else if (data.type === 'notify') {
+      gmSet(NOTIFY_KEY, data.on === true);
+      pushNotify();
     } else if (data.type === 'ack' && Array.isArray(data.ids)) {
       const ids = new Set(data.ids.filter((x): x is string => typeof x === 'string'));
       const left = gmGet<Batch[]>(KEYS.outbox, []).filter((b) => !ids.has(b.id));
@@ -69,8 +77,18 @@ export function installViewerBridge(version: string): void {
   pullCreds();
   setInterval(pullCreds, 2000);
 
-  // a batch just written to a tab from x.com (shared/written.ts): passed on as it comes, never the stored one on hello
+  // notifications (shared/notice.ts): the 🔔 switch both ways, the newest notice and the mark of a write to the sheet as
+  // they come from x.com (never the stored ones on hello: the viewer shows what happens now), and the heartbeat of a
+  // visible viewer tab, so x.com sends a browser notification only when no viewer is on screen
+  gmOnChange(NOTIFY_KEY, pushNotify);
+  gmOnChange(NOTICE_KEY, (notice) => send({ type: 'notice', notice }));
   gmOnChange(WRITTEN_KEY, (written) => send({ type: 'written', written }));
+  const beat = () => { if (document.visibilityState === 'visible') gmSet(VIEWER_KEY, Date.now()); else gmDel(VIEWER_KEY); };
+  beat();
+  setInterval(beat, VIEWER_BEAT_MS);
+  document.addEventListener('visibilitychange', beat);
+  window.addEventListener('pagehide', () => gmDel(VIEWER_KEY));
+
   gmOnChange(KEYS.outbox, pushOutbox);
   gmOnChange(KEYS.runs, pushRuns);
   gmOnChange(KEYS.status, pushStatus);

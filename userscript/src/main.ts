@@ -10,7 +10,8 @@ import { handleFromPath, sameHandle, tabOfPath, type Post } from '../../shared/p
 import { WRITTEN_KEY } from '../../shared/written';
 import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
-import { gmDel, gmGet, gmMenu, gmSet, hasGM, KEYS, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
+import { makeNotice, NOTICE_KEY, NOTICE_OK_MS, NOTIFY_KEY, runNotice, VIEWER_KEY, viewerOnScreen, type NoticeLevel } from '../../shared/notice';
+import { gmDel, gmGet, gmMenu, gmNotify, gmOnChange, gmSet, hasGM, KEYS, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
 import { diag, installInterceptor } from './intercept';
 import { isTimelineOperation, parseTimeline, parseUser, type AccountInfo } from './parse';
 import { pageKey, runSync, TimelineFeed } from './scroll';
@@ -99,6 +100,7 @@ function onX(): void {
       gmSet(KEYS.watch, { handle: h, since: new Date().toISOString() });
       void start('incremental');
     },
+    notify: () => { gmSet(NOTIFY_KEY, !notifying()); badge.notifying(notifying()); },
     settings: () => openSettings(() => badge.set('settings saved')),
     debug: () => downloadJson(`x-sync-debug-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`, {
       version: VERSION, url: location.href, handle: currentHandle, account, intercepted, running,
@@ -112,6 +114,7 @@ function onX(): void {
     if (h) {
       if (!sameHandle(h, currentHandle)) { currentHandle = h; if (!running) account = null; }
       badge.mount();
+      badge.notifying(notifying());
       if (!running) badge.set(`profile @${h}${hasGM() ? '' : '\nTampermonkey storage unavailable'}${intercepted ? '' : '\nno api access: DOM fallback only'}`);
     } else if (!running) {
       badge.unmount();
@@ -119,7 +122,19 @@ function onX(): void {
     }
   };
 
-  async function start(mode: RunMode): Promise<void> {
+  // a finished run or a failed write, only while 🔔 is on: ONE notification. The notice is left for the viewer (a popup
+  // there); the browser notification goes out only when no viewer tab is on screen (its heartbeat, shared/notice.ts)
+  const notifying = (): boolean => gmGet<boolean>(NOTIFY_KEY, false) === true;
+  const announce = (what: { level: NoticeLevel; lines: string[] } | null): void => {
+    if (!what || !notifying()) return;
+    const notice = makeNotice(what.level, what.lines, Date.now());
+    gmSet(NOTICE_KEY, notice);
+    if (viewerOnScreen(gmGet<unknown>(VIEWER_KEY, null), Date.now())) return;
+    gmNotify(what.level === 'error' ? '𝕏 sync: error' : '𝕏 sync', notice.lines.join('\n'), what.level === 'error' ? 0 : NOTICE_OK_MS);
+  };
+
+  /** `auto`: started by Watch after its reload, not by a button, the menu or the viewer. */
+  async function start(mode: RunMode, auto = false): Promise<void> {
     const path = handleFromPath(location.pathname);
     if (!path || running) return;
     running = true;
@@ -139,7 +154,10 @@ function onX(): void {
     const newestId = mode === 'incremental' ? knownNewestId(handle, tab) : '';
     // direct writes when the viewer shared a fresh Google token (Tampermonkey storage), else the outbox
     let stored = 0;
+    let inserted = 0;
+    let updated = 0;
     let writeError = '';
+    let runError = '';
     const creds = loadCreds();
     if (creds) {
       const w = new DirectWriter(creds, handle);
@@ -148,6 +166,8 @@ function onX(): void {
         sink.writer = w;
         sink.onWritten = (ins, upd, err) => {
           stored += ins + upd;
+          inserted += ins;
+          updated += upd;
           if (err) writeError = err;
           // the viewer, when open, rereads the tab it shows (shared/written.ts)
           if (ins + upd > 0) gmSet(WRITTEN_KEY, { at: Date.now(), handle, inserted: ins, updated: upd });
@@ -183,7 +203,8 @@ function onX(): void {
       }, feed);
     } catch (e) {
       result = { stop: 'stopped', source: 'none', sawFromApi: 0, sawFromDom: 0 };
-      note = `error: ${e instanceof Error ? e.message : String(e)}`;
+      runError = e instanceof Error ? e.message : String(e);
+      note = `error: ${runError}`;
     }
     window.clearInterval(elapsedTimer);
     // 0 posts and not stopped by hand: say what the interceptor and the page gave, so the owner's screenshot explains it
@@ -202,6 +223,7 @@ function onX(): void {
       stored_in_sheet: sink.writer ? stored : 0,
     };
     recordRun(run);
+    announce(runNotice({ handle, posts: sink.posts.size, inserted, updated, direct: !!sink.writer, stop: result.stop, error: runError || writeError, auto }));
     status('done', note, result.stop);
     running = false;
     badge.setRunning(false);
@@ -212,12 +234,13 @@ function onX(): void {
 
   const boot = () => {
     mountIfProfile();
+    gmOnChange(NOTIFY_KEY, () => badge.notifying(notifying())); // switched in the viewer's Setup
     gmMenu('X sync: sync new posts of this profile', () => { void start('incremental'); });
     gmMenu('X sync: full sync of this profile', () => { void start('full'); });
     gmMenu('X sync: settings', () => openSettings(() => badge.set('settings saved')));
     const hashMode = readHashMode();
     if (hashMode) setTimeout(() => { void start(hashMode); }, 2500); // let the first timeline request answer
-    else if (watching()) watchTimer = window.setTimeout(() => { void start('incremental'); }, 2500); // a watched profile just reloaded itself
+    else if (watching()) watchTimer = window.setTimeout(() => { void start('incremental', true); }, 2500); // a watched profile just reloaded itself
     // X is a single page app: watch the url
     let lastPath = location.pathname;
     setInterval(() => {

@@ -31,6 +31,7 @@ export function userscriptHeader(version: string): string {
     '// @grant        unsafeWindow',
     '// @grant        GM_xmlhttpRequest',
     '// @grant        GM_addElement',
+    '// @grant        GM_notification',
     '// @connect      sheets.googleapis.com',
     '// ==/UserScript==',
     '',
