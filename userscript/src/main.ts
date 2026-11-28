@@ -17,7 +17,7 @@ import { loadSettings } from './settings';
 import { fetchSsrPayloads } from './ssr';
 import { openSettings } from './settings-ui';
 import { DirectWriter, loadCreds } from './sheets-gm';
-import { knownNewestId, recordRun, rememberNewestId, setStatus, Sink } from './sink';
+import { knownNewestId, recordRun, rememberRun, setStatus, Sink } from './sink';
 
 const VERSION = scriptVersion();
 const IS_X = /(^|\.)(x|twitter)\.com$/.test(location.hostname);
@@ -188,7 +188,7 @@ function onX(): void {
     }
     sink.flush();
     await sink.done();
-    rememberNewestId(handle, tab, sink.newestId);
+    rememberRun(handle, tab, sink.newestId, effectiveMode, result.stop, newestId);
     lastRunPosts = Array.from(sink.posts.values());
     const run: Run = {
       run_id: runId, handle, started_at: startedAt, finished_at: new Date().toISOString(), mode: effectiveMode,

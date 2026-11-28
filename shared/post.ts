@@ -40,6 +40,7 @@ export type Post = {
   last_seen_at: string;    // ISO, every capture
   hidden: boolean;         // marked by the owner in the viewer (crossed eye): out of the feed, never reset by a capture
   source?: PostSource;     // how this capture was read; never a sheet column, a row read back from the sheet has none
+  context?: boolean;       // capture only: an older post X shows above a newer one of the same conversation, never a place to stop a run at
 };
 
 /** `graphql`: X's own answer (a request or the one rendered into the page), exact. `dom`: the rendered card, poorer and partly guessed. */
@@ -229,7 +230,7 @@ export function mergeOne(old: Post, p: Post): Post {
   const prev = old as unknown as Record<string, unknown>;
   const fillOnly = p.source === 'dom';
   Object.entries(p).forEach(([k, v]) => {
-    if (k === 'source') return;
+    if (k === 'source' || k === 'context') return;
     if (EMPTY(v) && !EMPTY(prev[k])) return;
     if (fillOnly && !EMPTY(prev[k]) && k !== 'last_seen_at') return;
     next[k] = v;
@@ -239,6 +240,7 @@ export function mergeOne(old: Post, p: Post): Post {
   const out: Post = { ...merged, type, first_seen_at: old.first_seen_at || p.first_seen_at, is_pinned: p.is_pinned || old.is_pinned, hidden: old.hidden };
   if (p.source === 'graphql' && type !== 'reply') { out.in_reply_to_id = ''; out.in_reply_to_handle = ''; out.in_reply_to_text = ''; }
   delete out.source;
+  delete out.context;
   return out;
 }
 
@@ -257,7 +259,7 @@ export function mergePosts(stored: Post[], captured: Post[]): { posts: Post[]; i
       byId.set(p.id, mergeOne(old, p));
       updated += 1;
     } else {
-      const { source: _source, ...row } = p;
+      const { source: _source, context: _context, ...row } = p;
       byId.set(p.id, row);
       inserted += 1;
     }

@@ -129,7 +129,8 @@ export async function runSync(o: RunOptions, feed: TimelineFeed): Promise<RunRes
     posts.forEach((p) => seenIds.add(p.id));
     o.onProgress(sink.posts.size, fresh, fromApi ? '' : 'DOM fallback (fewer fields)');
     if (o.mode === 'incremental' && o.newestId) {
-      const old = posts.find((p) => !p.is_pinned && compareIds(p.id, o.newestId) <= 0);
+      // not a pinned post, not an older post of a conversation, not a repost read from a card (it carries the original's id)
+      const old = posts.find((p) => !p.is_pinned && !p.context && !(p.source === 'dom' && p.type === 'repost') && compareIds(p.id, o.newestId) <= 0);
       if (old) return 'caught_up';
     }
     if (s.maxPosts > 0 && sink.posts.size >= s.maxPosts) return 'max_posts';

@@ -56,5 +56,12 @@ export function normalize(raw: unknown): Settings {
   return s;
 }
 
+/** The settings form's values (text of each number field) to settings of the current version: the limits typed are kept. */
+export function fromForm(values: Record<string, string>, withReplies: boolean): Settings {
+  const next: Record<string, unknown> = { v: 2, withReplies };
+  Object.entries(values).forEach(([k, v]) => { next[k] = Number(v); });
+  return normalize(next);
+}
+
 export const loadSettings = (): Settings => normalize(gmGet(KEYS.settings, DEFAULTS));
 export const saveSettings = (s: Settings): void => gmSet(KEYS.settings, normalize(s));

@@ -1,6 +1,6 @@
 /// <reference lib="esnext" />
 // A small in-page form for the run settings (stored with GM_setValue, never hard-coded).
-import { DEFAULTS, loadSettings, normalize, saveSettings, type Settings } from './settings';
+import { DEFAULTS, fromForm, loadSettings, saveSettings, type Settings } from './settings';
 
 const FIELDS: { key: keyof Settings; label: string }[] = [
   { key: 'maxPosts', label: 'Max posts per run (0 = no limit)' },
@@ -56,9 +56,7 @@ export function openSettings(onSaved: (s: Settings) => void): void {
   btn('Defaults', false).onclick = () => { FIELDS.forEach((f) => { const i = inputs[f.key]; if (i) i.value = String(DEFAULTS[f.key]); }); cb.checked = DEFAULTS.withReplies; };
   btn('Cancel', false).onclick = () => wrap.remove();
   btn('Save', true).onclick = () => {
-    const next: Record<string, unknown> = { withReplies: cb.checked };
-    FIELDS.forEach((f) => { const i = inputs[f.key]; if (i) next[f.key] = Number(i.value); });
-    const saved = normalize(next);
+    const saved = fromForm(Object.fromEntries(FIELDS.map((f) => [f.key, inputs[f.key]?.value ?? ''])), cb.checked);
     saveSettings(saved);
     wrap.remove();
     onSaved(saved);

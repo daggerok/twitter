@@ -153,6 +153,10 @@ describe('the other person in a reply', () => {
     expect(r.posts[1].in_reply_to_text).toBe('');
     expect(r.skipped).toBe(1);
   });
+  test('in a conversation only its newest post of the account marks the place in the timeline, the older ones are context', () => {
+    // today's answer under the account's own post of a month ago: the old post must not end an incremental run
+    expect(parseTimeline(json, 'acc', SEEN).posts.map((p) => [p.id, p.context === true])).toEqual([['2', true], ['3', false]]);
+  });
 });
 
 describe('the Nov 2026 api (api.x.com, user_result_by_screen_name, details, counts, media_entities2)', () => {

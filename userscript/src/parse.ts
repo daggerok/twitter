@@ -5,7 +5,7 @@
 // UserMedia (TweetDetail has the same entries under data.threaded_conversation_with_injections_v2).
 // Query ids are not used anywhere: the interceptor matches the operation name in the url.
 // =========================================================================
-import { isoFromXDate, type Media, type Post, type PostType } from '../../shared/post';
+import { compareIds, isoFromXDate, type Media, type Post, type PostType } from '../../shared/post';
 
 type Obj = Record<string, unknown>;
 
@@ -61,17 +61,18 @@ export function instructionsOf(json: unknown): unknown[] {
 }
 
 /** Every tweet result object of a payload, with the pinned flag; cursor entries are skipped. */
-function tweetResults(json: unknown): { result: unknown; pinned: boolean; promoted: boolean }[] {
-  const out: { result: unknown; pinned: boolean; promoted: boolean }[] = [];
+function tweetResults(json: unknown): { result: unknown; pinned: boolean; promoted: boolean; module: number }[] {
+  const out: { result: unknown; pinned: boolean; promoted: boolean; module: number }[] = [];
+  let module = 0; // 0: an entry of its own; n: the n-th conversation module of the payload
   // two spellings: the classic one (type, entryType, itemContent, itemType) and the newer one, where every object
   // carries __typename and the item content sits under `content`
-  const pushItem = (itemContent: unknown, pinned: boolean) => {
+  const pushItem = (itemContent: unknown, pinned: boolean, mod = 0) => {
     if (!isObj(itemContent)) return;
     const itemType = itemContent.itemType || itemContent.__typename;
     if (itemType && itemType !== 'TimelineTweet') return;
     const result = get(itemContent, 'tweet_results', 'result');
     if (result === undefined) return;
-    out.push({ result, pinned, promoted: isObj(itemContent.promotedMetadata) });
+    out.push({ result, pinned, promoted: isObj(itemContent.promotedMetadata), module: mod });
   };
   const itemOf = (it: unknown): unknown => get(it, 'item', 'itemContent') ?? get(it, 'item', 'content') ?? get(it, 'content');
   const pushEntry = (entry: unknown, pinned: boolean) => {
@@ -80,7 +81,9 @@ function tweetResults(json: unknown): { result: unknown; pinned: boolean; promot
     const entryType = content.entryType || content.__typename;
     if (entryType === 'TimelineTimelineItem') pushItem(content.itemContent ?? content.content, pinned);
     else if (entryType === 'TimelineTimelineModule') {
-      arr(content.items).forEach((it) => pushItem(itemOf(it), pinned));
+      module += 1;
+      const mod = module;
+      arr(content.items).forEach((it) => pushItem(itemOf(it), pinned, mod));
     }
   };
   instructionsOf(json).forEach((ins) => {
@@ -291,7 +294,8 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
   let skipped = 0;
   let errors = 0;
   let account: AccountInfo | null = null;
-  tweetResults(json).forEach(({ result, pinned, promoted }) => {
+  const modules = new Map<number, Post[]>();
+  tweetResults(json).forEach(({ result, pinned, promoted, module }) => {
     try {
       if (promoted) { skipped += 1; return; }
       const p = postOf(result, pinned, seenAt);
@@ -299,6 +303,7 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
       if (!p || (want && p.handle.toLowerCase() !== want) || ids.has(p.id)) { skipped += 1; return; }
       ids.add(p.id);
       posts.push(p);
+      if (module) modules.set(module, (modules.get(module) || []).concat(p));
       if (!account && p.handle) {
         const t = unwrapTweet(result);
         const u = t ? userOf(t) : null;
@@ -307,6 +312,12 @@ export function parseTimeline(json: unknown, handle: string, seenAt = new Date()
     } catch {
       errors += 1;
     }
+  });
+  // a conversation shown as one entry (a thread, a reply under the account's own older post): the entry sits in the timeline
+  // at its newest post, the older ones are context and never tell an incremental run that it reached known posts
+  modules.forEach((items) => {
+    const newest = items.reduce((a, b) => (compareIds(b.id, a.id) > 0 ? b : a));
+    items.forEach((p) => { if (p !== newest) p.context = true; });
   });
   // a reply shown with its conversation: keep what the other person wrote (the owner reads the account's answer in context)
   posts.forEach((p) => {
