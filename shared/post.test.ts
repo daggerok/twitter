@@ -81,6 +81,12 @@ describe('ids and order', () => {
     expect([a, b, c].sort(byNewest).map((p) => p.id)).toEqual(['3', '1', '2']);
   });
 
+  test('a stored row that holds the same media url twice reads it once', () => {
+    const gif = { type: 'gif' as const, url: 'https://video.twimg.com/tweet_video/HYN6y2YXIAAOoDx.mp4' };
+    const row = toRow(samplePost({ media: [gif, gif, { type: 'photo', url: 'https://pbs.twimg.com/media/a.jpg' }] }));
+    expect(fromRow(row)?.media).toEqual([gif, { type: 'photo', url: 'https://pbs.twimg.com/media/a.jpg' }]);
+  });
+
   test('mergePosts keeps first_seen_at, takes fresh counts, never duplicates', () => {
     const stored = [samplePost({ likes: 1, first_seen_at: '2026-09-01T00:00:00.000Z', last_seen_at: '2026-09-01T00:00:00.000Z' })];
     const captured = [

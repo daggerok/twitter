@@ -55,22 +55,12 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
   // the post text: data-testid="tweetText" until Nov 2026, now the first element with a lang attribute
   const textEl = article.querySelector('[data-testid="tweetText"]') || article.querySelector('div[lang]');
   const text = textEl ? (textEl as HTMLElement).innerText.trim() : '';
-  const media: Media[] = [];
   const photos = article.querySelectorAll<HTMLImageElement>('[data-testid="tweetPhoto"] img');
-  (photos.length ? Array.from(photos) : Array.from(article.querySelectorAll<HTMLImageElement>('img')).filter((i) => /pbs\.twimg\.com\/(media|tweet_video_thumb)\//.test(i.src))).forEach((img) => {
-    if (!img.src) return;
-    const gif = gifFromThumb(img.src);
-    media.push(gif ? { type: 'gif', url: gif } : { type: 'photo', url: img.src });
-  });
-  // videos and gifs: X renders a <video> (gifs too, looping); the source url when it is there, else the post's video page
-  const videos = Array.from(article.querySelectorAll<HTMLVideoElement>('video'));
-  if (videos.length || article.querySelector('[data-testid="videoPlayer"], [data-testid="videoComponent"], [data-testid="gifPlayer"]')) {
-    (videos.length ? videos : [null]).forEach((v, i) => {
-      const src = v ? (v.currentSrc || v.src || v.querySelector('source')?.src || '') : '';
-      const gif = !!v && v.loop && !v.controls || !!article.querySelector('[data-testid="gifPlayer"]') || /tweet_video/.test(src);
-      media.push({ type: gif ? 'gif' : 'video', url: src && !src.startsWith('blob:') ? src : `https://x.com/${author}/status/${id}/video/${i + 1}` });
-    });
-  }
+  const imgs = (photos.length ? Array.from(photos) : Array.from(article.querySelectorAll<HTMLImageElement>('img')).filter((i) => /pbs\.twimg\.com\/(media|tweet_video_thumb)\//.test(i.src))).map((i) => i.src);
+  // videos and gifs: X renders a <video> (gifs too); a player without one still counts as one video
+  const videos = Array.from(article.querySelectorAll<HTMLVideoElement>('video')).map((v) => ({ src: v.currentSrc || v.src || v.querySelector('source')?.src || '', poster: v.poster || '', gif: (v.loop && !v.controls) || !!article.querySelector('[data-testid="gifPlayer"]') }));
+  const player = !!article.querySelector('[data-testid="videoPlayer"], [data-testid="videoComponent"], [data-testid="gifPlayer"]');
+  const media = cardMedia(imgs, videos, player, `https://x.com/${author}/status/${id}`);
   const links = Array.from((textEl || article).querySelectorAll<HTMLAnchorElement>('a[href^="http"]'))
     .map((a) => a.href).filter((h) => !/^https?:\/\/(x|twitter)\.com\//i.test(h));
   const replyTo = Array.from(article.querySelectorAll('a[href^="/"]')).map((a) => a.getAttribute('href') || '')
@@ -109,6 +99,31 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     hidden: false,
     source: 'dom',
   };
+}
+
+export type CardVideo = { src: string; poster: string; gif: boolean };
+
+/**
+ * The media of a card from what it renders: its images and its <video> elements. A gif is drawn as a <video> AND as its
+ * poster image (pbs.twimg.com/tweet_video_thumb/<id>), both naming the same clip: the owner's 28 Nov row showed one gif
+ * as "×2". So a video takes its url from its poster when that is a gif thumb, and every url is kept once.
+ * `postUrl`: the fallback for a video whose source is a blob (`<postUrl>/video/<n>`).
+ */
+export function cardMedia(imgs: string[], videos: CardVideo[], player: boolean, postUrl: string): Media[] {
+  const out: Media[] = [];
+  const add = (m: Media) => { if (m.url && !out.some((x) => x.url === m.url)) out.push(m); };
+  imgs.forEach((src) => {
+    const gif = gifFromThumb(src);
+    add(gif ? { type: 'gif', url: gif } : { type: 'photo', url: src });
+  });
+  const list: (CardVideo | null)[] = videos.length ? videos : player ? [null] : [];
+  list.forEach((v, i) => {
+    const src = v ? v.src : '';
+    const fromPoster = v ? gifFromThumb(v.poster) : null;
+    const gif = !!fromPoster || (!!v && v.gif) || /tweet_video/.test(src);
+    add({ type: gif ? 'gif' : 'video', url: fromPoster || (src && !src.startsWith('blob:') ? src : `${postUrl}/video/${i + 1}`) });
+  });
+  return out;
 }
 
 export function scanDom(seenAt = new Date().toISOString()): Post[] {

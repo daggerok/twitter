@@ -182,7 +182,8 @@ export function fromRow(row: unknown[]): Post | null {
     quoted_id: cell(row, 11),
     reposted_id: cell(row, 12),
     reposted_handle: cell(row, 13),
-    media: jsonArray(cell(row, 14), isMedia),
+    // the same url twice is one item: rows the card reader wrote before 2.6.1 hold a gif as its poster and its video
+    media: jsonArray(cell(row, 14), isMedia).filter((m, i, all) => all.findIndex((x) => x.url === m.url) === i),
     links: jsonArray(cell(row, 15), isString),
     likes: num(row, 16),
     reposts: num(row, 17),
