@@ -8,7 +8,7 @@
 // Nothing leaves the browser except the Sheets API calls.
 // =========================================================================
 import { compareIds, type Post, type ProfileTab } from '../../shared/post';
-import { gmGet, gmSet, KEYS, MAX_RUNS, newId, type Batch, type Run, type Status } from './gm';
+import { gmDel, gmGet, gmSet, KEYS, MAX_RUNS, newId, type Batch, type Run, type RunMode, type Status, type StopReason } from './gm';
 import type { DirectWriter } from './sheets-gm';
 
 export const FLUSH_EVERY_POSTS = 50;
@@ -93,15 +93,35 @@ export function setStatus(s: Status): void {
 }
 
 /**
- * Where an incremental run on a profile tab stops. The viewer's per-tab id wins whenever the viewer sent one: it is
- * computed from the sheet and sits below every empty row, while this script's own memory only knows how far its last run
- * got and would skip such holes. The own per-tab memory is used when the viewer was never opened; the old
- * one-id-per-handle memory is no longer read. '' = nothing known: a full run.
+ * Where an incremental run on a profile tab stops ('' = nothing known: a full run).
+ * - `viewer`: the per-tab ids the viewer computed from the sheet (below every empty row); it wins over this script's own
+ *   memory `own`, which only knows how far its last run got. A tab the sheet has no rows of is never answered with
+ *   another tab's id: the first ＋ on Replies of an account whose posts are stored must read the replies down to the end
+ * - `unfinished`: the id an earlier run on this tab was heading for when it was stopped, left the tab or failed. The
+ *   posts it did store are the newest ones, so without it the next run would stop on them and never read the rest
  */
+export function pickFrontier(tab: ProfileTab, viewer: Partial<Record<ProfileTab, string>> | null | undefined, own: string, unfinished: string): string {
+  const base = (viewer ? viewer[tab] : '') || own;
+  if (!base) return '';
+  return unfinished && compareIds(unfinished, base) < 0 ? unfinished : base;
+}
+
+/** What to remember after a run: nothing once it reached known posts or the end, else the id an incremental run was heading for. */
+export function unfinishedAfter(mode: RunMode, stop: StopReason, frontier: string, previous: string): string {
+  if (stop === 'caught_up' || stop === 'end_of_timeline') return '';
+  return mode === 'incremental' && frontier ? frontier : previous;
+}
+
 export function knownNewestId(handle: string, tab: ProfileTab): string {
-  const meta = gmGet<{ newestId?: string; newest?: Partial<Record<ProfileTab, string>> | null } | null>(KEYS.meta(handle), null);
-  if (meta && meta.newest) return meta.newest[tab] || meta.newest.all || gmGet<string>(KEYS.seenTab(handle, tab), '');
-  return gmGet<string>(KEYS.seenTab(handle, tab), '');
+  const meta = gmGet<{ newest?: Partial<Record<ProfileTab, string>> | null } | null>(KEYS.meta(handle), null);
+  return pickFrontier(tab, meta && meta.newest, gmGet<string>(KEYS.seenTab(handle, tab), ''), gmGet<string>(KEYS.unfinished(handle, tab), ''));
+}
+
+/** After a run: the newest id seen, and the frontier the run did not reach (see `unfinishedAfter`). */
+export function rememberRun(handle: string, tab: ProfileTab, newestId: string, mode: RunMode, stop: StopReason, frontier: string): void {
+  rememberNewestId(handle, tab, newestId);
+  const left = unfinishedAfter(mode, stop, frontier, gmGet<string>(KEYS.unfinished(handle, tab), ''));
+  if (left) gmSet(KEYS.unfinished(handle, tab), left); else gmDel(KEYS.unfinished(handle, tab));
 }
 
 export function rememberNewestId(handle: string, tab: ProfileTab, id: string): void {

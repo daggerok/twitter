@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 /// <reference types="node" />
 import { describe, expect, test } from 'bun:test';
-import { DEFAULTS, normalize } from './settings';
+import { DEFAULTS, fromForm, normalize } from './settings';
 
 describe('settings', () => {
   test('defaults for garbage, clamps, max >= min', () => {
@@ -17,5 +17,11 @@ describe('settings', () => {
     expect(s.restMaxSec).toBe(30);
     expect(normalize({ withReplies: 'yes' }).withReplies).toBe(false);
     expect(normalize({ withReplies: true }).withReplies).toBe(true);
+  });
+
+  test('Save keeps the limits typed in the form (2.4.5 and earlier saved them as 0)', () => {
+    const s = fromForm({ maxPosts: '500', maxMinutes: '30', delayMinMs: '2000', watchEveryMin: '' }, true);
+    expect([s.v, s.maxPosts, s.maxMinutes, s.delayMinMs, s.watchEveryMin, s.withReplies]).toEqual([2, 500, 30, 2000, 1, true]);
+    expect(normalize(s)).toEqual(s);
   });
 });
