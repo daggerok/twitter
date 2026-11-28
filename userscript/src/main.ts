@@ -7,6 +7,7 @@
 // - the viewer (GitHub Pages or localhost): the postMessage bridge to Tampermonkey storage (bridge.ts)
 // =========================================================================
 import { handleFromPath, sameHandle, tabOfPath, type Post } from '../../shared/post';
+import { WRITTEN_KEY } from '../../shared/written';
 import { Badge, downloadJson } from './badge';
 import { installViewerBridge } from './bridge';
 import { gmDel, gmGet, gmMenu, gmSet, hasGM, KEYS, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
@@ -145,7 +146,12 @@ function onX(): void {
       try {
         await w.prepare();
         sink.writer = w;
-        sink.onWritten = (ins, upd, err) => { stored += ins + upd; if (err) writeError = err; };
+        sink.onWritten = (ins, upd, err) => {
+          stored += ins + upd;
+          if (err) writeError = err;
+          // the viewer, when open, rereads the tab it shows (shared/written.ts)
+          if (ins + upd > 0) gmSet(WRITTEN_KEY, { at: Date.now(), handle, inserted: ins, updated: upd });
+        };
       } catch (e) {
         writeError = e instanceof Error ? e.message : String(e);
       }
