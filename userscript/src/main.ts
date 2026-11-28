@@ -12,8 +12,9 @@ import { installViewerBridge } from './bridge';
 import { gmDel, gmGet, gmMenu, gmSet, hasGM, KEYS, newId, scriptVersion, type Run, type RunMode, type StopReason } from './gm';
 import { diag, installInterceptor } from './intercept';
 import { isTimelineOperation, parseTimeline, parseUser, type AccountInfo } from './parse';
-import { runSync, TimelineFeed } from './scroll';
+import { pageKey, runSync, TimelineFeed } from './scroll';
 import { loadSettings } from './settings';
+import { fetchSsrPayloads } from './ssr';
 import { openSettings } from './settings-ui';
 import { DirectWriter, loadCreds } from './sheets-gm';
 import { knownNewestId, recordRun, rememberNewestId, setStatus, Sink } from './sink';
@@ -32,7 +33,8 @@ function onX(): void {
   const feed = new TimelineFeed();
   let currentHandle = '';
   let account: AccountInfo | null = null;
-  const intercepted = installInterceptor((op, json) => {
+  // one GraphQL answer, whichever way it came: a request the page made (the interceptor) or one X rendered into the HTML (ssr.ts)
+  const onPayload = (op: string, json: unknown): void => {
     if (op === 'UserByScreenName') { account = parseUser(json) || account; return; }
     // while a run goes, payloads are read for the run's account, whatever page X navigated to meanwhile
     const handle = (running && currentHandle) || handleFromPath(location.pathname) || '';
@@ -41,8 +43,25 @@ function onX(): void {
     diag.parsed[op] = (diag.parsed[op] || 0) + r.posts.length;
     if (r.errors) diag.errors.push(`${op}: ${r.errors} entries threw`);
     if (r.account && (!account || account.handle === r.account.handle)) account = r.account;
-    if (r.posts.length) feed.onTimeline(r.posts);
-  }, (_op, status) => feed.onStatus(status));
+    if (r.posts.length) feed.onTimeline(r.posts, pageKey(location.pathname));
+  };
+  const intercepted = installInterceptor(onPayload, (_op, status) => feed.onStatus(status));
+  /**
+   * The first page of the tab on screen. X renders it into the HTML and makes no request for it (a freshly loaded profile,
+   * or a tab it already has in memory), so the run would start from the rendered cards: the page is asked once more and
+   * the answers inside it go the same way as intercepted ones. Returns how many posts that gave.
+   */
+  const readFirstPage = async (): Promise<number> => {
+    const before = feed.waiting;
+    const payloads = await fetchSsrPayloads(location.pathname);
+    diag.ssr = payloads.length;
+    payloads.forEach((json) => {
+      const user = parseUser(json);
+      if (user && sameHandle(user.handle, handleFromPath(location.pathname) || '')) account = account || user;
+      onPayload('ssr', json);
+    });
+    return feed.waiting - before;
+  };
 
   let running = false;
   let stopRequested = false;
@@ -102,9 +121,12 @@ function onX(): void {
   async function start(mode: RunMode): Promise<void> {
     const path = handleFromPath(location.pathname);
     if (!path || running) return;
+    running = true;
+    // the first page: what the interceptor caught for this very tab, else what X rendered into the page
+    feed.keepOnly(pageKey(location.pathname));
+    if (!feed.waiting) { badge.set(`@${path}\nreading the first page…`); await readFirstPage(); }
     // the tab is named with the case X shows (screen_name of the UserByScreenName answer), else the url's
     const handle = account && sameHandle(account.handle, path) ? account.display_handle : path;
-    running = true;
     stopRequested = false;
     currentHandle = handle;
     const settings = loadSettings();
@@ -130,6 +152,7 @@ function onX(): void {
     }
     const effectiveMode: RunMode = mode === 'incremental' && !newestId ? 'full' : mode;
     badge.setRunning(true);
+
     badge.setJsonAvailable(false);
     // the source is known while the run goes: a timeline response seen through the interceptor means graphql, else the DOM reader
     const liveSource = () => (feed.apiPayloads > 0 ? 'graphql' : sink.posts.size > 0 ? 'dom' : '…');

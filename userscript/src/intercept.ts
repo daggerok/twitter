@@ -24,6 +24,7 @@ export const diag = {
   direct: false,            // unsafeWindow.fetch was patched from the sandbox
   messages: {} as Record<string, number>,  // op:status -> count of responses reported
   payloads: 0,              // responses parsed as json and handed to the parser
+  ssr: -1,                  // GraphQL answers found in the page's HTML at the last run start (-1: never asked)
   parsed: {} as Record<string, number>,    // op -> posts the parser found
   sample: '',               // first 1,500 chars of the first timeline response (the owner's own data, never stored)
   errors: [] as string[],

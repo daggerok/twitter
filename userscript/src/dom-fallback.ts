@@ -107,6 +107,7 @@ export function postFromArticle(article: Element, handle: string, seenAt: string
     first_seen_at: seenAt,
     last_seen_at: seenAt,
     hidden: false,
+    source: 'dom',
   };
 }
 
